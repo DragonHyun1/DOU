@@ -14,10 +14,11 @@ def apply_theme(app, plot_widget=None):
 
     # PyQtGraph 다크 스타일 동기화
     if plot_widget:
-        plot_widget.setBackground("#2b2b2b")
-        plot_widget.showGrid(x=True, y=True, alpha=0.3)
-        for axis in ("left", "bottom"):
-            plot_widget.getAxis(axis).setPen(pg.mkPen(color="#dcdcdc"))
-            plot_widget.getAxis(axis).setTextPen(pg.mkPen(color="#dcdcdc"))
-        plot_widget.setLabel("left", "Current (A)", color="#dcdcdc")
-        plot_widget.setLabel("bottom", "Time (s)", color="#dcdcdc")
+        # 단일 위젯이거나 리스트로 전달된 경우 모두 처리
+        widgets = plot_widget if isinstance(plot_widget, (list, tuple)) else [plot_widget]
+        for w in widgets:
+            w.setBackground("#2b2b2b")
+            w.showGrid(x=True, y=True, alpha=0.3)
+            for axis in ("left", "bottom"):
+                w.getAxis(axis).setPen(pg.mkPen(color="#dcdcdc"))
+                w.getAxis(axis).setTextPen(pg.mkPen(color="#dcdcdc"))

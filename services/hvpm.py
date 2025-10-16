@@ -18,6 +18,8 @@ class HvpmService:
 
         self.enabled = False
         self.last_set_vout = None
+        self.last_read_voltage = None
+        self.last_read_current = None
 
     # -------- UI helpers --------
     def _set_status(self, text: str, ok: bool):
@@ -243,6 +245,51 @@ class HvpmService:
         if v is not None:
             return v
         return self.read_voltage_once_channel_major(nsamp=1200, tail=200, warmup_ms=300, log_callback=log_callback)
+
+    # -------- dual-channel VI read --------
+    def read_vi_once_channel_major(self, nsamp=700, tail=140, warmup_ms=180, log_callback=None):
+        """
+        Capture once and return (voltage[V], current[A]) using channel-major access.
+        Both channels are enabled to ensure synchronous sampling.
+        """
+        if not (self.pm and self.engine):
+            if log_callback: log_callback("[HVPM] engine/pm not ready", "warn")
+            return None, None
+        ch = sampleEngine.channels
+
+        # Ensure only required channels are enabled
+        self._enable_voltage_minimal()
+        try:
+            if warmup_ms and warmup_ms > 0:
+                time.sleep(warmup_ms/1000.0)
+            self.engine.startSampling(int(nsamp))
+            data = self.engine.getSamples() or []
+            mv = data[ch.MainVoltage] if len(data) > ch.MainVoltage else []
+            mi = data[ch.MainCurrent] if len(data) > ch.MainCurrent else []
+            vals_v = self._floats_tail(mv, tail=tail)
+            vals_i = self._floats_tail(mi, tail=tail)
+            v = self._median(vals_v)
+            i = self._median(vals_i)
+            if v is None and log_callback:
+                log_callback("[HVPM DERR1] no volt samples", "warn")
+            if i is None and log_callback:
+                log_callback("[HVPM DERR2] no current samples", "warn")
+            if v is not None:
+                self.last_read_voltage = float(v)
+            if i is not None:
+                self.last_read_current = float(i)
+            v_out = None if v is None else round(v, 2)
+            i_out = None if i is None else round(i, 4)
+            return v_out, i_out
+        except Exception as e:
+            if log_callback: log_callback(f"[HVPM] capture failed: {e}", "error")
+            return None, None
+
+    def read_vi(self, log_callback=None):
+        v, i = self.read_vi_once_channel_major(nsamp=700, tail=140, warmup_ms=180, log_callback=log_callback)
+        if v is not None and i is not None:
+            return v, i
+        return self.read_vi_once_channel_major(nsamp=1200, tail=200, warmup_ms=300, log_callback=log_callback)
 
     # -------- set voltage --------
     def set_voltage(self, volts: float, log_callback=None) -> bool:
