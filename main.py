@@ -58,10 +58,23 @@ class MainWindow(QtWidgets.QMainWindow):
         # [GRAPH_INIT_END]
 
     def _log(self, msg: str):
-        if hasattr(self.ui, "log_LW"):
-            self.ui.log_LW.addItem(msg)
-            self.ui.log_LW.scrollToBottom()
-        else:
+        try:
+            item = QtWidgets.QListWidgetItem(msg)
+            text = msg.lower()
+            if any(k in text for k in ("fail", "오류", "error")):
+                item.setForeground(QColor("#ff5555"))   # red
+            elif any(k in text for k in ("ok", "connected", "success", "✅")):
+                item.setForeground(QColor("#50fa7b"))   # green
+            elif "warn" in text or "주의" in text:
+                item.setForeground(QColor("#f1fa8c"))   # yellow
+            else:
+                item.setForeground(QColor("#8be9fd"))   # cyan/default
+            if hasattr(self.ui, "log_LW"):
+                self.ui.log_LW.addItem(item)
+                self.ui.log_LW.scrollToBottom()
+            else:
+                print(msg)
+        except Exception:
             print(msg)
 
     def on_refresh_clicked(self):
@@ -150,4 +163,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-```0
