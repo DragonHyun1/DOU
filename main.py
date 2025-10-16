@@ -63,7 +63,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.ui.stopGraph_PB.clicked.connect(self.stop_graph)
         # --- /GRAPH INIT ---
 
-        # 앱 시작 시 1회 자동 점검(HVPM + ADB/COM)
+        # 앱 시작 시 1회 자동 점검(HVPM + ADB/COM + 전압 자동 읽기)
         QTimer.singleShot(0, self._initial_probe)
 
     # 기존 로그 스타일(단순 addItem)
@@ -77,17 +77,26 @@ class MainWindow(QtWidgets.QMainWindow):
         except Exception:
             print(msg)
 
-    # 앱 시작 직후 1회 수행: 연결된 장비/테스트 단말 점검
+    # 앱 시작 직후 1회 수행: 연결된 장비/테스트 단말 점검 + 전압 자동 읽기
     def _initial_probe(self):
         self._log("Initial probe: scanning HVPM & test device...")
         # HVPM
         try:
             ports = self.hvpm.refresh_ports()
             self._log(f"HVPM ports: {ports if ports else 'none'}")
+            # 이미 연결된 상태라면 전압 자동 읽기
+            if getattr(self.hvpm, "dev", None):
+                try:
+                    v = float(self.hvpm.read_voltage())
+                    self._log(f"Initial Vout: {v:.3f} V")
+                    if hasattr(self.ui, "hvpmVolt_LB"):
+                        self.ui.hvpmVolt_LB.setText(f"{v:.3f} V")
+                except Exception as e:
+                    self._log(f"Initial voltage read 실패: {e}")
         except Exception as e:
             self._log(f"HVPM refresh 실패: {e}")
 
-        # ADB UI 쪽 갱신(services.adb가 제공할 경우)
+        # ADB UI 모듈 사용 시 UI 갱신
         try:
             if hasattr(adb, "refresh_ports"):
                 adb.refresh_ports(self.ui)
@@ -95,12 +104,12 @@ class MainWindow(QtWidgets.QMainWindow):
         except Exception as e:
             self._log(f"ADB UI refresh 실패: {e}")
 
-        # 보조 진단: adb devices
-        self._quick_adb_probe()
-        # 보조 진단: COM 포트 나열(pyserial 있으면)
-        self._quick_list_com_ports()
+        # 보조 진단 + 콤보 폴백 주입
+        adb_list = self._quick_adb_probe()
+        com_list = self._quick_list_com_ports()
+        self._populate_com_combo_fallback(com_list)
 
-    # Refresh 버튼: 이제 HVPM + ADB 함께 갱신 (요청 반영)
+    # Refresh 버튼: HVPM + ADB 함께 갱신
     def on_refresh_clicked(self):
         try:
             self.hvpm._safe_close()
@@ -112,15 +121,15 @@ class MainWindow(QtWidgets.QMainWindow):
         except Exception as e:
             self._log(f"HVPM refresh 실패: {e}")
 
-        # ADB UI 갱신 + 보조 진단
+        # ADB UI 갱신 + 보조 진단 + 콤보 폴백
         try:
             if hasattr(adb, "refresh_ports"):
                 adb.refresh_ports(self.ui)
                 self._log("ADB UI refresh done")
         except Exception as e:
             self._log(f"ADB UI refresh 실패: {e}")
-        self._quick_adb_probe()
-        self._quick_list_com_ports()
+        com_list = self._quick_list_com_ports()
+        self._populate_com_combo_fallback(com_list)
 
     # --- GRAPH FUNCS ---
     def start_graph(self):
@@ -196,33 +205,72 @@ class MainWindow(QtWidgets.QMainWindow):
         except Exception as e:
             self._log(f"전압 설정 실패: {e}")
 
-    # ===== 보조 진단 유틸 =====
+    # ===== 보조 진단 & 콤보 폴백 =====
     def _quick_adb_probe(self):
-        """adb devices 결과를 로그로 출력(ADB가 PATH에 있을 때)."""
+        """adb devices 결과를 로그로 출력(ADB가 PATH에 있을 때). 반환: 라인 리스트 또는 []."""
         try:
             if not shutil.which("adb"):
                 self._log("adb not found in PATH")
-                return
+                return []
             out = subprocess.run(["adb", "devices"], capture_output=True, text=True, timeout=5)
             text = (out.stdout or "").strip()
-            # 첫 줄 'List of devices attached' 제외하고 유의미한 라인만
             lines = [ln for ln in text.splitlines() if ln.strip() and "List of devices" not in ln]
             self._log(f"adb devices: {lines if lines else 'none'}")
+            return lines
         except Exception as e:
             self._log(f"adb probe 실패: {e}")
+            return []
 
     def _quick_list_com_ports(self):
-        """pyserial이 있으면 COM 포트 목록을 로그로 출력."""
+        """pyserial이 있으면 COM 포트 목록을 로그로 출력하고 리스트 반환."""
         try:
             import serial.tools.list_ports as list_ports
         except Exception:
             self._log("pyserial not available")
-            return
+            return []
         try:
             ports = [p.device for p in list_ports.comports()]
             self._log(f"COM ports: {ports if ports else 'none'}")
+            return ports
         except Exception as e:
             self._log(f"COM probe 실패: {e}")
+            return []
+
+    def _find_com_combo(self):
+        """UI에서 테스트 단말용 COM 콤보를 추정해서 반환(hvpm_CB 제외). 없으면 None."""
+        candidates = []
+        for name in dir(self.ui):
+            try:
+                obj = getattr(self.ui, name)
+            except Exception:
+                continue
+            if isinstance(obj, QtWidgets.QComboBox):
+                lname = name.lower()
+                if "hvpm" in lname:
+                    continue
+                if any(k in lname for k in ("com", "adb", "device", "port", "serial")):
+                    candidates.append((name, obj))
+        # 선호도: com > adb > device > port > serial
+        order = ["com", "adb", "device", "port", "serial"]
+        candidates.sort(key=lambda x: min((i for i,k in enumerate(order) if k in x[0].lower()), default=99))
+        if candidates:
+            self._log(f"COM combo detected: {candidates[0][0]}")
+            return candidates[0][1]
+        return None
+
+    def _populate_com_combo_fallback(self, ports):
+        """UI 모듈이 콤보를 안 채웠을 때, pyserial 결과로 콤보를 채워주는 폴백."""
+        if not ports:
+            return
+        combo = self._find_com_combo()
+        if not combo:
+            return
+        try:
+            if combo.count() == 0:
+                combo.addItems(ports)
+                self._log(f"COM combo populated (fallback): {ports}")
+        except Exception as e:
+            self._log(f"COM combo populate 실패: {e}")
 
 def main():
     app = QtWidgets.QApplication(sys.argv)
