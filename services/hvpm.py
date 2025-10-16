@@ -6,7 +6,7 @@
 #        read_voltage, set_voltage
 
 import time
-from PyQt6 import QtWidgets
+from PyQt import QtWidgets
 from Monsoon import HVPM, sampleEngine
 
 class HvpmService:
