@@ -1,9 +1,3 @@
-# SYNC_BASE: 10/14 A
-# FILE: DOU/main.py
-# FUNCS: __init__, _log, on_refresh_clicked, start_graph, stop_graph,
-#        _on_graph_tick, refresh_adb_ports, _on_device_selected,
-#        handle_read_voltage, handle_set_voltage
-
 import sys, time, math
 from PyQt6 import QtWidgets
 from PyQt6.QtGui import QColor
@@ -37,7 +31,7 @@ class MainWindow(QtWidgets.QMainWindow):
         if hasattr(self.ui, "setVolt_PB"):
             self.ui.setVolt_PB.clicked.connect(self.handle_set_voltage)
 
-        # [GRAPH_INIT_START]
+        # 그래프 초기화 (graphLayout에 추가)
         self._plot = pg.PlotWidget(title="HVPM Live Voltage (V)")
         self._plot.showGrid(x=True, y=True, alpha=0.3)
         self._curve = self._plot.plot(pen=pg.mkPen(width=2))
@@ -55,20 +49,19 @@ class MainWindow(QtWidgets.QMainWindow):
             self.ui.startGraph_PB.clicked.connect(self.start_graph)
         if hasattr(self.ui, "stopGraph_PB"):
             self.ui.stopGraph_PB.clicked.connect(self.stop_graph)
-        # [GRAPH_INIT_END]
 
     def _log(self, msg: str):
         try:
             item = QtWidgets.QListWidgetItem(msg)
             text = msg.lower()
             if any(k in text for k in ("fail", "오류", "error")):
-                item.setForeground(QColor("#ff5555"))   # red
+                item.setForeground(QColor("#ff5555"))
             elif any(k in text for k in ("ok", "connected", "success", "✅")):
-                item.setForeground(QColor("#50fa7b"))   # green
+                item.setForeground(QColor("#50fa7b"))
             elif "warn" in text or "주의" in text:
-                item.setForeground(QColor("#f1fa8c"))   # yellow
+                item.setForeground(QColor("#f1fa8c"))
             else:
-                item.setForeground(QColor("#8be9fd"))   # cyan/default
+                item.setForeground(QColor("#8be9fd"))
             if hasattr(self.ui, "log_LW"):
                 self.ui.log_LW.addItem(item)
                 self.ui.log_LW.scrollToBottom()
@@ -78,14 +71,15 @@ class MainWindow(QtWidgets.QMainWindow):
             print(msg)
 
     def on_refresh_clicked(self):
-        try: self.hvpm._safe_close()
-        except Exception: pass
+        try:
+            self.hvpm._safe_close()
+        except Exception:
+            pass
         ports = self.hvpm.refresh_ports()
         if hasattr(self.ui, "hvpmStatus_LB"):
             self.ui.hvpmStatus_LB.setText("ready" if ports else "no device")
         self._log(f"HVPM ports: {ports if ports else 'none'}")
 
-    # [GRAPH_FUNCS_START]
     def start_graph(self):
         if getattr(self, "_timer", None) and self._timer.isActive():
             return
@@ -125,7 +119,6 @@ class MainWindow(QtWidgets.QMainWindow):
             pad = max(0.05, abs(vmax) * 0.05)
             vmin -= pad; vmax += pad
         self._plot.setYRange(vmin, vmax, padding=0.05)
-    # [GRAPH_FUNCS_END]
 
     def refresh_adb_ports(self):
         try:
