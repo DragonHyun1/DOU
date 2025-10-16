@@ -1,4 +1,4 @@
-import sys, time, math
+import sys, time, math, subprocess, shutil
 from PyQt6 import QtWidgets
 from PyQt6.QtGui import QColor
 from PyQt6.QtCore import QTimer
@@ -33,8 +33,7 @@ class MainWindow(QtWidgets.QMainWindow):
         if hasattr(self.ui, "setVolt_PB"):
             self.ui.setVolt_PB.clicked.connect(self.handle_set_voltage)
 
-        # --- GRAPH INIT (ADD-ONLY) ---
-        # PlotWidget 생성 → graphLayout에 삽입(있으면 재사용)
+        # --- GRAPH INIT ---
         if not hasattr(self, "_plot"):
             self._plot = pg.PlotWidget(title="HVPM Live Voltage (V)")
             self._plot.showGrid(x=True, y=True, alpha=0.3)
@@ -42,7 +41,6 @@ class MainWindow(QtWidgets.QMainWindow):
             if hasattr(self.ui, "graphLayout"):
                 self.ui.graphLayout.addWidget(self._plot)
 
-        # 버퍼/타이머
         if not hasattr(self, "_tbuf"):
             self._tbuf = deque(maxlen=600)   # 10 Hz * 60s
         if not hasattr(self, "_vbuf"):
@@ -54,7 +52,6 @@ class MainWindow(QtWidgets.QMainWindow):
             self._timer.setInterval(100)     # 10 Hz
             self._timer.timeout.connect(self._on_graph_tick)
 
-        # 그래프 버튼 연결(중복 방지)
         if hasattr(self.ui, "startGraph_PB"):
             try: self.ui.startGraph_PB.clicked.disconnect()
             except Exception: pass
@@ -64,7 +61,10 @@ class MainWindow(QtWidgets.QMainWindow):
             try: self.ui.stopGraph_PB.clicked.disconnect()
             except Exception: pass
             self.ui.stopGraph_PB.clicked.connect(self.stop_graph)
-        # --- /GRAPH INIT (ADD-ONLY) ---
+        # --- /GRAPH INIT ---
+
+        # 앱 시작 시 1회 자동 점검(HVPM + ADB/COM)
+        QTimer.singleShot(0, self._initial_probe)
 
     # 기존 로그 스타일(단순 addItem)
     def _log(self, msg: str):
@@ -77,28 +77,62 @@ class MainWindow(QtWidgets.QMainWindow):
         except Exception:
             print(msg)
 
+    # 앱 시작 직후 1회 수행: 연결된 장비/테스트 단말 점검
+    def _initial_probe(self):
+        self._log("Initial probe: scanning HVPM & test device...")
+        # HVPM
+        try:
+            ports = self.hvpm.refresh_ports()
+            self._log(f"HVPM ports: {ports if ports else 'none'}")
+        except Exception as e:
+            self._log(f"HVPM refresh 실패: {e}")
+
+        # ADB UI 쪽 갱신(services.adb가 제공할 경우)
+        try:
+            if hasattr(adb, "refresh_ports"):
+                adb.refresh_ports(self.ui)
+                self._log("ADB UI refresh done")
+        except Exception as e:
+            self._log(f"ADB UI refresh 실패: {e}")
+
+        # 보조 진단: adb devices
+        self._quick_adb_probe()
+        # 보조 진단: COM 포트 나열(pyserial 있으면)
+        self._quick_list_com_ports()
+
+    # Refresh 버튼: 이제 HVPM + ADB 함께 갱신 (요청 반영)
     def on_refresh_clicked(self):
-        # 기존 연결 정리 후 재탐색
         try:
             self.hvpm._safe_close()
         except Exception:
             pass
-        ports = self.hvpm.refresh_ports()
-        # 상태 라벨은 HvpmService에서 설정하므로 여기서 덮어쓰지 않음
-        self._log(f"HVPM ports: {ports if ports else 'none'}")
+        try:
+            ports = self.hvpm.refresh_ports()
+            self._log(f"HVPM ports: {ports if ports else 'none'}")
+        except Exception as e:
+            self._log(f"HVPM refresh 실패: {e}")
 
-    # --- GRAPH FUNCS (ADD-ONLY) ---
+        # ADB UI 갱신 + 보조 진단
+        try:
+            if hasattr(adb, "refresh_ports"):
+                adb.refresh_ports(self.ui)
+                self._log("ADB UI refresh done")
+        except Exception as e:
+            self._log(f"ADB UI refresh 실패: {e}")
+        self._quick_adb_probe()
+        self._quick_list_com_ports()
+
+    # --- GRAPH FUNCS ---
     def start_graph(self):
         if hasattr(self, "_timer") and self._timer.isActive():
             return
         if hasattr(self, "_tbuf"): self._tbuf.clear()
         if hasattr(self, "_vbuf"): self._vbuf.clear()
         self._t0 = time.perf_counter()
-        # 그래프 중엔 단건 읽기 비활성(있을 때만)
         if hasattr(self.ui, "readVolt_PB"):
             try: self.ui.readVolt_PB.setEnabled(False)
             except Exception: pass
-        self._on_graph_tick()   # 첫 포인트
+        self._on_graph_tick()
         self._timer.start()
         self._log("Graph start (10 Hz)")
 
@@ -112,7 +146,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self._log("Graph stop")
 
     def _on_graph_tick(self):
-        # 전압 1회 읽어 누적/표시
         try:
             v = float(self.hvpm.read_voltage())
         except Exception as e:
@@ -122,11 +155,9 @@ class MainWindow(QtWidgets.QMainWindow):
             return
 
         t = time.perf_counter() - (self._t0 or time.perf_counter())
-        self._tbuf.append(t)
-        self._vbuf.append(v)
+        self._tbuf.append(t); self._vbuf.append(v)
         self._curve.setData(list(self._tbuf), list(self._vbuf))
 
-        # 최근 30초 범위
         tmax = self._tbuf[-1]
         self._plot.setXRange(max(0.0, tmax - 30.0), tmax, padding=0.01)
         vmin, vmax = min(self._vbuf), max(self._vbuf)
@@ -134,9 +165,9 @@ class MainWindow(QtWidgets.QMainWindow):
             pad = max(0.05, abs(vmax) * 0.05)
             vmin -= pad; vmax += pad
         self._plot.setYRange(vmin, vmax, padding=0.05)
-    # --- /GRAPH FUNCS (ADD-ONLY) ---
+    # --- /GRAPH FUNCS ---
 
-    # 기존 ADB/장치/전압 핸들러 유지
+    # 그대로 유지
     def refresh_adb_ports(self):
         try:
             if hasattr(adb, "refresh_ports"):
@@ -164,6 +195,34 @@ class MainWindow(QtWidgets.QMainWindow):
             self._log(f"Vout set → {v:.3f} V")
         except Exception as e:
             self._log(f"전압 설정 실패: {e}")
+
+    # ===== 보조 진단 유틸 =====
+    def _quick_adb_probe(self):
+        """adb devices 결과를 로그로 출력(ADB가 PATH에 있을 때)."""
+        try:
+            if not shutil.which("adb"):
+                self._log("adb not found in PATH")
+                return
+            out = subprocess.run(["adb", "devices"], capture_output=True, text=True, timeout=5)
+            text = (out.stdout or "").strip()
+            # 첫 줄 'List of devices attached' 제외하고 유의미한 라인만
+            lines = [ln for ln in text.splitlines() if ln.strip() and "List of devices" not in ln]
+            self._log(f"adb devices: {lines if lines else 'none'}")
+        except Exception as e:
+            self._log(f"adb probe 실패: {e}")
+
+    def _quick_list_com_ports(self):
+        """pyserial이 있으면 COM 포트 목록을 로그로 출력."""
+        try:
+            import serial.tools.list_ports as list_ports
+        except Exception:
+            self._log("pyserial not available")
+            return
+        try:
+            ports = [p.device for p in list_ports.comports()]
+            self._log(f"COM ports: {ports if ports else 'none'}")
+        except Exception as e:
+            self._log(f"COM probe 실패: {e}")
 
 def main():
     app = QtWidgets.QApplication(sys.argv)
