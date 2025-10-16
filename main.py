@@ -58,27 +58,31 @@ class MainWindow(QtWidgets.QMainWindow):
         self.selected_device = None
         self._refreshing_adb = False
 
+        # === 추가: Refresh 시 전압 동시 읽기 여부(기본 False → 읽지 않음)
+        self._cfg_refresh_reads_voltage = False
+
         # 시그널
         self.ui.port_PB.clicked.connect(self.on_refresh_clicked)
         self.ui.readVolt_PB.clicked.connect(self.handle_read_voltage)
         self.ui.setVolt_PB.clicked.connect(self.handle_set_voltage)
         self.ui.comport_CB.currentIndexChanged.connect(self._on_device_selected)
 
-        # 시작: ADB/HVPM 연결 + 초기 전압 읽기
+        # 시작: ADB/HVPM 연결 + (연결된 경우에만) 초기 전압 읽기
         self.refresh_adb_ports()
         self.hvpm_service.refresh_ports(log_callback=self._log)
 
-        v0 = self.hvpm_service.read_voltage(log_callback=self._log)
-        if v0 is not None:
-            self.hvpm_service.last_set_vout = v0
-            self.hvpm_service.enabled = v0 > 0
-            self.hvpm_service._update_volt_label()
-            self._log(f"[HVPM] Initial voltage: {v0:.2f} V", "info")
-        else:
-            self.hvpm_service.last_set_vout = None
-            self.hvpm_service.enabled = False
-            self.hvpm_service._update_volt_label()
-            self._log("[HVPM] Read failed on startup (DERR1)", "warn")
+        if getattr(self.hvpm_service, "dev", None):  # ← 연결된 경우에만 읽기
+            v0 = self.hvpm_service.read_voltage(log_callback=self._log)
+            if v0 is not None:
+                self.hvpm_service.last_set_vout = v0
+                self.hvpm_service.enabled = v0 > 0
+                self.hvpm_service._update_volt_label()
+                self._log(f"[HVPM] Initial voltage: {v0:.2f} V", "info")
+            else:
+                self.hvpm_service.last_set_vout = None
+                self.hvpm_service.enabled = False
+                self.hvpm_service._update_volt_label()
+                self._log("[HVPM] Read failed on startup (DERR1)", "warn")
 
     # ---------- 로그 ----------
     def _log(self, msg: str, level: str = "info"):
@@ -98,21 +102,22 @@ class MainWindow(QtWidgets.QMainWindow):
         # 2) HVPM 새로고침
         self.hvpm_service.refresh_ports(log_callback=self._log)
 
-        # 3) 상태 반영: 전압 1회 읽기(성공 시 라벨·상태 갱신)
-        v = self.hvpm_service.read_voltage(log_callback=self._log)
-        if v is not None:
-            self.hvpm_service.last_set_vout = v
-            self.hvpm_service.enabled = v > 0
-            self.hvpm_service._update_volt_label()
-            self._log(f"[HVPM] Current voltage: {v:.2f} V", "info")
-        else:
-            # 연결이 끊겼거나 샘플 없음
-            self.hvpm_service.last_set_vout = None
-            self.hvpm_service.enabled = False
-            self.hvpm_service._update_volt_label()
-            self._log("[HVPM] Read failed after refresh (DERR1)", "warn")
+        # 3) 상태 반영: 전압 읽기는 요청대로 Refresh에서 실행하지 않음
+        #    (필요하면 self._cfg_refresh_reads_voltage = True 로 복구 가능)
+        if getattr(self, "_cfg_refresh_reads_voltage", False):
+            v = self.hvpm_service.read_voltage(log_callback=self._log)
+            if v is not None:
+                self.hvpm_service.last_set_vout = v
+                self.hvpm_service.enabled = v > 0
+                self.hvpm_service._update_volt_label()
+                self._log(f"[HVPM] Current voltage: {v:.2f} V", "info")
+            else:
+                self.hvpm_service.last_set_vout = None
+                self.hvpm_service.enabled = False
+                self.hvpm_service._update_volt_label()
+                self._log("[HVPM] Read failed after refresh (DERR1)", "warn")
 
-# ---------- Graph ----------
+    # ---------- Graph ----------
     def start_graph(self):
         if self._graphActive:
             return
@@ -136,16 +141,19 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def _on_graph_tick(self):
         try:
-            # 연결 안돼 있으면 패스 (필요하면 주석처리)
-            if not hasattr(self, "hvpm") or not self.hvpm.is_connected():
+            # 연결 안돼 있으면 패스
+            if not getattr(self.hvpm_service, "dev", None):
                 return
 
-            v = self.hvpm.read_voltage_quick()
+            # ★ hvpm_service에서 전압 읽기 (이전 self.hvpm 참조 → 수정)
+            v = self.hvpm_service.read_voltage(log_callback=self._log)
+
             # None/NaN/비수치 방어
             try:
-                v = float(v)
+                v = float(v) if v is not None else float("nan")
             except Exception:
                 v = float("nan")
+
             if not math.isfinite(v):
                 if not hasattr(self, "_graphWarnedNaN") or not self._graphWarnedNaN:
                     self._graphWarnedNaN = True
@@ -172,7 +180,7 @@ class MainWindow(QtWidgets.QMainWindow):
         except Exception as e:
             self._log(f"그래프 업데이트 실패: {e}")
 
-# ---------- ADB ----------
+    # ---------- ADB ----------
     def refresh_adb_ports(self):
         self._refreshing_adb = True
         self.ui.comport_CB.clear()
