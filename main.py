@@ -62,19 +62,10 @@ class MainWindow(QtWidgets.QMainWindow):
         # --- /GRAPH INIT (ADD-ONLY) ---
 
     def _log(self, msg: str):
+        # 기존 방식으로 단순 출력 (색상/스타일 X)
         try:
-            item = QtWidgets.QListWidgetItem(msg)
-            text = msg.lower()
-            if any(k in text for k in ("fail", "오류", "error")):
-                item.setForeground(QColor("#ff5555"))
-            elif any(k in text for k in ("ok", "connected", "success", "✅")):
-                item.setForeground(QColor("#50fa7b"))
-            elif "warn" in text or "주의" in text:
-                item.setForeground(QColor("#f1fa8c"))
-            else:
-                item.setForeground(QColor("#8be9fd"))
             if hasattr(self.ui, "log_LW"):
-                self.ui.log_LW.addItem(item)
+                self.ui.log_LW.addItem(msg)
                 self.ui.log_LW.scrollToBottom()
             else:
                 print(msg)
@@ -87,8 +78,7 @@ class MainWindow(QtWidgets.QMainWindow):
         except Exception:
             pass
         ports = self.hvpm.refresh_ports()
-        if hasattr(self.ui, "hvpmStatus_LB"):
-            self.ui.hvpmStatus_LB.setText("ready" if ports else "no device")
+        # 상태 라벨은 HvpmService 내부에서 설정하므로 여기서 덮어쓰지 않음
         self._log(f"HVPM ports: {ports if ports else 'none'}")
 
     def start_graph(self):
