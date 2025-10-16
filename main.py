@@ -44,6 +44,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui.graphLayout.addWidget(self._plot_v)
         self.ui.graphLayout.addWidget(self._plot_i)
 
+        # Apply dark theme styles to both plots
+        try:
+            theme.apply_theme(self, [self._plot_v, self._plot_i])
+        except Exception:
+            pass
+
         # 버퍼/타이머
         self._t0 = None
         self._tbuf = deque(maxlen=600)   # 10Hz*60s = 최근 1분
@@ -80,7 +86,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.refresh_adb_ports()
         self.hvpm_service.refresh_ports(log_callback=self._log)
 
-        if getattr(self.hvpm_service, "dev", None):  # ← 연결된 경우에만 읽기
+        # HvpmService에는 'dev'가 없으므로 pm/engine로 연결 여부 확인
+        if getattr(self.hvpm_service, "pm", None) and getattr(self.hvpm_service, "engine", None):
             v0 = self.hvpm_service.read_voltage(log_callback=self._log)
             if v0 is not None:
                 self.hvpm_service.last_set_vout = v0
@@ -130,7 +137,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def start_graph(self):
         if self._graphActive:
             return
-        self._tbuf.clear(); self._vbuf.clear()
+        self._tbuf.clear(); self._vbuf.clear(); self._ibuf.clear()
         self._t0 = time.perf_counter()
         # 동시 접근 충돌 방지: 수동 읽기 버튼이 있으면 잠시 비활성화
         if hasattr(self.ui, "readVolt_PB"):
@@ -150,8 +157,9 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def _on_graph_tick(self):
         try:
-            # 연결 안돼 있으면 패스
-            if not getattr(self.hvpm_service, "dev", None):
+            # 연결 안돼 있으면 패스 (pm/engine 기준)
+            svc = self.hvpm_service
+            if not (getattr(svc, "pm", None) and getattr(svc, "engine", None)):
                 return
 
             # Read voltage and current together
@@ -181,8 +189,13 @@ class MainWindow(QtWidgets.QMainWindow):
                 self._ibuf.append(i)
 
             # Update plots
-            self._curve_v.setData(list(self._tbuf), list(self._vbuf))
-            self._curve_i.setData(list(self._tbuf), list(self._ibuf))
+            tb = list(self._tbuf)
+            vb = list(self._vbuf)
+            ib = list(self._ibuf)
+            xv = tb[-len(vb):] if vb else []
+            xi = tb[-len(ib):] if ib else []
+            self._curve_v.setData(xv, vb)
+            self._curve_i.setData(xi, ib)
 
             # Y축 범위 강제(평평하면 보정)
             if len(self._vbuf) > 0:
