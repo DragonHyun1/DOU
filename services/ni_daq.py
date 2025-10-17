@@ -195,7 +195,8 @@ class MockNIDAQService(NIDAQService):
         self.mock_current = 0.0
         
     def get_available_devices(self) -> List[str]:
-        return ["Dev1 (Mock USB-6289)", "Dev2 (Mock USB-6001)"]
+        # 실제 NI-DAQmx 없을 때는 빈 리스트 반환
+        return []
     
     def connect_device(self, device_name: str, channel: str = "ai0") -> bool:
         self.device_name = device_name

@@ -177,12 +177,12 @@
        <item>
         <widget class="QPushButton" name="daqConnect_PB">
          <property name="text">
-          <string>📡 DAQ</string>
+          <string>Connect</string>
          </property>
          <property name="minimumSize">
           <size>
            <width>60</width>
-           <height>35</height>
+           <height>28</height>
           </size>
          </property>
          <property name="styleSheet">
@@ -202,12 +202,12 @@
        <item>
         <widget class="QPushButton" name="port_PB">
          <property name="text">
-          <string>🔄 Refresh</string>
+          <string>Refresh</string>
          </property>
          <property name="minimumSize">
           <size>
-           <width>100</width>
-           <height>35</height>
+           <width>70</width>
+           <height>28</height>
           </size>
          </property>
          <property name="styleSheet">
@@ -584,12 +584,12 @@
            <item>
             <widget class="QPushButton" name="readVoltCurrent_PB">
              <property name="text">
-              <string>📊 Read V&amp;I</string>
+              <string>Read V&amp;I</string>
              </property>
              <property name="minimumSize">
               <size>
                <width>0</width>
-               <height>35</height>
+               <height>28</height>
               </size>
              </property>
              <property name="styleSheet">
@@ -609,12 +609,12 @@
            <item>
             <widget class="QPushButton" name="setVolt_PB">
              <property name="text">
-              <string>⚡ Set V</string>
+              <string>Set V</string>
              </property>
              <property name="minimumSize">
               <size>
                <width>0</width>
-               <height>35</height>
+               <height>28</height>
               </size>
              </property>
              <property name="styleSheet">
@@ -634,12 +634,12 @@
            <item>
             <widget class="QPushButton" name="startMonitoring_PB">
              <property name="text">
-              <string>▶️ Monitor</string>
+              <string>Monitor</string>
              </property>
              <property name="minimumSize">
               <size>
                <width>0</width>
-               <height>35</height>
+               <height>28</height>
               </size>
              </property>
              <property name="styleSheet">
@@ -1180,12 +1180,12 @@ input keyevent KEYCODE_WAKEUP</string>
            <item>
             <widget class="QPushButton" name="startAutoTest_PB">
              <property name="text">
-              <string>🚀 Start Test</string>
+              <string>Start Test</string>
              </property>
              <property name="minimumSize">
               <size>
                <width>0</width>
-               <height>45</height>
+               <height>32</height>
               </size>
              </property>
              <property name="styleSheet">
@@ -1209,12 +1209,12 @@ input keyevent KEYCODE_WAKEUP</string>
            <item>
             <widget class="QPushButton" name="stopAutoTest_PB">
              <property name="text">
-              <string>⏹️ Stop</string>
+              <string>Stop</string>
              </property>
              <property name="minimumSize">
               <size>
                <width>0</width>
-               <height>45</height>
+               <height>32</height>
               </size>
              </property>
              <property name="enabled">
@@ -1271,13 +1271,13 @@ input keyevent KEYCODE_WAKEUP</string>
               <property name="minimumSize">
                <size>
                 <width>0</width>
-                <height>60</height>
+                <height>120</height>
                </size>
               </property>
               <property name="maximumSize">
                <size>
                 <width>16777215</width>
-                <height>80</height>
+                <height>200</height>
                </size>
               </property>
               <property name="styleSheet">
@@ -1327,13 +1327,13 @@ input keyevent KEYCODE_WAKEUP</string>
       <property name="minimumSize">
        <size>
         <width>0</width>
-        <height>150</height>
+        <height>200</height>
        </size>
       </property>
       <property name="maximumSize">
        <size>
         <width>16777215</width>
-        <height>200</height>
+        <height>300</height>
        </size>
       </property>
       <layout class="QVBoxLayout" name="logLayout">

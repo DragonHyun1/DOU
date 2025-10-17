@@ -101,8 +101,8 @@ class Ui_MainWindow(object):
         
         # DAQ Connect Button
         self.daqConnect_PB = QtWidgets.QPushButton(parent=self.connectionGroupBox)
-        self.daqConnect_PB.setText("📡 DAQ")
-        self.daqConnect_PB.setMinimumSize(QtCore.QSize(60, 35))
+        self.daqConnect_PB.setText("Connect")
+        self.daqConnect_PB.setMinimumSize(QtCore.QSize(60, 28))
         self.daqConnect_PB.setStyleSheet("""
             QPushButton { 
                 background-color: #2196F3; 
@@ -120,7 +120,7 @@ class Ui_MainWindow(object):
         
         self.port_PB = QtWidgets.QPushButton(parent=self.connectionGroupBox)
         self.port_PB.setText("🔄 Refresh")
-        self.port_PB.setMinimumSize(QtCore.QSize(100, 35))
+        self.port_PB.setMinimumSize(QtCore.QSize(70, 28))
         self.port_PB.setStyleSheet("QPushButton { font-weight: bold; }")
         self.port_PB.setObjectName("port_PB")
         self.connectionLayout.addWidget(self.port_PB)
@@ -397,8 +397,8 @@ class Ui_MainWindow(object):
         self.buttonLayout.setObjectName("buttonLayout")
         
         self.readVoltCurrent_PB = QtWidgets.QPushButton(parent=self.controlGroupBox)
-        self.readVoltCurrent_PB.setText("📊 Read V&I")
-        self.readVoltCurrent_PB.setMinimumSize(QtCore.QSize(0, 35))
+        self.readVoltCurrent_PB.setText("Read V&I")
+        self.readVoltCurrent_PB.setMinimumSize(QtCore.QSize(0, 28))
         self.readVoltCurrent_PB.setStyleSheet("""
             QPushButton { 
                 background-color: #2196F3; 
@@ -415,8 +415,8 @@ class Ui_MainWindow(object):
         self.buttonLayout.addWidget(self.readVoltCurrent_PB)
         
         self.setVolt_PB = QtWidgets.QPushButton(parent=self.controlGroupBox)
-        self.setVolt_PB.setText("⚡ Set V")
-        self.setVolt_PB.setMinimumSize(QtCore.QSize(0, 35))
+        self.setVolt_PB.setText("Set V")
+        self.setVolt_PB.setMinimumSize(QtCore.QSize(0, 28))
         self.setVolt_PB.setStyleSheet("""
             QPushButton { 
                 background-color: #FF9800; 
@@ -433,8 +433,8 @@ class Ui_MainWindow(object):
         self.buttonLayout.addWidget(self.setVolt_PB)
         
         self.startMonitoring_PB = QtWidgets.QPushButton(parent=self.controlGroupBox)
-        self.startMonitoring_PB.setText("▶️ Monitor")
-        self.startMonitoring_PB.setMinimumSize(QtCore.QSize(0, 35))
+        self.startMonitoring_PB.setText("Monitor")
+        self.startMonitoring_PB.setMinimumSize(QtCore.QSize(0, 28))
         self.startMonitoring_PB.setStyleSheet("""
             QPushButton { 
                 background-color: #4CAF50; 
@@ -622,14 +622,14 @@ class Ui_MainWindow(object):
         self.niStatusLayout.setObjectName("niStatusLayout")
         
         self.niStatus_LB = QtWidgets.QLabel(parent=self.niStatusFrame)
-        self.niStatus_LB.setText("📡 Disconnected")
+        self.niStatus_LB.setText("Disconnected")
         self.niStatus_LB.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
         self.niStatus_LB.setStyleSheet("font-weight: bold; font-size: 10pt; color: #ff6b6b;")
         self.niStatus_LB.setObjectName("niStatus_LB")
         self.niStatusLayout.addWidget(self.niStatus_LB)
         
         self.niMonitor_PB = QtWidgets.QPushButton(parent=self.niStatusFrame)
-        self.niMonitor_PB.setText("▶️ Start Monitor")
+        self.niMonitor_PB.setText("Start Monitor")
         self.niMonitor_PB.setMinimumSize(QtCore.QSize(0, 30))
         self.niMonitor_PB.setStyleSheet("""
             QPushButton { 
@@ -854,7 +854,7 @@ class Ui_MainWindow(object):
         self.testControlLayout.addWidget(self.startAutoTest_PB)
         
         self.stopAutoTest_PB = QtWidgets.QPushButton(parent=self.autoTestGroupBox)
-        self.stopAutoTest_PB.setText("⏹️ Stop")
+        self.stopAutoTest_PB.setText("Stop")
         self.stopAutoTest_PB.setMinimumSize(QtCore.QSize(0, 45))
         self.stopAutoTest_PB.setEnabled(False)
         self.stopAutoTest_PB.setStyleSheet("""

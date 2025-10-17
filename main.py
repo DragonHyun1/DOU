@@ -378,13 +378,10 @@ class MainWindow(QtWidgets.QMainWindow):
                     
                     if real_devices:
                         self.ui.daqDevice_CB.addItems(real_devices)
-                        self._log(f"📡 Found {len(real_devices)} NI DAQ devices", "success")
-                    elif mock_devices:
-                        self.ui.daqDevice_CB.addItems(mock_devices)
-                        self._log("⚠️ NI-DAQmx not installed - using simulation mode", "warn")
+                        self._log(f"Found {len(real_devices)} NI DAQ devices", "success")
                     else:
                         self.ui.daqDevice_CB.addItem("No devices found")
-                        self._log("❌ No NI DAQ devices available", "error")
+                        self._log("No NI DAQ devices available - check NI-DAQmx installation", "warn")
                 else:
                     self.ui.daqDevice_CB.addItem("No devices found")
                     self._log("❌ No NI DAQ devices found - check drivers", "error")
@@ -401,7 +398,7 @@ class MainWindow(QtWidgets.QMainWindow):
         if self.ni_service.is_connected():
             # Disconnect
             self.ni_service.disconnect_device()
-            self.ui.daqConnect_PB.setText("📡 DAQ")
+            self.ui.daqConnect_PB.setText("Connect")
             self._log("📡 NI DAQ disconnected", "info")
         else:
             # Connect
@@ -414,7 +411,7 @@ class MainWindow(QtWidgets.QMainWindow):
             if device and device != "No devices found":
                 success = self.ni_service.connect_device(device, channel)
                 if success:
-                    self.ui.daqConnect_PB.setText("🔌 Connected")
+                    self.ui.daqConnect_PB.setText("Disconnect")
                     self._log(f"📡 NI DAQ connected: {device}/{channel}", "success")
                 else:
                     self._log(f"❌ Failed to connect to {device}/{channel}", "error")
@@ -454,7 +451,7 @@ class MainWindow(QtWidgets.QMainWindow):
         if self.ni_service.is_monitoring():
             # Stop monitoring
             self.ni_service.stop_monitoring()
-            self.ui.niMonitor_PB.setText("▶️ Start Monitor")
+            self.ui.niMonitor_PB.setText("Start Monitor")
             self._log("⏹️ NI monitoring stopped", "info")
             self._measurement_mode = "hvpm" if self._graphActive else "none"
         else:
@@ -470,7 +467,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 
                 success = self.ni_service.start_monitoring(1000)  # 1 second interval
                 if success:
-                    self.ui.niMonitor_PB.setText("⏹️ Stop Monitor")
+                    self.ui.niMonitor_PB.setText("Stop Monitor")
                     self._log("▶️ NI monitoring started", "info")
             else:
                 self._log("❌ NI DAQ not connected", "error")
@@ -750,7 +747,7 @@ class MainWindow(QtWidgets.QMainWindow):
                     else:
                         self.ui.hvpmPower_LB.setText("__.__ W")
                 
-                self._log(f"📊 HVPM - Voltage: {v:.3f}V, Current: {i:.3f}A", "info")
+                self._log(f"HVPM - Voltage: {v:.3f}V, Current: {i:.3f}A", "info")
                 self.ui.statusbar.showMessage(f"HVPM - V: {v:.3f}V, I: {i:.3f}A", 3000)
             else:
                 self._log("❌ Failed to read HVPM values", "error")
@@ -766,7 +763,7 @@ class MainWindow(QtWidgets.QMainWindow):
         finally:
             if hasattr(self.ui, 'readVoltCurrent_PB') and self.ui.readVoltCurrent_PB:
                 self.ui.readVoltCurrent_PB.setEnabled(True)
-                self.ui.readVoltCurrent_PB.setText("📊 Read V&I")
+                self.ui.readVoltCurrent_PB.setText("Read V&I")
 
     def handle_set_voltage(self):
         """Enhanced voltage setting with validation"""
