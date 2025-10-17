@@ -78,6 +78,9 @@ class MainWindow(QtWidgets.QMainWindow):
         # 초기화 - UI 설정 완료 후 실행
         self.refresh_connections()
         
+        # Initialize voltage configuration from settings
+        self._on_voltage_config_changed()
+        
         # Status bar 메시지
         self.ui.statusbar.showMessage("Ready - Connect devices to start monitoring and testing", 5000)
 
@@ -165,12 +168,15 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui.startGraph_PB.setToolTip("Start real-time monitoring")
         self.ui.stopGraph_PB.setToolTip("Stop real-time monitoring")
         
-        # Auto test tooltips
-        self.ui.testScenario_CB.setToolTip("Select test scenario to run")
-        self.ui.stabilizationVoltage_SB.setToolTip("Voltage for device stabilization before test")
-        self.ui.testVoltage_SB.setToolTip("Voltage during actual test execution")
-        self.ui.startAutoTest_PB.setToolTip("Start automated test with voltage control")
-        self.ui.stopAutoTest_PB.setToolTip("Stop current automated test")
+        # Auto test tooltips (check if elements exist)
+        if hasattr(self.ui, 'testScenario_CB') and self.ui.testScenario_CB:
+            self.ui.testScenario_CB.setToolTip("Select test scenario to run")
+        if hasattr(self.ui, 'testSettings_PB') and self.ui.testSettings_PB:
+            self.ui.testSettings_PB.setToolTip("Open test parameter settings")
+        if hasattr(self.ui, 'startAutoTest_PB') and self.ui.startAutoTest_PB:
+            self.ui.startAutoTest_PB.setToolTip("Start automated test with voltage control")
+        if hasattr(self.ui, 'stopAutoTest_PB') and self.ui.stopAutoTest_PB:
+            self.ui.stopAutoTest_PB.setToolTip("Stop current automated test")
         
         # Add progress tracking tooltip
         if hasattr(self.ui, 'testProgress_PB') and self.ui.testProgress_PB:
@@ -214,24 +220,9 @@ class MainWindow(QtWidgets.QMainWindow):
                 if i < len(scenario_keys):
                     self.ui.testScenario_CB.setItemData(i, scenario_keys[i])
         
-        # Connect voltage spinbox changes (check if they exist)
-        if hasattr(self.ui, 'stabilizationVoltage_SB') and self.ui.stabilizationVoltage_SB:
-            self.ui.stabilizationVoltage_SB.valueChanged.connect(self._on_voltage_config_changed)
-        if hasattr(self.ui, 'testVoltage_SB') and self.ui.testVoltage_SB:
-            self.ui.testVoltage_SB.valueChanged.connect(self._on_voltage_config_changed)
-        
-        # Connect new test parameter controls
-        if hasattr(self.ui, 'testCycles_SB') and self.ui.testCycles_SB:
-            self.ui.testCycles_SB.valueChanged.connect(self._on_test_params_changed)
-        if hasattr(self.ui, 'testDuration_SB') and self.ui.testDuration_SB:
-            self.ui.testDuration_SB.valueChanged.connect(self._on_test_params_changed)
-        
         # Connect scenario selection change
-        self.ui.testScenario_CB.currentIndexChanged.connect(self._on_scenario_changed)
-        
-        # Initial configuration
-        self._on_voltage_config_changed()
-        self._on_test_params_changed()
+        if hasattr(self.ui, 'testScenario_CB') and self.ui.testScenario_CB:
+            self.ui.testScenario_CB.currentIndexChanged.connect(self._on_scenario_changed)
 
     def refresh_connections(self):
         """Enhanced connection refresh with better feedback"""
@@ -589,16 +580,11 @@ class MainWindow(QtWidgets.QMainWindow):
     # ---------- Auto Test ----------
     def _on_voltage_config_changed(self):
         """Handle voltage configuration changes"""
-        # Check if voltage spinboxes exist
-        if not (hasattr(self.ui, 'stabilizationVoltage_SB') and hasattr(self.ui, 'testVoltage_SB')):
-            return
-        if not (self.ui.stabilizationVoltage_SB and self.ui.testVoltage_SB):
-            return
-            
-        stabilization_voltage = self.ui.stabilizationVoltage_SB.value()
-        test_voltage = self.ui.testVoltage_SB.value()
-        
-        self.auto_test_service.set_voltages(stabilization_voltage, test_voltage)
+        # Voltage configuration is now handled through settings dialog
+        self.auto_test_service.set_voltages(
+            self.test_settings['stabilization_voltage'],
+            self.test_settings['test_voltage']
+        )
 
     def start_auto_test(self):
         """Start automated test"""
@@ -613,8 +599,8 @@ class MainWindow(QtWidgets.QMainWindow):
         
         # Confirm test start
         scenario_name = self.ui.testScenario_CB.currentText()
-        stabilization_v = self.ui.stabilizationVoltage_SB.value()
-        test_v = self.ui.testVoltage_SB.value()
+        stabilization_v = self.test_settings['stabilization_voltage']
+        test_v = self.test_settings['test_voltage']
         
         reply = QtWidgets.QMessageBox.question(
             self,
@@ -799,8 +785,8 @@ class MainWindow(QtWidgets.QMainWindow):
             filename = f"{results_dir}/test_result_{timestamp}.txt"
             
             scenario_name = self.ui.testScenario_CB.currentText() if hasattr(self.ui, 'testScenario_CB') else "Unknown"
-            stabilization_v = self.ui.stabilizationVoltage_SB.value() if hasattr(self.ui, 'stabilizationVoltage_SB') else 0
-            test_v = self.ui.testVoltage_SB.value() if hasattr(self.ui, 'testVoltage_SB') else 0
+            stabilization_v = self.test_settings.get('stabilization_voltage', 0)
+            test_v = self.test_settings.get('test_voltage', 0)
             
             with open(filename, 'w', encoding='utf-8') as f:
                 f.write(f"=== HVPM Auto Test Results ===\n")
@@ -874,13 +860,9 @@ class MainWindow(QtWidgets.QMainWindow):
     
     def _on_test_params_changed(self):
         """Handle test parameter changes"""
-        if not (hasattr(self.ui, 'testCycles_SB') and hasattr(self.ui, 'testDuration_SB')):
-            return
-        if not (self.ui.testCycles_SB and self.ui.testDuration_SB):
-            return
-            
-        cycles = self.ui.testCycles_SB.value()
-        duration = self.ui.testDuration_SB.value()
+        # Test parameters are now handled through settings dialog
+        cycles = self.test_settings.get('test_cycles', 5)
+        duration = self.test_settings.get('test_duration', 10)
         
         self._log(f"⚙️ Test parameters: Cycles={cycles}, Duration={duration}s", "info")
     
@@ -897,24 +879,19 @@ class MainWindow(QtWidgets.QMainWindow):
         if scenario_data:
             self._log(f"📋 Test scenario selected: {scenario_name}", "info")
             
-            # Update test parameters based on scenario
+            # Update test parameters based on scenario (stored in settings)
             if "screen_onoff" in scenario_data:
-                if hasattr(self.ui, 'testCycles_SB') and self.ui.testCycles_SB:
-                    cycles = 10 if "long" in scenario_data else 5
-                    self.ui.testCycles_SB.setValue(cycles)
-                if hasattr(self.ui, 'testDuration_SB') and self.ui.testDuration_SB:
-                    self.ui.testDuration_SB.setValue(15 if "long" in scenario_data else 10)
+                cycles = 10 if "long" in scenario_data else 5
+                duration = 15 if "long" in scenario_data else 10
+                self.test_settings['test_cycles'] = cycles
+                self.test_settings['test_duration'] = duration
             elif "cpu_stress" in scenario_data:
-                if hasattr(self.ui, 'testCycles_SB') and self.ui.testCycles_SB:
-                    self.ui.testCycles_SB.setValue(1)
-                if hasattr(self.ui, 'testDuration_SB') and self.ui.testDuration_SB:
-                    duration = 300 if "long" in scenario_data else 60
-                    self.ui.testDuration_SB.setValue(duration)
+                self.test_settings['test_cycles'] = 1
+                duration = 300 if "long" in scenario_data else 60
+                self.test_settings['test_duration'] = duration
             elif scenario_data == "custom_script":
-                if hasattr(self.ui, 'testCycles_SB') and self.ui.testCycles_SB:
-                    self.ui.testCycles_SB.setValue(1)
-                if hasattr(self.ui, 'testDuration_SB') and self.ui.testDuration_SB:
-                    self.ui.testDuration_SB.setValue(30)
+                self.test_settings['test_cycles'] = 1
+                self.test_settings['test_duration'] = 30
         else:
             self._log("⚠️ No scenario data found", "warn")
 
@@ -922,8 +899,7 @@ class MainWindow(QtWidgets.QMainWindow):
         """Debug function to check UI elements"""
         ui_elements = [
             'startAutoTest_PB', 'stopAutoTest_PB', 'testScenario_CB',
-            'stabilizationVoltage_SB', 'testVoltage_SB', 'testProgress_PB', 'testStatus_LB',
-            'testCycles_SB', 'testDuration_SB', 'testResults_TE'
+            'testSettings_PB', 'testProgress_PB', 'testStatus_LB', 'testResults_TE'
         ]
         
         missing_elements = []
@@ -936,7 +912,7 @@ class MainWindow(QtWidgets.QMainWindow):
         
         if missing_elements:
             self._log(f"⚠️ Missing UI elements: {', '.join(missing_elements)}", "warn")
-            self._log("Auto test features may be limited", "warn")
+            self._log("Some auto test features may be limited", "warn")
         
         if existing_elements:
             self._log(f"✅ Found UI elements: {', '.join(existing_elements)}", "info")
@@ -945,6 +921,9 @@ class MainWindow(QtWidgets.QMainWindow):
         if hasattr(self.ui, 'testScenario_CB') and self.ui.testScenario_CB:
             count = self.ui.testScenario_CB.count()
             self._log(f"📋 Test scenario combo box has {count} items", "info")
+        
+        # Log current test settings
+        self._log(f"⚙️ Test settings loaded: {self.test_settings}", "info")
 
     # ---------- Menu Actions ----------
     def export_data(self):
