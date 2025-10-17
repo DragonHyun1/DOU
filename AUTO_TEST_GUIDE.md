@@ -215,3 +215,20 @@ AutoTestService
 3. 디바이스 및 환경 정보 수집
 
 이 가이드를 통해 HVPM Monitor의 자동 테스트 기능을 효과적으로 활용하시기 바랍니다!
+
+
+
+Traceback (most recent call last):
+  File "d:\PCT\Tool\DOU_0926\main.py", line 756, in <module>
+    main()
+  File "d:\PCT\Tool\DOU_0926\main.py", line 750, in main
+    w = MainWindow()
+  File "d:\PCT\Tool\DOU_0926\main.py", line 58, in __init__
+    self.refresh_connections()
+  File "d:\PCT\Tool\DOU_0926\main.py", line 219, in refresh_connections
+    self.update_connection_status()
+  File "d:\PCT\Tool\DOU_0926\main.py", line 239, in update_connection_status
+    self._update_auto_test_buttons()
+  File "d:\PCT\Tool\DOU_0926\main.py", line 254, in _update_auto_test_buttons
+    self.ui.startAutoTest_PB.setEnabled(can_start)
+TypeError: setEnabled(self, a0: bool): argument 1 has unexpected type 'NoneType'
