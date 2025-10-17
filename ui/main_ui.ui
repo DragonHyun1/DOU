@@ -500,6 +500,12 @@
            <property name="frameShadow">
             <enum>QFrame::Raised</enum>
            </property>
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>300</height>
+            </size>
+           </property>
            <property name="styleSheet">
             <string>QFrame { 
               background-color: #3a3a3a; 
@@ -516,15 +522,27 @@
               <property name="text">
                <string>Test Scenario</string>
               </property>
+              <property name="minimumSize">
+               <size>
+                <width>0</width>
+                <height>25</height>
+               </size>
+              </property>
               <property name="styleSheet">
-               <string>font-weight: bold; font-size: 12pt; color: #dcdcdc;</string>
+               <string>font-weight: bold; font-size: 12pt; color: #dcdcdc; padding: 2px;</string>
               </property>
              </widget>
             </item>
             <item>
              <widget class="QComboBox" name="testScenario_CB">
+              <property name="minimumSize">
+               <size>
+                <width>0</width>
+                <height>35</height>
+               </size>
+              </property>
               <property name="styleSheet">
-               <string>QComboBox { font-size: 12pt; padding: 8px; }</string>
+               <string>QComboBox { font-size: 12pt; padding: 8px; min-height: 25px; }</string>
               </property>
               <item>
                <property name="text">
@@ -553,8 +571,14 @@
               <property name="text">
                <string>Voltage Configuration</string>
               </property>
+              <property name="minimumSize">
+               <size>
+                <width>0</width>
+                <height>25</height>
+               </size>
+              </property>
               <property name="styleSheet">
-               <string>font-weight: bold; font-size: 12pt; color: #dcdcdc;</string>
+               <string>font-weight: bold; font-size: 12pt; color: #dcdcdc; padding: 2px;</string>
               </property>
              </widget>
             </item>
@@ -641,8 +665,14 @@
               <property name="text">
                <string>Test Parameters</string>
               </property>
+              <property name="minimumSize">
+               <size>
+                <width>0</width>
+                <height>25</height>
+               </size>
+              </property>
               <property name="styleSheet">
-               <string>font-weight: bold; font-size: 12pt; color: #dcdcdc;</string>
+               <string>font-weight: bold; font-size: 12pt; color: #dcdcdc; padding: 2px;</string>
               </property>
              </widget>
             </item>

@@ -323,6 +323,7 @@ class Ui_MainWindow(object):
         self.testConfigFrame = QtWidgets.QFrame(parent=self.autoTestGroupBox)
         self.testConfigFrame.setFrameShape(QtWidgets.QFrame.Shape.StyledPanel)
         self.testConfigFrame.setFrameShadow(QtWidgets.QFrame.Shadow.Raised)
+        self.testConfigFrame.setMinimumSize(QtCore.QSize(0, 300))
         self.testConfigFrame.setStyleSheet("""
             QFrame { 
                 background-color: #3a3a3a; 
@@ -338,12 +339,14 @@ class Ui_MainWindow(object):
         
         self.testScenarioLabel = QtWidgets.QLabel(parent=self.testConfigFrame)
         self.testScenarioLabel.setText("Test Scenario")
-        self.testScenarioLabel.setStyleSheet("font-weight: bold; font-size: 12pt; color: #dcdcdc;")
+        self.testScenarioLabel.setMinimumSize(QtCore.QSize(0, 25))
+        self.testScenarioLabel.setStyleSheet("font-weight: bold; font-size: 12pt; color: #dcdcdc; padding: 2px;")
         self.testScenarioLabel.setObjectName("testScenarioLabel")
         self.testConfigLayout.addWidget(self.testScenarioLabel)
         
         self.testScenario_CB = QtWidgets.QComboBox(parent=self.testConfigFrame)
-        self.testScenario_CB.setStyleSheet("QComboBox { font-size: 12pt; padding: 8px; }")
+        self.testScenario_CB.setMinimumSize(QtCore.QSize(0, 35))
+        self.testScenario_CB.setStyleSheet("QComboBox { font-size: 12pt; padding: 8px; min-height: 25px; }")
         self.testScenario_CB.setObjectName("testScenario_CB")
         # Add default test scenarios
         self.testScenario_CB.addItem("Screen On/Off Test (5 cycles)", "screen_onoff")
@@ -354,7 +357,8 @@ class Ui_MainWindow(object):
         
         self.voltageConfigLabel = QtWidgets.QLabel(parent=self.testConfigFrame)
         self.voltageConfigLabel.setText("Voltage Configuration")
-        self.voltageConfigLabel.setStyleSheet("font-weight: bold; font-size: 12pt; color: #dcdcdc;")
+        self.voltageConfigLabel.setMinimumSize(QtCore.QSize(0, 25))
+        self.voltageConfigLabel.setStyleSheet("font-weight: bold; font-size: 12pt; color: #dcdcdc; padding: 2px;")
         self.voltageConfigLabel.setObjectName("voltageConfigLabel")
         self.testConfigLayout.addWidget(self.voltageConfigLabel)
         
@@ -407,7 +411,8 @@ class Ui_MainWindow(object):
         # Test Parameters section
         self.testParametersLabel = QtWidgets.QLabel(parent=self.testConfigFrame)
         self.testParametersLabel.setText("Test Parameters")
-        self.testParametersLabel.setStyleSheet("font-weight: bold; font-size: 12pt; color: #dcdcdc;")
+        self.testParametersLabel.setMinimumSize(QtCore.QSize(0, 25))
+        self.testParametersLabel.setStyleSheet("font-weight: bold; font-size: 12pt; color: #dcdcdc; padding: 2px;")
         self.testParametersLabel.setObjectName("testParametersLabel")
         self.testConfigLayout.addWidget(self.testParametersLabel)
         
