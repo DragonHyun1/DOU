@@ -181,10 +181,30 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui.comport_CB.setToolTip("Select ADB device")
         self.ui.port_PB.setToolTip("Refresh device connections")
         self.ui.hvpmVolt_LE.setToolTip("Enter target voltage (V)")
-        self.ui.readVolt_PB.setToolTip("Read current voltage from device")
-        self.ui.setVolt_PB.setToolTip("Set voltage to specified value")
-        self.ui.startGraph_PB.setToolTip("Start real-time monitoring")
-        self.ui.stopGraph_PB.setToolTip("Stop real-time monitoring")
+        
+        # HVPM control tooltips (check if elements exist)
+        if hasattr(self.ui, 'readVoltCurrent_PB') and self.ui.readVoltCurrent_PB:
+            self.ui.readVoltCurrent_PB.setToolTip("Read current voltage and current from HVPM device")
+        if hasattr(self.ui, 'setVolt_PB') and self.ui.setVolt_PB:
+            self.ui.setVolt_PB.setToolTip("Set voltage to specified value")
+        if hasattr(self.ui, 'startMonitoring_PB') and self.ui.startMonitoring_PB:
+            self.ui.startMonitoring_PB.setToolTip("Start/stop continuous monitoring")
+        
+        # Graph tooltips (check if elements exist)
+        if hasattr(self.ui, 'startGraph_PB') and self.ui.startGraph_PB:
+            self.ui.startGraph_PB.setToolTip("Start real-time monitoring")
+        if hasattr(self.ui, 'stopGraph_PB') and self.ui.stopGraph_PB:
+            self.ui.stopGraph_PB.setToolTip("Stop real-time monitoring")
+        
+        # NI DAQ tooltips (check if elements exist)
+        if hasattr(self.ui, 'niDevice_CB') and self.ui.niDevice_CB:
+            self.ui.niDevice_CB.setToolTip("Select NI DAQ device")
+        if hasattr(self.ui, 'niChannel_CB') and self.ui.niChannel_CB:
+            self.ui.niChannel_CB.setToolTip("Select analog input channel")
+        if hasattr(self.ui, 'niRefresh_PB') and self.ui.niRefresh_PB:
+            self.ui.niRefresh_PB.setToolTip("Refresh available NI devices")
+        if hasattr(self.ui, 'niConnect_PB') and self.ui.niConnect_PB:
+            self.ui.niConnect_PB.setToolTip("Connect/disconnect NI DAQ device")
         
         # Auto test tooltips (check if elements exist)
         if hasattr(self.ui, 'testScenario_CB') and self.ui.testScenario_CB:
