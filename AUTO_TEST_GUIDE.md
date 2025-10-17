@@ -218,15 +218,15 @@ AutoTestService
 
 
 
-d:\PCT\Tool\DOU_0926\main.py:15: DeprecationWarning: sipPyTypeDict() is deprecated, the extension module should use sipPyTypeDictRef() instead
+d:\PCT\Tool\DOU_0926\main.py:16: DeprecationWarning: sipPyTypeDict() is deprecated, the extension module should use sipPyTypeDictRef() instead
   super().__init__()
 Traceback (most recent call last):
-  File "d:\PCT\Tool\DOU_0926\main.py", line 1058, in <module>
+  File "d:\PCT\Tool\DOU_0926\main.py", line 1175, in <module>
     main()
-  File "d:\PCT\Tool\DOU_0926\main.py", line 1052, in main
+  File "d:\PCT\Tool\DOU_0926\main.py", line 1169, in main
     w = MainWindow()
-  File "d:\PCT\Tool\DOU_0926\main.py", line 69, in __init__
-    self.setup_menu_actions()
-  File "d:\PCT\Tool\DOU_0926\main.py", line 199, in setup_menu_actions
-    self.ui.actionTest_Settings.triggered.connect(self.test_settings)
-TypeError: argument 1 has unexpected type 'dict'
+  File "d:\PCT\Tool\DOU_0926\main.py", line 75, in __init__
+    self.setup_status_indicators()
+  File "d:\PCT\Tool\DOU_0926\main.py", line 184, in setup_status_indicators
+    self.ui.readVolt_PB.setToolTip("Read current voltage from device")
+AttributeError: 'Ui_MainWindow' object has no attribute 'readVolt_PB'. Did you mean: 'setVolt_PB'?
