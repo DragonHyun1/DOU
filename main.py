@@ -33,8 +33,8 @@ class MainWindow(QtWidgets.QMainWindow):
             log_callback=self._log
         )
         
-        # Test settings
-        self.test_settings = {
+        # Test configuration settings
+        self.test_config = {
             'stabilization_voltage': 4.8,
             'test_voltage': 4.0,
             'test_cycles': 5,
@@ -582,8 +582,8 @@ class MainWindow(QtWidgets.QMainWindow):
         """Handle voltage configuration changes"""
         # Voltage configuration is now handled through settings dialog
         self.auto_test_service.set_voltages(
-            self.test_settings['stabilization_voltage'],
-            self.test_settings['test_voltage']
+            self.test_config['stabilization_voltage'],
+            self.test_config['test_voltage']
         )
 
     def start_auto_test(self):
@@ -599,8 +599,8 @@ class MainWindow(QtWidgets.QMainWindow):
         
         # Confirm test start
         scenario_name = self.ui.testScenario_CB.currentText()
-        stabilization_v = self.test_settings['stabilization_voltage']
-        test_v = self.test_settings['test_voltage']
+        stabilization_v = self.test_config['stabilization_voltage']
+        test_v = self.test_config['test_voltage']
         
         reply = QtWidgets.QMessageBox.question(
             self,
@@ -785,8 +785,8 @@ class MainWindow(QtWidgets.QMainWindow):
             filename = f"{results_dir}/test_result_{timestamp}.txt"
             
             scenario_name = self.ui.testScenario_CB.currentText() if hasattr(self.ui, 'testScenario_CB') else "Unknown"
-            stabilization_v = self.test_settings.get('stabilization_voltage', 0)
-            test_v = self.test_settings.get('test_voltage', 0)
+            stabilization_v = self.test_config.get('stabilization_voltage', 0)
+            test_v = self.test_config.get('test_voltage', 0)
             
             with open(filename, 'w', encoding='utf-8') as f:
                 f.write(f"=== HVPM Auto Test Results ===\n")
@@ -854,15 +854,15 @@ class MainWindow(QtWidgets.QMainWindow):
         self._log(f"✅ Voltage stabilized at {voltage:.2f}V", "success")
         
         # Start data collection from test voltage point (skip stabilization data if configured)
-        if self.test_settings.get('skip_stabilization_data', True):
+        if self.test_config.get('skip_stabilization_data', True):
             self.test_data_collection_active = True
             self._log(f"📊 Data collection started from test voltage point", "info")
     
     def _on_test_params_changed(self):
         """Handle test parameter changes"""
         # Test parameters are now handled through settings dialog
-        cycles = self.test_settings.get('test_cycles', 5)
-        duration = self.test_settings.get('test_duration', 10)
+        cycles = self.test_config.get('test_cycles', 5)
+        duration = self.test_config.get('test_duration', 10)
         
         self._log(f"⚙️ Test parameters: Cycles={cycles}, Duration={duration}s", "info")
     
@@ -883,15 +883,15 @@ class MainWindow(QtWidgets.QMainWindow):
             if "screen_onoff" in scenario_data:
                 cycles = 10 if "long" in scenario_data else 5
                 duration = 15 if "long" in scenario_data else 10
-                self.test_settings['test_cycles'] = cycles
-                self.test_settings['test_duration'] = duration
+                self.test_config['test_cycles'] = cycles
+                self.test_config['test_duration'] = duration
             elif "cpu_stress" in scenario_data:
-                self.test_settings['test_cycles'] = 1
+                self.test_config['test_cycles'] = 1
                 duration = 300 if "long" in scenario_data else 60
-                self.test_settings['test_duration'] = duration
+                self.test_config['test_duration'] = duration
             elif scenario_data == "custom_script":
-                self.test_settings['test_cycles'] = 1
-                self.test_settings['test_duration'] = 30
+                self.test_config['test_cycles'] = 1
+                self.test_config['test_duration'] = 30
         else:
             self._log("⚠️ No scenario data found", "warn")
 
@@ -923,7 +923,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self._log(f"📋 Test scenario combo box has {count} items", "info")
         
         # Log current test settings
-        self._log(f"⚙️ Test settings loaded: {self.test_settings}", "info")
+        self._log(f"⚙️ Test settings loaded: {self.test_config}", "info")
 
     # ---------- Menu Actions ----------
     def export_data(self):
@@ -973,30 +973,25 @@ class MainWindow(QtWidgets.QMainWindow):
             self.start_auto_test()
 
     def test_settings(self):
-        """Test settings dialog (placeholder)"""
-        QtWidgets.QMessageBox.information(
-            self,
-            "Test Settings",
-            "Test settings dialog not implemented yet.\n\n"
-            "Use the Auto Test panel to configure test parameters."
-        )
+        """Test settings dialog from menu"""
+        self.open_test_settings()
 
     def open_test_settings(self):
         """Open test parameter settings dialog"""
         try:
             dialog = TestSettingsDialog(self)
-            dialog.set_settings(self.test_settings)
+            dialog.set_settings(self.test_config)
             
             if dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted:
                 # Update settings
-                self.test_settings.update(dialog.get_settings())
+                self.test_config.update(dialog.get_settings())
                 
                 # Update auto test service with new settings
                 self.auto_test_service.set_voltages(
-                    self.test_settings['stabilization_voltage'],
-                    self.test_settings['test_voltage']
+                    self.test_config['stabilization_voltage'],
+                    self.test_config['test_voltage']
                 )
-                self.auto_test_service.stabilization_time = self.test_settings['stabilization_time']
+                self.auto_test_service.stabilization_time = self.test_config['stabilization_time']
                 
                 self._log("⚙️ Test settings updated", "info")
                 
