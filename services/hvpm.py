@@ -21,6 +21,10 @@ class HvpmService:
         self.last_read_voltage = None
         self.last_read_current = None
 
+    def is_connected(self):
+        """Check if HVPM device is connected and ready"""
+        return bool(self.pm and self.engine)
+
     # -------- UI helpers --------
     def _set_status(self, text: str, ok: bool):
         self.status_label.setText(text)
