@@ -7,8 +7,13 @@ try:
     import nidaqmx
     from nidaqmx.constants import AcquisitionType
     NI_AVAILABLE = True
-except ImportError:
+    print(f"NI-DAQmx imported successfully, version: {getattr(nidaqmx, '__version__', 'unknown')}")
+except ImportError as e:
     NI_AVAILABLE = False
+    print(f"NI-DAQmx import failed: {e}")
+except Exception as e:
+    NI_AVAILABLE = False
+    print(f"NI-DAQmx import error: {e}")
 
 class NIDAQService(QObject):
     """Service for NI USB-6289 DAQ current monitoring"""
@@ -44,17 +49,33 @@ class NIDAQService(QObject):
     def get_available_devices(self) -> List[str]:
         """Get list of available NI DAQ devices"""
         if not NI_AVAILABLE:
+            print("NI-DAQmx not available")
             return []
         
         try:
+            print("Attempting to connect to NI-DAQmx system...")
             system = nidaqmx.system.System.local()
+            print(f"NI-DAQmx System version: {system.driver_version}")
+            
             devices = []
-            for device in system.devices:
-                devices.append(device.name)
+            device_list = list(system.devices)
+            print(f"Available devices count: {len(device_list)}")
+            
+            for device in device_list:
+                print(f"Found device: {device.name}, Type: {device.product_type}")
+                device_info = f"{device.name} ({device.product_type})"
+                devices.append(device_info)
+            
+            if not devices:
+                print("No devices found by nidaqmx")
+                return ["No NI DAQ devices found - check connections"]
+            
+            print(f"Returning {len(devices)} devices: {devices}")
             return devices
         except Exception as e:
+            print(f"Exception in get_available_devices: {e}")
             self.error_occurred.emit(f"Failed to get devices: {e}")
-            return []
+            return [f"Error: {str(e)}"]
     
     def connect_device(self, device_name: str, channel: str = "ai0") -> bool:
         """Connect to NI DAQ device"""

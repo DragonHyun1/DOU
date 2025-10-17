@@ -369,7 +369,9 @@ class MainWindow(QtWidgets.QMainWindow):
             self.ui.daqDevice_CB.clear()
             
             try:
+                print("Calling ni_service.get_available_devices()...")
                 devices = self.ni_service.get_available_devices()
+                print(f"Received devices: {devices}")
                 
                 if devices:
                     # Filter out mock devices for cleaner display
