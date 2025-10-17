@@ -218,17 +218,15 @@ AutoTestService
 
 
 
+d:\PCT\Tool\DOU_0926\main.py:15: DeprecationWarning: sipPyTypeDict() is deprecated, the extension module should use sipPyTypeDictRef() instead
+  super().__init__()
 Traceback (most recent call last):
-  File "d:\PCT\Tool\DOU_0926\main.py", line 756, in <module>
+  File "d:\PCT\Tool\DOU_0926\main.py", line 1079, in <module>
     main()
-  File "d:\PCT\Tool\DOU_0926\main.py", line 750, in main
+  File "d:\PCT\Tool\DOU_0926\main.py", line 1073, in main
     w = MainWindow()
-  File "d:\PCT\Tool\DOU_0926\main.py", line 58, in __init__
-    self.refresh_connections()
-  File "d:\PCT\Tool\DOU_0926\main.py", line 219, in refresh_connections
-    self.update_connection_status()
-  File "d:\PCT\Tool\DOU_0926\main.py", line 239, in update_connection_status
-    self._update_auto_test_buttons()
-  File "d:\PCT\Tool\DOU_0926\main.py", line 254, in _update_auto_test_buttons
-    self.ui.startAutoTest_PB.setEnabled(can_start)
-TypeError: setEnabled(self, a0: bool): argument 1 has unexpected type 'NoneType'
+  File "d:\PCT\Tool\DOU_0926\main.py", line 68, in __init__
+    self.setup_status_indicators()
+  File "d:\PCT\Tool\DOU_0926\main.py", line 170, in setup_status_indicators
+    self.ui.stabilizationVoltage_SB.setToolTip("Voltage for device stabilization before test")
+AttributeError: 'Ui_MainWindow' object has no attribute 'stabilizationVoltage_SB'
