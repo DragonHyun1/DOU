@@ -153,6 +153,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui.testVoltage_SB.setToolTip("Voltage during actual test execution")
         self.ui.startAutoTest_PB.setToolTip("Start automated test with voltage control")
         self.ui.stopAutoTest_PB.setToolTip("Stop current automated test")
+        
+        # Add progress tracking tooltip
+        if hasattr(self.ui, 'testProgress_PB') and self.ui.testProgress_PB:
+            self.ui.testProgress_PB.setToolTip("Test progress: Shows current completion percentage")
+        if hasattr(self.ui, 'testStatus_LB') and self.ui.testStatus_LB:
+            self.ui.testStatus_LB.setToolTip("Current test status and progress details")
 
     def setup_menu_actions(self):
         """Setup menu actions"""
@@ -263,6 +269,16 @@ class MainWindow(QtWidgets.QMainWindow):
             test_running = self.auto_test_service.is_running
             
             can_start = hvpm_connected and adb_connected and not test_running
+            
+            # Reset Auto Test group box title when test is not running
+            if not test_running and hasattr(self.ui, 'autoTestGroupBox') and self.ui.autoTestGroupBox:
+                current_title = self.ui.autoTestGroupBox.title()
+                if "RUNNING" in current_title or "COMPLETED" in current_title or "FAILED" in current_title or "STOPPED" in current_title:
+                    # Reset to original title after a delay for completed/failed/stopped states
+                    if "RUNNING" not in current_title:
+                        QTimer.singleShot(3000, lambda: self.ui.autoTestGroupBox.setTitle("Auto Test") if hasattr(self.ui, 'autoTestGroupBox') else None)
+                    else:
+                        self.ui.autoTestGroupBox.setTitle("Auto Test")
             
             # Safely update button states
             try:
@@ -609,13 +625,30 @@ class MainWindow(QtWidgets.QMainWindow):
                 QtWidgets.QMessageBox.warning(self, "Custom Script Required", "Please enter ADB commands for the custom script test.")
                 return
         
+        # Clear previous results
+        if hasattr(self.ui, 'testResults_TE') and self.ui.testResults_TE:
+            self.ui.testResults_TE.clear()
+        
         # Start test
         success = self.auto_test_service.start_test(scenario_data, custom_script)
         if success:
             self._update_auto_test_buttons()
             self.ui.testProgress_PB.setValue(0)
-            self.ui.testStatus_LB.setText("Starting test...")
+            self.ui.testStatus_LB.setText("🚀 Initializing test...")
+            self.ui.testStatus_LB.setStyleSheet("font-size: 11pt; color: #4CAF50; font-weight: bold;")
+            
+            # Update Auto Test group box title to show running status
+            if hasattr(self.ui, 'autoTestGroupBox') and self.ui.autoTestGroupBox:
+                self.ui.autoTestGroupBox.setTitle("Auto Test - RUNNING")
+            
+            # Update status bar
+            self.ui.statusbar.showMessage(f"Running Auto Test: {scenario_name}", 0)
+            
+            # Log with enhanced formatting
             self._log(f"🚀 Starting automated test: {scenario_name}", "info")
+            if hasattr(self.ui, 'testResults_TE') and self.ui.testResults_TE:
+                timestamp = time.strftime("%H:%M:%S")
+                self.ui.testResults_TE.append(f"[{timestamp}] 🚀 Test Started: {scenario_name}")
         else:
             QtWidgets.QMessageBox.warning(self, "Test Start Failed", "Failed to start automated test. Check connections and try again.")
 
@@ -635,14 +668,50 @@ class MainWindow(QtWidgets.QMainWindow):
             self.auto_test_service.stop_test()
             self._update_auto_test_buttons()
             self.ui.testProgress_PB.setValue(0)
-            self.ui.testStatus_LB.setText("Test stopped")
+            if hasattr(self.ui, 'testStatus_LB') and self.ui.testStatus_LB:
+                self.ui.testStatus_LB.setText("⏹️ Test stopped by user")
+                self.ui.testStatus_LB.setStyleSheet("font-size: 11pt; color: #FF9800; font-weight: bold;")
+            
+            # Update Auto Test group box title
+            if hasattr(self.ui, 'autoTestGroupBox') and self.ui.autoTestGroupBox:
+                self.ui.autoTestGroupBox.setTitle("Auto Test - STOPPED")
+            
+            # Update status bar
+            self.ui.statusbar.showMessage("Auto Test Stopped", 3000)
+            
+            # Add to test results
+            if hasattr(self.ui, 'testResults_TE') and self.ui.testResults_TE:
+                timestamp = time.strftime("%H:%M:%S")
+                self.ui.testResults_TE.append(f"[{timestamp}] ⏹️ Test stopped by user")
 
     def _on_auto_test_progress(self, progress: int, status: str):
         """Handle auto test progress updates"""
         if hasattr(self.ui, 'testProgress_PB') and self.ui.testProgress_PB:
             self.ui.testProgress_PB.setValue(progress)
+        
         if hasattr(self.ui, 'testStatus_LB') and self.ui.testStatus_LB:
-            self.ui.testStatus_LB.setText(status)
+            # Add progress indicator and color coding
+            if progress < 30:
+                color = "#FF9800"  # Orange for initialization
+                icon = "🔄"
+            elif progress < 70:
+                color = "#2196F3"  # Blue for in progress
+                icon = "⚡"
+            else:
+                color = "#4CAF50"  # Green for near completion
+                icon = "🎯"
+            
+            formatted_status = f"{icon} {status} ({progress}%)"
+            self.ui.testStatus_LB.setText(formatted_status)
+            self.ui.testStatus_LB.setStyleSheet(f"font-size: 11pt; color: {color}; font-weight: bold;")
+        
+        # Update status bar with progress
+        self.ui.statusbar.showMessage(f"Auto Test Running: {progress}% - {status}", 0)
+        
+        # Add to test results for detailed tracking
+        if hasattr(self.ui, 'testResults_TE') and self.ui.testResults_TE:
+            timestamp = time.strftime("%H:%M:%S")
+            self.ui.testResults_TE.append(f"[{timestamp}] {progress}% - {status}")
 
     def _on_auto_test_completed(self, success: bool, message: str):
         """Handle auto test completion"""
@@ -661,7 +730,15 @@ class MainWindow(QtWidgets.QMainWindow):
             if hasattr(self.ui, 'testProgress_PB') and self.ui.testProgress_PB:
                 self.ui.testProgress_PB.setValue(100)
             if hasattr(self.ui, 'testStatus_LB') and self.ui.testStatus_LB:
-                self.ui.testStatus_LB.setText("Test completed successfully")
+                self.ui.testStatus_LB.setText("✅ Test completed successfully")
+                self.ui.testStatus_LB.setStyleSheet("font-size: 11pt; color: #4CAF50; font-weight: bold;")
+            
+            # Update Auto Test group box title
+            if hasattr(self.ui, 'autoTestGroupBox') and self.ui.autoTestGroupBox:
+                self.ui.autoTestGroupBox.setTitle("Auto Test - COMPLETED")
+            
+            # Update status bar
+            self.ui.statusbar.showMessage("Auto Test Completed Successfully", 5000)
             
             # Ask user if they want to save detailed results
             reply = QtWidgets.QMessageBox.question(
@@ -673,7 +750,16 @@ class MainWindow(QtWidgets.QMainWindow):
                 self._export_test_results()
         else:
             if hasattr(self.ui, 'testStatus_LB') and self.ui.testStatus_LB:
-                self.ui.testStatus_LB.setText("Test failed")
+                self.ui.testStatus_LB.setText("❌ Test failed")
+                self.ui.testStatus_LB.setStyleSheet("font-size: 11pt; color: #f44336; font-weight: bold;")
+            
+            # Update Auto Test group box title
+            if hasattr(self.ui, 'autoTestGroupBox') and self.ui.autoTestGroupBox:
+                self.ui.autoTestGroupBox.setTitle("Auto Test - FAILED")
+            
+            # Update status bar
+            self.ui.statusbar.showMessage("Auto Test Failed", 5000)
+            
             QtWidgets.QMessageBox.warning(self, "Test Failed", f"Automated test failed:\n\n{message}")
     
     def _save_test_results(self, success: bool, message: str):
