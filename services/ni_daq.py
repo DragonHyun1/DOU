@@ -3,6 +3,56 @@ import time
 from typing import Optional, List, Callable
 from PyQt6.QtCore import QObject, pyqtSignal, QTimer
 
+import os
+import sys
+
+# NI-DAQmx 런타임 경로 추가 시도
+possible_paths = [
+    # Windows 표준 경로
+    r"C:\Program Files (x86)\National Instruments\Shared\ExternalCompilerSupport\C\lib64\msvc",
+    r"C:\Program Files\National Instruments\Shared\ExternalCompilerSupport\C\lib64\msvc", 
+    r"C:\Windows\System32",
+    r"C:\Program Files (x86)\National Instruments\RT\NIDAQmx\bin",
+    r"C:\Program Files\National Instruments\RT\NIDAQmx\bin",
+    r"C:\Program Files (x86)\National Instruments\Shared\CVI\Bin",
+    r"C:\Program Files\National Instruments\Shared\CVI\Bin",
+    
+    # 로컬 NIDAQ 런타임 폴더들
+    "./NIDAQ1610Runtime",
+    "../NIDAQ1610Runtime", 
+    "../../NIDAQ1610Runtime",
+    "./NIDAQ1610Runtime/bin",
+    "../NIDAQ1610Runtime/bin",
+    "../../NIDAQ1610Runtime/bin",
+    
+    # 상대 경로들
+    os.path.join(os.getcwd(), "NIDAQ1610Runtime"),
+    os.path.join(os.path.dirname(os.getcwd()), "NIDAQ1610Runtime"),
+    os.path.join(os.getcwd(), "NIDAQ1610Runtime", "bin"),
+    os.path.join(os.path.dirname(os.getcwd()), "NIDAQ1610Runtime", "bin"),
+]
+
+# 사용자 정의 NIDAQ 경로 확인
+custom_nidaq_path = os.environ.get('NIDAQ_RUNTIME_PATH')
+if custom_nidaq_path:
+    possible_paths.insert(0, custom_nidaq_path)
+    possible_paths.insert(0, os.path.join(custom_nidaq_path, 'bin'))
+    print(f"Using custom NIDAQ path: {custom_nidaq_path}")
+
+# 환경 변수에 경로 추가
+found_paths = []
+for path in possible_paths:
+    if os.path.exists(path):
+        print(f"Found NI path: {path}")
+        found_paths.append(path)
+        if path not in os.environ.get('PATH', ''):
+            os.environ['PATH'] = path + os.pathsep + os.environ.get('PATH', '')
+
+if found_paths:
+    print(f"Added {len(found_paths)} NI paths to environment")
+else:
+    print("No NI-DAQmx paths found")
+
 try:
     import nidaqmx
     from nidaqmx.constants import AcquisitionType
@@ -54,6 +104,10 @@ class NIDAQService(QObject):
         
         try:
             print("Attempting to connect to NI-DAQmx system...")
+            
+            # 환경 변수 확인
+            print(f"PATH contains: {[p for p in os.environ.get('PATH', '').split(os.pathsep) if 'National Instruments' in p or 'NIDAQ' in p]}")
+            
             system = nidaqmx.system.System.local()
             print(f"NI-DAQmx System version: {system.driver_version}")
             
@@ -74,8 +128,17 @@ class NIDAQService(QObject):
             return devices
         except Exception as e:
             print(f"Exception in get_available_devices: {e}")
+            print(f"Exception type: {type(e)}")
+            
+            # 특정 에러에 대한 추가 정보
+            if "Could not find an installation" in str(e):
+                print("NI-DAQmx runtime not found. Checking possible locations...")
+                for path in possible_paths:
+                    exists = os.path.exists(path)
+                    print(f"  {path}: {'EXISTS' if exists else 'NOT FOUND'}")
+            
             self.error_occurred.emit(f"Failed to get devices: {e}")
-            return [f"Error: {str(e)}"]
+            return [f"Error: NI-DAQmx runtime not found"]
     
     def connect_device(self, device_name: str, channel: str = "ai0") -> bool:
         """Connect to NI DAQ device"""

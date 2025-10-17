@@ -35,6 +35,7 @@ class MainWindow(QtWidgets.QMainWindow):
         )
         
         # NI DAQ 서비스
+        self._setup_nidaq_environment()
         self.ni_service = create_ni_service()
         self.ni_service.current_updated.connect(self._on_ni_current_updated)
         self.ni_service.connection_changed.connect(self._on_ni_connection_changed)
