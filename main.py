@@ -178,24 +178,17 @@ class MainWindow(QtWidgets.QMainWindow):
             self._log("⚠️ Auto test UI elements not found - auto test features disabled", "warn")
             return
             
-        # Populate test scenarios
+        # Test scenarios are now pre-populated in the UI file, but we can verify they have data
         scenarios = self.auto_test_service.get_available_scenarios()
-        self.ui.testScenario_CB.clear()
         
-        scenario_items = [
-            ("screen_onoff", "Screen On/Off (5 cycles)"),
-            ("screen_onoff_long", "Screen On/Off Long (10 cycles)"),
-            ("cpu_stress", "CPU Stress Test (60s)"),
-            ("cpu_stress_long", "CPU Stress Test Long (5min)"),
-        ]
-        
-        for key, display_name in scenario_items:
-            if key in scenarios:
-                self.ui.testScenario_CB.addItem(display_name, key)
-        
-        # Set default selection
-        if self.ui.testScenario_CB.count() > 0:
-            self.ui.testScenario_CB.setCurrentIndex(0)
+        # Ensure all items have proper data values
+        for i in range(self.ui.testScenario_CB.count()):
+            item_data = self.ui.testScenario_CB.itemData(i)
+            if not item_data:
+                # Set data based on index if not already set
+                scenario_keys = ["screen_onoff", "screen_onoff_long", "cpu_stress", "cpu_stress_long"]
+                if i < len(scenario_keys):
+                    self.ui.testScenario_CB.setItemData(i, scenario_keys[i])
         
         # Connect voltage spinbox changes (check if they exist)
         if hasattr(self.ui, 'stabilizationVoltage_SB') and self.ui.stabilizationVoltage_SB:
@@ -203,8 +196,18 @@ class MainWindow(QtWidgets.QMainWindow):
         if hasattr(self.ui, 'testVoltage_SB') and self.ui.testVoltage_SB:
             self.ui.testVoltage_SB.valueChanged.connect(self._on_voltage_config_changed)
         
-        # Initial voltage configuration
+        # Connect new test parameter controls
+        if hasattr(self.ui, 'testCycles_SB') and self.ui.testCycles_SB:
+            self.ui.testCycles_SB.valueChanged.connect(self._on_test_params_changed)
+        if hasattr(self.ui, 'testDuration_SB') and self.ui.testDuration_SB:
+            self.ui.testDuration_SB.valueChanged.connect(self._on_test_params_changed)
+        
+        # Connect scenario selection change
+        self.ui.testScenario_CB.currentIndexChanged.connect(self._on_scenario_changed)
+        
+        # Initial configuration
         self._on_voltage_config_changed()
+        self._on_test_params_changed()
 
     def refresh_connections(self):
         """Enhanced connection refresh with better feedback"""
@@ -637,6 +640,12 @@ class MainWindow(QtWidgets.QMainWindow):
         """Handle auto test completion"""
         self._update_auto_test_buttons()
         
+        # Update test results display
+        if hasattr(self.ui, 'testResults_TE') and self.ui.testResults_TE:
+            timestamp = time.strftime("%H:%M:%S")
+            result_text = f"[{timestamp}] Test {'PASSED' if success else 'FAILED'}: {message}\n"
+            self.ui.testResults_TE.append(result_text)
+        
         if success:
             if hasattr(self.ui, 'testProgress_PB') and self.ui.testProgress_PB:
                 self.ui.testProgress_PB.setValue(100)
@@ -651,24 +660,70 @@ class MainWindow(QtWidgets.QMainWindow):
     def _on_voltage_stabilized(self, voltage: float):
         """Handle voltage stabilization notification"""
         self._log(f"✅ Voltage stabilized at {voltage:.2f}V", "success")
+    
+    def _on_test_params_changed(self):
+        """Handle test parameter changes"""
+        if not (hasattr(self.ui, 'testCycles_SB') and hasattr(self.ui, 'testDuration_SB')):
+            return
+        if not (self.ui.testCycles_SB and self.ui.testDuration_SB):
+            return
+            
+        cycles = self.ui.testCycles_SB.value()
+        duration = self.ui.testDuration_SB.value()
+        
+        self._log(f"⚙️ Test parameters: Cycles={cycles}, Duration={duration}s", "info")
+    
+    def _on_scenario_changed(self):
+        """Handle test scenario selection change"""
+        scenario_data = self.ui.testScenario_CB.currentData()
+        scenario_name = self.ui.testScenario_CB.currentText()
+        
+        if scenario_data:
+            self._log(f"📋 Test scenario selected: {scenario_name}", "info")
+            
+            # Update test parameters based on scenario
+            if "screen_onoff" in scenario_data:
+                if hasattr(self.ui, 'testCycles_SB') and self.ui.testCycles_SB:
+                    cycles = 10 if "long" in scenario_data else 5
+                    self.ui.testCycles_SB.setValue(cycles)
+                if hasattr(self.ui, 'testDuration_SB') and self.ui.testDuration_SB:
+                    self.ui.testDuration_SB.setValue(15 if "long" in scenario_data else 10)
+            elif "cpu_stress" in scenario_data:
+                if hasattr(self.ui, 'testCycles_SB') and self.ui.testCycles_SB:
+                    self.ui.testCycles_SB.setValue(1)
+                if hasattr(self.ui, 'testDuration_SB') and self.ui.testDuration_SB:
+                    duration = 300 if "long" in scenario_data else 60
+                    self.ui.testDuration_SB.setValue(duration)
+        else:
+            self._log("⚠️ No scenario data found", "warn")
 
     def _check_ui_elements(self):
         """Debug function to check UI elements"""
         ui_elements = [
             'startAutoTest_PB', 'stopAutoTest_PB', 'testScenario_CB',
-            'stabilizationVoltage_SB', 'testVoltage_SB', 'testProgress_PB', 'testStatus_LB'
+            'stabilizationVoltage_SB', 'testVoltage_SB', 'testProgress_PB', 'testStatus_LB',
+            'testCycles_SB', 'testDuration_SB', 'testResults_TE'
         ]
         
         missing_elements = []
+        existing_elements = []
         for element in ui_elements:
             if not hasattr(self.ui, element) or getattr(self.ui, element) is None:
                 missing_elements.append(element)
+            else:
+                existing_elements.append(element)
         
         if missing_elements:
             self._log(f"⚠️ Missing UI elements: {', '.join(missing_elements)}", "warn")
             self._log("Auto test features may be limited", "warn")
-        else:
-            self._log("✅ All auto test UI elements loaded successfully", "info")
+        
+        if existing_elements:
+            self._log(f"✅ Found UI elements: {', '.join(existing_elements)}", "info")
+        
+        # Check test scenario combo box items
+        if hasattr(self.ui, 'testScenario_CB') and self.ui.testScenario_CB:
+            count = self.ui.testScenario_CB.count()
+            self._log(f"📋 Test scenario combo box has {count} items", "info")
 
     # ---------- Menu Actions ----------
     def export_data(self):

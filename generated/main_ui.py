@@ -159,13 +159,15 @@ class Ui_MainWindow(object):
         
         self.mainContentLayout.addWidget(self.graphGroupBox)
         
-        # Voltage Control - 1/3
+        # Voltage Control - Reduced size
         self.controlGroupBox = QtWidgets.QGroupBox(parent=self.centralwidget)
         self.controlGroupBox.setTitle("Voltage Control")
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Expanding)
-        sizePolicy.setHorizontalStretch(1)
+        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Fixed, QtWidgets.QSizePolicy.Policy.Expanding)
+        sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
         self.controlGroupBox.setSizePolicy(sizePolicy)
+        self.controlGroupBox.setMinimumSize(QtCore.QSize(300, 0))
+        self.controlGroupBox.setMaximumSize(QtCore.QSize(300, 16777215))
         self.controlGroupBox.setObjectName("controlGroupBox")
         
         self.controlVerticalLayout = QtWidgets.QVBoxLayout(self.controlGroupBox)
@@ -297,16 +299,16 @@ class Ui_MainWindow(object):
         
         self.controlVerticalLayout.addLayout(self.buttonLayout)
         
-        controlSpacer = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Expanding)
+        controlSpacer = QtWidgets.QSpacerItem(20, 10, QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Expanding)
         self.controlVerticalLayout.addItem(controlSpacer)
         
         self.mainContentLayout.addWidget(self.controlGroupBox)
         
-        # Auto Test - 1/3
+        # Auto Test - Expanded
         self.autoTestGroupBox = QtWidgets.QGroupBox(parent=self.centralwidget)
         self.autoTestGroupBox.setTitle("Auto Test")
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Expanding)
-        sizePolicy.setHorizontalStretch(1)
+        sizePolicy.setHorizontalStretch(2)
         sizePolicy.setVerticalStretch(0)
         self.autoTestGroupBox.setSizePolicy(sizePolicy)
         self.autoTestGroupBox.setObjectName("autoTestGroupBox")
@@ -340,6 +342,11 @@ class Ui_MainWindow(object):
         self.testScenario_CB = QtWidgets.QComboBox(parent=self.testConfigFrame)
         self.testScenario_CB.setStyleSheet("QComboBox { font-size: 12pt; padding: 8px; }")
         self.testScenario_CB.setObjectName("testScenario_CB")
+        # Add default test scenarios
+        self.testScenario_CB.addItem("Screen On/Off Test (5 cycles)", "screen_onoff")
+        self.testScenario_CB.addItem("Screen On/Off Long Test (10 cycles)", "screen_onoff_long")
+        self.testScenario_CB.addItem("CPU Stress Test (60s)", "cpu_stress")
+        self.testScenario_CB.addItem("CPU Stress Test Long (5min)", "cpu_stress_long")
         self.testConfigLayout.addWidget(self.testScenario_CB)
         
         self.voltageConfigLabel = QtWidgets.QLabel(parent=self.testConfigFrame)
@@ -393,6 +400,54 @@ class Ui_MainWindow(object):
         self.testVoltageLayout.addWidget(self.testVoltage_SB)
         
         self.testConfigLayout.addLayout(self.testVoltageLayout)
+        
+        # Test Parameters section
+        self.testParametersLabel = QtWidgets.QLabel(parent=self.testConfigFrame)
+        self.testParametersLabel.setText("Test Parameters")
+        self.testParametersLabel.setStyleSheet("font-weight: bold; font-size: 12pt; color: #dcdcdc;")
+        self.testParametersLabel.setObjectName("testParametersLabel")
+        self.testConfigLayout.addWidget(self.testParametersLabel)
+        
+        # Test Cycles layout
+        self.testCyclesLayout = QtWidgets.QHBoxLayout()
+        self.testCyclesLayout.setObjectName("testCyclesLayout")
+        
+        self.testCyclesLabel = QtWidgets.QLabel(parent=self.testConfigFrame)
+        self.testCyclesLabel.setText("Test Cycles:")
+        self.testCyclesLabel.setStyleSheet("font-size: 11pt;")
+        self.testCyclesLabel.setObjectName("testCyclesLabel")
+        self.testCyclesLayout.addWidget(self.testCyclesLabel)
+        
+        self.testCycles_SB = QtWidgets.QSpinBox(parent=self.testConfigFrame)
+        self.testCycles_SB.setMinimum(1)
+        self.testCycles_SB.setMaximum(100)
+        self.testCycles_SB.setValue(5)
+        self.testCycles_SB.setStyleSheet("QSpinBox { font-size: 11pt; padding: 6px; }")
+        self.testCycles_SB.setObjectName("testCycles_SB")
+        self.testCyclesLayout.addWidget(self.testCycles_SB)
+        
+        self.testConfigLayout.addLayout(self.testCyclesLayout)
+        
+        # Test Duration layout
+        self.testDurationLayout = QtWidgets.QHBoxLayout()
+        self.testDurationLayout.setObjectName("testDurationLayout")
+        
+        self.testDurationLabel = QtWidgets.QLabel(parent=self.testConfigFrame)
+        self.testDurationLabel.setText("Duration (s):")
+        self.testDurationLabel.setStyleSheet("font-size: 11pt;")
+        self.testDurationLabel.setObjectName("testDurationLabel")
+        self.testDurationLayout.addWidget(self.testDurationLabel)
+        
+        self.testDuration_SB = QtWidgets.QSpinBox(parent=self.testConfigFrame)
+        self.testDuration_SB.setSuffix("s")
+        self.testDuration_SB.setMinimum(10)
+        self.testDuration_SB.setMaximum(3600)
+        self.testDuration_SB.setValue(60)
+        self.testDuration_SB.setStyleSheet("QSpinBox { font-size: 11pt; padding: 6px; }")
+        self.testDuration_SB.setObjectName("testDuration_SB")
+        self.testDurationLayout.addWidget(self.testDuration_SB)
+        
+        self.testConfigLayout.addLayout(self.testDurationLayout)
         
         self.autoTestLayout.addWidget(self.testConfigFrame)
         
@@ -498,7 +553,48 @@ class Ui_MainWindow(object):
         
         self.autoTestLayout.addLayout(self.testControlLayout)
         
-        autoTestSpacer = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Expanding)
+        # Test Results frame
+        self.testResultsFrame = QtWidgets.QFrame(parent=self.autoTestGroupBox)
+        self.testResultsFrame.setFrameShape(QtWidgets.QFrame.Shape.StyledPanel)
+        self.testResultsFrame.setFrameShadow(QtWidgets.QFrame.Shadow.Raised)
+        self.testResultsFrame.setStyleSheet("""
+            QFrame { 
+                background-color: #3a3a3a; 
+                border-radius: 8px; 
+                padding: 10px;
+            }
+        """)
+        self.testResultsFrame.setObjectName("testResultsFrame")
+        
+        self.testResultsLayout = QtWidgets.QVBoxLayout(self.testResultsFrame)
+        self.testResultsLayout.setObjectName("testResultsLayout")
+        
+        self.testResultsLabel = QtWidgets.QLabel(parent=self.testResultsFrame)
+        self.testResultsLabel.setText("Test Results")
+        self.testResultsLabel.setStyleSheet("font-weight: bold; font-size: 12pt; color: #dcdcdc;")
+        self.testResultsLabel.setObjectName("testResultsLabel")
+        self.testResultsLayout.addWidget(self.testResultsLabel)
+        
+        self.testResults_TE = QtWidgets.QTextEdit(parent=self.testResultsFrame)
+        self.testResults_TE.setMaximumSize(QtCore.QSize(16777215, 120))
+        self.testResults_TE.setStyleSheet("""
+            QTextEdit { 
+                background-color: #2a2a2a; 
+                border: 1px solid #555; 
+                border-radius: 5px; 
+                font-family: 'Consolas', 'Courier New', monospace;
+                font-size: 10pt;
+                color: #dcdcdc;
+            }
+        """)
+        self.testResults_TE.setReadOnly(True)
+        self.testResults_TE.setPlaceholderText("Test results will appear here...")
+        self.testResults_TE.setObjectName("testResults_TE")
+        self.testResultsLayout.addWidget(self.testResults_TE)
+        
+        self.autoTestLayout.addWidget(self.testResultsFrame)
+        
+        autoTestSpacer = QtWidgets.QSpacerItem(20, 10, QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Expanding)
         self.autoTestLayout.addItem(autoTestSpacer)
         
         self.mainContentLayout.addWidget(self.autoTestGroupBox)
