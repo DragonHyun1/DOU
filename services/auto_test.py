@@ -395,7 +395,7 @@ class AutoTestService(QObject):
             return False
     
     def _set_test_voltage(self) -> bool:
-        """Set test voltage"""
+        """Set test voltage and start data collection"""
         try:
             self.log_callback(f"⚡ Setting test voltage: {self.test_voltage}V", "info")
             success = self.hvpm_service.set_voltage(self.test_voltage, self.log_callback)
@@ -405,7 +405,11 @@ class AutoTestService(QObject):
                 time.sleep(2)
                 actual_voltage = self.hvpm_service.read_voltage(self.log_callback)
                 if actual_voltage is not None:
-                    self.log_callback(f"✅ Test voltage set: {actual_voltage:.2f}V", "success")
+                    self.log_callback(f"✅ Test voltage set: {actual_voltage:.2f}V - Starting data collection", "success")
+                    
+                    # Signal to start data collection from this point
+                    self.voltage_stabilized.emit(actual_voltage)
+                    
                     return True
             
             return False

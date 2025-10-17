@@ -312,7 +312,7 @@ class Ui_MainWindow(object):
         sizePolicy.setHorizontalStretch(4)
         sizePolicy.setVerticalStretch(0)
         self.autoTestGroupBox.setSizePolicy(sizePolicy)
-        self.autoTestGroupBox.setMinimumSize(QtCore.QSize(500, 0))
+        self.autoTestGroupBox.setMinimumSize(QtCore.QSize(400, 0))
         self.autoTestGroupBox.setObjectName("autoTestGroupBox")
         
         self.autoTestLayout = QtWidgets.QVBoxLayout(self.autoTestGroupBox)
@@ -334,27 +334,53 @@ class Ui_MainWindow(object):
         self.testConfigFrame.setObjectName("testConfigFrame")
         
         self.testConfigLayout = QtWidgets.QVBoxLayout(self.testConfigFrame)
-        self.testConfigLayout.setSpacing(8)
+        self.testConfigLayout.setSpacing(6)
         self.testConfigLayout.setObjectName("testConfigLayout")
         
+        # Scenario layout
+        self.scenarioLayout = QtWidgets.QHBoxLayout()
+        self.scenarioLayout.setObjectName("scenarioLayout")
+        
         self.testScenarioLabel = QtWidgets.QLabel(parent=self.testConfigFrame)
-        self.testScenarioLabel.setText("Test Scenario")
-        self.testScenarioLabel.setMinimumSize(QtCore.QSize(0, 25))
-        self.testScenarioLabel.setStyleSheet("font-weight: bold; font-size: 10pt; color: #dcdcdc; padding: 2px;")
+        self.testScenarioLabel.setText("Scenario:")
+        self.testScenarioLabel.setMinimumSize(QtCore.QSize(60, 20))
+        self.testScenarioLabel.setStyleSheet("font-weight: bold; font-size: 9pt; color: #dcdcdc;")
         self.testScenarioLabel.setObjectName("testScenarioLabel")
-        self.testConfigLayout.addWidget(self.testScenarioLabel)
+        self.scenarioLayout.addWidget(self.testScenarioLabel)
         
         self.testScenario_CB = QtWidgets.QComboBox(parent=self.testConfigFrame)
-        self.testScenario_CB.setMinimumSize(QtCore.QSize(0, 35))
-        self.testScenario_CB.setStyleSheet("QComboBox { font-size: 10pt; padding: 6px; min-height: 25px; }")
+        self.testScenario_CB.setMinimumSize(QtCore.QSize(0, 28))
+        self.testScenario_CB.setStyleSheet("QComboBox { font-size: 9pt; padding: 4px; }")
         self.testScenario_CB.setObjectName("testScenario_CB")
-        # Add default test scenarios
-        self.testScenario_CB.addItem("Screen On/Off Test (5 cycles)", "screen_onoff")
-        self.testScenario_CB.addItem("Screen On/Off Long Test (10 cycles)", "screen_onoff_long")
-        self.testScenario_CB.addItem("CPU Stress Test (60s)", "cpu_stress")
-        self.testScenario_CB.addItem("CPU Stress Test Long (5min)", "cpu_stress_long")
+        # Add default test scenarios (shortened names)
+        self.testScenario_CB.addItem("Screen On/Off (5x)", "screen_onoff")
+        self.testScenario_CB.addItem("Screen On/Off Long (10x)", "screen_onoff_long")
+        self.testScenario_CB.addItem("CPU Stress (60s)", "cpu_stress")
+        self.testScenario_CB.addItem("CPU Stress Long (5min)", "cpu_stress_long")
         self.testScenario_CB.addItem("Custom Script", "custom_script")
-        self.testConfigLayout.addWidget(self.testScenario_CB)
+        self.scenarioLayout.addWidget(self.testScenario_CB)
+        
+        # Settings button
+        self.testSettings_PB = QtWidgets.QPushButton(parent=self.testConfigFrame)
+        self.testSettings_PB.setText("⚙️")
+        self.testSettings_PB.setMinimumSize(QtCore.QSize(30, 28))
+        self.testSettings_PB.setMaximumSize(QtCore.QSize(30, 28))
+        self.testSettings_PB.setStyleSheet("""
+            QPushButton { 
+                background-color: #555; 
+                color: white; 
+                border-radius: 4px; 
+                font-size: 12pt;
+            }
+            QPushButton:hover { 
+                background-color: #666; 
+            }
+        """)
+        self.testSettings_PB.setToolTip("Open test parameter settings")
+        self.testSettings_PB.setObjectName("testSettings_PB")
+        self.scenarioLayout.addWidget(self.testSettings_PB)
+        
+        self.testConfigLayout.addLayout(self.scenarioLayout)
         
         # Custom Script Frame
         self.customScriptFrame = QtWidgets.QFrame(parent=self.testConfigFrame)
@@ -388,7 +414,7 @@ class Ui_MainWindow(object):
                 border: 1px solid #555; 
                 border-radius: 3px; 
                 font-family: 'Consolas', 'Courier New', monospace;
-                font-size: 9pt;
+                font-size: 8pt;
                 color: #dcdcdc;
             }
         """)
@@ -398,107 +424,6 @@ class Ui_MainWindow(object):
         
         self.testConfigLayout.addWidget(self.customScriptFrame)
         
-        self.voltageConfigLabel = QtWidgets.QLabel(parent=self.testConfigFrame)
-        self.voltageConfigLabel.setText("Voltage Configuration")
-        self.voltageConfigLabel.setMinimumSize(QtCore.QSize(0, 25))
-        self.voltageConfigLabel.setStyleSheet("font-weight: bold; font-size: 10pt; color: #dcdcdc; padding: 2px;")
-        self.voltageConfigLabel.setObjectName("voltageConfigLabel")
-        self.testConfigLayout.addWidget(self.voltageConfigLabel)
-        
-        # Stabilization voltage layout
-        self.stabilizationVoltageLayout = QtWidgets.QHBoxLayout()
-        self.stabilizationVoltageLayout.setObjectName("stabilizationVoltageLayout")
-        
-        self.stabilizationVoltageLabel = QtWidgets.QLabel(parent=self.testConfigFrame)
-        self.stabilizationVoltageLabel.setText("Stabilization:")
-        self.stabilizationVoltageLabel.setStyleSheet("font-size: 11pt;")
-        self.stabilizationVoltageLabel.setObjectName("stabilizationVoltageLabel")
-        self.stabilizationVoltageLayout.addWidget(self.stabilizationVoltageLabel)
-        
-        self.stabilizationVoltage_SB = QtWidgets.QDoubleSpinBox(parent=self.testConfigFrame)
-        self.stabilizationVoltage_SB.setSuffix("V")
-        self.stabilizationVoltage_SB.setDecimals(1)
-        self.stabilizationVoltage_SB.setMinimum(0.0)
-        self.stabilizationVoltage_SB.setMaximum(5.5)
-        self.stabilizationVoltage_SB.setSingleStep(0.1)
-        self.stabilizationVoltage_SB.setValue(4.8)
-        self.stabilizationVoltage_SB.setStyleSheet("QDoubleSpinBox { font-size: 11pt; padding: 6px; }")
-        self.stabilizationVoltage_SB.setObjectName("stabilizationVoltage_SB")
-        self.stabilizationVoltageLayout.addWidget(self.stabilizationVoltage_SB)
-        
-        self.testConfigLayout.addLayout(self.stabilizationVoltageLayout)
-        
-        # Test voltage layout
-        self.testVoltageLayout = QtWidgets.QHBoxLayout()
-        self.testVoltageLayout.setObjectName("testVoltageLayout")
-        
-        self.testVoltageLabel = QtWidgets.QLabel(parent=self.testConfigFrame)
-        self.testVoltageLabel.setText("Test:")
-        self.testVoltageLabel.setStyleSheet("font-size: 11pt;")
-        self.testVoltageLabel.setObjectName("testVoltageLabel")
-        self.testVoltageLayout.addWidget(self.testVoltageLabel)
-        
-        self.testVoltage_SB = QtWidgets.QDoubleSpinBox(parent=self.testConfigFrame)
-        self.testVoltage_SB.setSuffix("V")
-        self.testVoltage_SB.setDecimals(1)
-        self.testVoltage_SB.setMinimum(0.0)
-        self.testVoltage_SB.setMaximum(5.5)
-        self.testVoltage_SB.setSingleStep(0.1)
-        self.testVoltage_SB.setValue(4.0)
-        self.testVoltage_SB.setStyleSheet("QDoubleSpinBox { font-size: 11pt; padding: 6px; }")
-        self.testVoltage_SB.setObjectName("testVoltage_SB")
-        self.testVoltageLayout.addWidget(self.testVoltage_SB)
-        
-        self.testConfigLayout.addLayout(self.testVoltageLayout)
-        
-        # Test Parameters section
-        self.testParametersLabel = QtWidgets.QLabel(parent=self.testConfigFrame)
-        self.testParametersLabel.setText("Test Parameters")
-        self.testParametersLabel.setMinimumSize(QtCore.QSize(0, 25))
-        self.testParametersLabel.setStyleSheet("font-weight: bold; font-size: 10pt; color: #dcdcdc; padding: 2px;")
-        self.testParametersLabel.setObjectName("testParametersLabel")
-        self.testConfigLayout.addWidget(self.testParametersLabel)
-        
-        # Test Cycles layout
-        self.testCyclesLayout = QtWidgets.QHBoxLayout()
-        self.testCyclesLayout.setObjectName("testCyclesLayout")
-        
-        self.testCyclesLabel = QtWidgets.QLabel(parent=self.testConfigFrame)
-        self.testCyclesLabel.setText("Test Cycles:")
-        self.testCyclesLabel.setStyleSheet("font-size: 11pt;")
-        self.testCyclesLabel.setObjectName("testCyclesLabel")
-        self.testCyclesLayout.addWidget(self.testCyclesLabel)
-        
-        self.testCycles_SB = QtWidgets.QSpinBox(parent=self.testConfigFrame)
-        self.testCycles_SB.setMinimum(1)
-        self.testCycles_SB.setMaximum(100)
-        self.testCycles_SB.setValue(5)
-        self.testCycles_SB.setStyleSheet("QSpinBox { font-size: 11pt; padding: 6px; }")
-        self.testCycles_SB.setObjectName("testCycles_SB")
-        self.testCyclesLayout.addWidget(self.testCycles_SB)
-        
-        self.testConfigLayout.addLayout(self.testCyclesLayout)
-        
-        # Test Duration layout
-        self.testDurationLayout = QtWidgets.QHBoxLayout()
-        self.testDurationLayout.setObjectName("testDurationLayout")
-        
-        self.testDurationLabel = QtWidgets.QLabel(parent=self.testConfigFrame)
-        self.testDurationLabel.setText("Duration (s):")
-        self.testDurationLabel.setStyleSheet("font-size: 11pt;")
-        self.testDurationLabel.setObjectName("testDurationLabel")
-        self.testDurationLayout.addWidget(self.testDurationLabel)
-        
-        self.testDuration_SB = QtWidgets.QSpinBox(parent=self.testConfigFrame)
-        self.testDuration_SB.setSuffix("s")
-        self.testDuration_SB.setMinimum(10)
-        self.testDuration_SB.setMaximum(3600)
-        self.testDuration_SB.setValue(60)
-        self.testDuration_SB.setStyleSheet("QSpinBox { font-size: 11pt; padding: 6px; }")
-        self.testDuration_SB.setObjectName("testDuration_SB")
-        self.testDurationLayout.addWidget(self.testDuration_SB)
-        
-        self.testConfigLayout.addLayout(self.testDurationLayout)
         
         self.autoTestLayout.addWidget(self.testConfigFrame)
         
@@ -627,8 +552,8 @@ class Ui_MainWindow(object):
         self.testResultsLayout.addWidget(self.testResultsLabel)
         
         self.testResults_TE = QtWidgets.QTextEdit(parent=self.testResultsFrame)
-        self.testResults_TE.setMinimumSize(QtCore.QSize(0, 80))
-        self.testResults_TE.setMaximumSize(QtCore.QSize(16777215, 100))
+        self.testResults_TE.setMinimumSize(QtCore.QSize(0, 60))
+        self.testResults_TE.setMaximumSize(QtCore.QSize(16777215, 80))
         self.testResults_TE.setStyleSheet("""
             QTextEdit { 
                 background-color: #2a2a2a; 

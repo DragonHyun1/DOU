@@ -6,6 +6,7 @@ from generated import main_ui
 from services.hvpm import HvpmService
 from services.auto_test import AutoTestService
 from services import theme, adb
+from ui.test_settings_dialog import TestSettingsDialog
 from collections import deque
 import pyqtgraph as pg
 
@@ -31,6 +32,21 @@ class MainWindow(QtWidgets.QMainWindow):
             hvpm_service=self.hvpm_service,
             log_callback=self._log
         )
+        
+        # Test settings
+        self.test_settings = {
+            'stabilization_voltage': 4.8,
+            'test_voltage': 4.0,
+            'test_cycles': 5,
+            'test_duration': 10,
+            'stabilization_time': 10,
+            'sampling_interval': 1.0,
+            'skip_stabilization_data': True
+        }
+        
+        # Data collection state
+        self.test_data_collection_active = False
+        self.last_timestamp_log = 0
 
         # 버퍼/타이머 초기화
         self._t0 = None
@@ -121,6 +137,8 @@ class MainWindow(QtWidgets.QMainWindow):
             self.ui.startAutoTest_PB.clicked.connect(self.start_auto_test)
         if hasattr(self.ui, 'stopAutoTest_PB') and self.ui.stopAutoTest_PB:
             self.ui.stopAutoTest_PB.clicked.connect(self.stop_auto_test)
+        if hasattr(self.ui, 'testSettings_PB') and self.ui.testSettings_PB:
+            self.ui.testSettings_PB.clicked.connect(self.open_test_settings)
         
         # Combo box connections
         if hasattr(self.ui, 'comport_CB') and self.ui.comport_CB:
@@ -625,9 +643,13 @@ class MainWindow(QtWidgets.QMainWindow):
                 QtWidgets.QMessageBox.warning(self, "Custom Script Required", "Please enter ADB commands for the custom script test.")
                 return
         
-        # Clear previous results
+        # Clear previous results and reset data collection state
         if hasattr(self.ui, 'testResults_TE') and self.ui.testResults_TE:
             self.ui.testResults_TE.clear()
+        
+        # Reset data collection state
+        self.test_data_collection_active = False
+        self.last_timestamp_log = 0
         
         # Start test
         success = self.auto_test_service.start_test(scenario_data, custom_script)
@@ -708,10 +730,13 @@ class MainWindow(QtWidgets.QMainWindow):
         # Update status bar with progress
         self.ui.statusbar.showMessage(f"Auto Test Running: {progress}% - {status}", 0)
         
-        # Add to test results for detailed tracking
+        # Add to test results with 1-second interval logging
+        current_time = time.time()
         if hasattr(self.ui, 'testResults_TE') and self.ui.testResults_TE:
-            timestamp = time.strftime("%H:%M:%S")
-            self.ui.testResults_TE.append(f"[{timestamp}] {progress}% - {status}")
+            if current_time - self.last_timestamp_log >= 1.0:  # 1 second interval
+                timestamp = time.strftime("%H:%M:%S")
+                self.ui.testResults_TE.append(f"[{timestamp}] {progress}% - {status}")
+                self.last_timestamp_log = current_time
 
     def _on_auto_test_completed(self, success: bool, message: str):
         """Handle auto test completion"""
@@ -841,6 +866,11 @@ class MainWindow(QtWidgets.QMainWindow):
     def _on_voltage_stabilized(self, voltage: float):
         """Handle voltage stabilization notification"""
         self._log(f"✅ Voltage stabilized at {voltage:.2f}V", "success")
+        
+        # Start data collection from test voltage point (skip stabilization data if configured)
+        if self.test_settings.get('skip_stabilization_data', True):
+            self.test_data_collection_active = True
+            self._log(f"📊 Data collection started from test voltage point", "info")
     
     def _on_test_params_changed(self):
         """Handle test parameter changes"""
@@ -972,18 +1002,42 @@ class MainWindow(QtWidgets.QMainWindow):
             "Use the Auto Test panel to configure test parameters."
         )
 
+    def open_test_settings(self):
+        """Open test parameter settings dialog"""
+        try:
+            dialog = TestSettingsDialog(self)
+            dialog.set_settings(self.test_settings)
+            
+            if dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+                # Update settings
+                self.test_settings.update(dialog.get_settings())
+                
+                # Update auto test service with new settings
+                self.auto_test_service.set_voltages(
+                    self.test_settings['stabilization_voltage'],
+                    self.test_settings['test_voltage']
+                )
+                self.auto_test_service.stabilization_time = self.test_settings['stabilization_time']
+                
+                self._log("⚙️ Test settings updated", "info")
+                
+        except Exception as e:
+            self._log(f"❌ Error opening test settings: {e}", "error")
+            QtWidgets.QMessageBox.warning(self, "Settings Error", f"Failed to open test settings:\n{e}")
+    
     def show_about(self):
         """Show about dialog"""
         QtWidgets.QMessageBox.about(
             self, 
             "About HVPM Monitor with Auto Test", 
-            "HVPM Monitor v3.0 with Auto Test\n\n"
+            "HVPM Monitor v3.1 with Auto Test\n\n"
             "Enhanced power measurement tool with automated testing capabilities.\n"
             "Features real-time monitoring, voltage control, and ADB-based device testing.\n\n"
             "New Features:\n"
             "• Automated test scenarios\n"
-            "• Voltage stabilization\n"
-            "• ADB device control\n"
+            "• Configurable test parameters\n"
+            "• Optimized data collection\n"
+            "• Custom script support\n"
             "• Enhanced UI and logging\n\n"
             "Built with PyQt6 and PyQtGraph"
         )
