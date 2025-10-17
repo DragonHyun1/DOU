@@ -32,14 +32,7 @@ class MainWindow(QtWidgets.QMainWindow):
             log_callback=self._log
         )
 
-        # Setup enhanced UI components
-        self.setup_graphs()
-        self.setup_connections()
-        self.setup_status_indicators()
-        self.setup_menu_actions()
-        self.setup_auto_test_ui()
-        
-        # 버퍼/타이머
+        # 버퍼/타이머 초기화
         self._t0 = None
         self._tbuf = deque(maxlen=600)   # 10Hz*60s = 최근 1분
         self._vbuf = deque(maxlen=600)
@@ -49,19 +42,28 @@ class MainWindow(QtWidgets.QMainWindow):
         self._graphTimer.setInterval(100)        # 10 Hz UI 업데이트
         self._graphTimer.timeout.connect(self._on_graph_tick)
 
-        # ADB 상태
+        # ADB 상태 초기화
         self.selected_device = None
         self._refreshing_adb = False
         self._cfg_refresh_reads_voltage = False
 
-        # 초기화
+        # Setup enhanced UI components
+        self.setup_graphs()
+        self.setup_status_indicators()
+        self.setup_menu_actions()
+        
+        # Debug: Check UI elements first
+        self._check_ui_elements()
+        
+        # Setup connections after UI check
+        self.setup_connections()
+        self.setup_auto_test_ui()
+        
+        # 초기화 - UI 설정 완료 후 실행
         self.refresh_connections()
         
         # Status bar 메시지
         self.ui.statusbar.showMessage("Ready - Connect devices to start monitoring and testing", 5000)
-        
-        # Debug: Check UI elements
-        self._check_ui_elements()
 
     def setup_graphs(self):
         """Setup enhanced graph widgets"""
@@ -227,44 +229,65 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def update_connection_status(self):
         """Update connection status indicators"""
-        # Update HVPM status
-        if hasattr(self.hvpm_service, 'pm') and self.hvpm_service.pm:
-            self.ui.hvpmStatus_LB.setText("Connected")
-            self.ui.hvpmStatus_LB.setStyleSheet(f"color: {theme.get_status_color('connected')}; font-weight: bold;")
-        else:
-            self.ui.hvpmStatus_LB.setText("Disconnected")
-            self.ui.hvpmStatus_LB.setStyleSheet(f"color: {theme.get_status_color('disconnected')}; font-weight: bold;")
-        
-        # Update auto test button availability
-        self._update_auto_test_buttons()
+        try:
+            # Update HVPM status
+            if hasattr(self.ui, 'hvpmStatus_LB') and self.ui.hvpmStatus_LB:
+                if hasattr(self.hvpm_service, 'pm') and self.hvpm_service.pm:
+                    self.ui.hvpmStatus_LB.setText("Connected")
+                    self.ui.hvpmStatus_LB.setStyleSheet(f"color: {theme.get_status_color('connected')}; font-weight: bold;")
+                else:
+                    self.ui.hvpmStatus_LB.setText("Disconnected")
+                    self.ui.hvpmStatus_LB.setStyleSheet(f"color: {theme.get_status_color('disconnected')}; font-weight: bold;")
+            
+            # Update auto test button availability (safely)
+            self._update_auto_test_buttons()
+            
+        except Exception as e:
+            self._log(f"Error updating connection status: {e}", "error")
 
     def _update_auto_test_buttons(self):
         """Update auto test button states"""
-        # Check if auto test UI elements exist
-        if not hasattr(self.ui, 'startAutoTest_PB') or not hasattr(self.ui, 'stopAutoTest_PB'):
-            return
+        # Check if auto test UI elements exist and are not None
+        try:
+            start_button = getattr(self.ui, 'startAutoTest_PB', None)
+            stop_button = getattr(self.ui, 'stopAutoTest_PB', None)
             
-        hvpm_connected = self.hvpm_service.is_connected()
-        adb_connected = self.selected_device and self.selected_device != "No devices found"
-        test_running = self.auto_test_service.is_running
-        
-        can_start = hvpm_connected and adb_connected and not test_running
-        
-        if self.ui.startAutoTest_PB:
-            self.ui.startAutoTest_PB.setEnabled(can_start)
-        if self.ui.stopAutoTest_PB:
-            self.ui.stopAutoTest_PB.setEnabled(test_running)
-        
-        # Update tooltips based on status
-        if self.ui.startAutoTest_PB:
-            if not hvpm_connected:
-                self.ui.startAutoTest_PB.setToolTip("HVPM device must be connected")
-            elif not adb_connected:
-                self.ui.startAutoTest_PB.setToolTip("ADB device must be connected")
-            elif test_running:
-                self.ui.startAutoTest_PB.setToolTip("Test is currently running")
-            else:
-                self.ui.startAutoTest_PB.setToolTip("Start automated test with voltage control")
+            if start_button is None or stop_button is None:
+                return
+                
+            hvpm_connected = self.hvpm_service.is_connected()
+            adb_connected = self.selected_device and self.selected_device != "No devices found"
+            test_running = self.auto_test_service.is_running
+            
+            can_start = hvpm_connected and adb_connected and not test_running
+            
+            # Safely update button states
+            try:
+                start_button.setEnabled(can_start)
+            except Exception as e:
+                self._log(f"Error updating start button: {e}", "error")
+                
+            try:
+                stop_button.setEnabled(test_running)
+            except Exception as e:
+                self._log(f"Error updating stop button: {e}", "error")
+            
+            # Update tooltips based on status
+            try:
+                if not hvpm_connected:
+                    start_button.setToolTip("HVPM device must be connected")
+                elif not adb_connected:
+                    start_button.setToolTip("ADB device must be connected")
+                elif test_running:
+                    start_button.setToolTip("Test is currently running")
+                else:
+                    start_button.setToolTip("Start automated test with voltage control")
+            except Exception as e:
+                self._log(f"Error updating tooltip: {e}", "error")
+                
+        except Exception as e:
+            # If anything goes wrong, just log and continue
+            self._log(f"Error in _update_auto_test_buttons: {e}", "error")
 
     # ---------- 로그 ----------
     def _log(self, msg: str, level: str = "info"):
