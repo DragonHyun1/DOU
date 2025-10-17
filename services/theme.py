@@ -2,19 +2,25 @@
 import pyqtgraph as pg
 
 def apply_theme(app, plot_widget=None):
-    # Qt 위젯 다크 QSS
+    # Qt widgets dark QSS
     qss = """
-    QWidget{background-color:#2b2b2b;color:#dcdcdc;font-family:Consolas,"Courier New",monospace;font-size:11pt;}
-    QLineEdit,QComboBox,QListWidget{background-color:#3c3f41;border:1px solid #555;padding:4px;}
-    QPushButton{background-color:#444;border:1px solid #666;padding:6px;border-radius:4px;}
-    QPushButton:hover{background-color:#555;} QPushButton:pressed{background-color:#222;}
-    QLabel{color:#dcdcdc;}
+    QWidget { background-color: #2b2b2b; color: #dcdcdc; font-family: Consolas, "Courier New", monospace; font-size: 11pt; }
+    QLineEdit, QComboBox, QListWidget { background-color: #3c3f41; border: 1px solid #555; padding: 4px; }
+    QListWidget { background-color: #1f2123; }
+    QComboBox QAbstractItemView { background-color: #2b2b2b; selection-background-color: #555; }
+    QPushButton { background-color: #444; border: 1px solid #666; padding: 6px; border-radius: 4px; }
+    QPushButton:hover { background-color: #555; }
+    QPushButton:pressed { background-color: #222; }
+    QPushButton:disabled { color: #888; background-color: #333; border-color: #444; }
+    QLabel { color: #dcdcdc; }
+    QGroupBox { border: 1px solid #555; border-radius: 6px; margin-top: 8px; padding-top: 10px; }
+    QGroupBox::title { subcontrol-origin: margin; left: 10px; padding: 0 4px; color: #a7c7ff; font-weight: bold; }
     """
     app.setStyleSheet(qss)
 
-    # PyQtGraph 다크 스타일 동기화
+    # PyQtGraph dark style sync
     if plot_widget:
-        # 단일 위젯이거나 리스트로 전달된 경우 모두 처리
+        # Handle single widget or a list/tuple
         widgets = plot_widget if isinstance(plot_widget, (list, tuple)) else [plot_widget]
         for w in widgets:
             w.setBackground("#2b2b2b")

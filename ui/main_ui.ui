@@ -6,173 +6,201 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>991</width>
-    <height>721</height>
+    <width>1100</width>
+    <height>750</height>
    </rect>
   </property>
   <property name="windowTitle">
-   <string>MainWindow</string>
+   <string>HVPM Monitor</string>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <widget class="QWidget" name="horizontalLayoutWidget">
-    <property name="geometry">
-     <rect>
-      <x>10</x>
-      <y>620</y>
-      <width>731</width>
-      <height>41</height>
-     </rect>
-    </property>
-    <layout class="QHBoxLayout" name="horizontalLayout">
-     <item>
-      <widget class="QLabel" name="PM_LB">
-       <property name="text">
-        <string>Power monitor</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QLabel" name="hvpmStatus_LB">
-       <property name="text">
-        <string>-</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QComboBox" name="hvpm_CB"/>
-     </item>
-     <item>
-      <widget class="QLabel" name="comport_LB">
-       <property name="text">
-        <string>COM PORT</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QComboBox" name="comport_CB"/>
-     </item>
-     <item>
-      <widget class="QPushButton" name="port_PB">
-       <property name="text">
-        <string>REFRESH</string>
-       </property>
-      </widget>
-     </item>
-    </layout>
-   </widget>
-   <widget class="QListWidget" name="log_LW">
-    <property name="geometry">
-     <rect>
-      <x>10</x>
-      <y>410</y>
-      <width>771</width>
-      <height>192</height>
-     </rect>
-    </property>
-   </widget>
-   <widget class="QWidget" name="graphContainer" native="true">
-    <property name="geometry">
-     <rect>
-      <x>10</x>
-      <y>10</y>
-      <width>661</width>
-      <height>381</height>
-     </rect>
-    </property>
-    <widget class="QWidget" name="verticalLayoutWidget">
-     <property name="geometry">
-      <rect>
-       <x>10</x>
-       <y>10</y>
-       <width>641</width>
-       <height>361</height>
-      </rect>
-     </property>
-     <layout class="QVBoxLayout" name="graphLayout"/>
-    </widget>
-   </widget>
-   <widget class="QPushButton" name="startGraph_PB">
-    <property name="geometry">
-     <rect>
-      <x>690</x>
-      <y>20</y>
-      <width>151</width>
-      <height>24</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>Start graph</string>
-    </property>
-   </widget>
-   <widget class="QPushButton" name="stopGraph_PB">
-    <property name="geometry">
-     <rect>
-      <x>690</x>
-      <y>50</y>
-      <width>152</width>
-      <height>24</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>Stop graph</string>
-    </property>
-   </widget>
-   <widget class="QLineEdit" name="hvpmVolt_LE">
-    <property name="geometry">
-     <rect>
-      <x>770</x>
-      <y>90</y>
-      <width>113</width>
-      <height>22</height>
-     </rect>
-    </property>
-   </widget>
-   <widget class="QPushButton" name="setVolt_PB">
-    <property name="geometry">
-     <rect>
-      <x>800</x>
-      <y>130</y>
-      <width>91</width>
-      <height>24</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>Set Volt</string>
-    </property>
-   </widget>
-   <widget class="QLabel" name="hvpmVolt_LB">
-    <property name="geometry">
-     <rect>
-      <x>690</x>
-      <y>90</y>
-      <width>71</width>
-      <height>16</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>__.__ V</string>
-    </property>
-   </widget>
-   <widget class="QPushButton" name="readVolt_PB">
-    <property name="geometry">
-     <rect>
-      <x>680</x>
-      <y>130</y>
-      <width>101</width>
-      <height>24</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>Read CurVolt</string>
-    </property>
-   </widget>
+   <layout class="QVBoxLayout" name="rootLayout">
+    <item>
+     <layout class="QHBoxLayout" name="topBarLayout">
+      <item>
+       <widget class="QLabel" name="PM_LB">
+        <property name="text">
+         <string>Power monitor</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="hvpmStatus_LB">
+        <property name="text">
+         <string>-</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QComboBox" name="hvpm_CB"/>
+      </item>
+      <item>
+       <widget class="QLabel" name="comport_LB">
+        <property name="text">
+         <string>COM PORT</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QComboBox" name="comport_CB"/>
+      </item>
+      <item>
+       <spacer name="topSpacer">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>40</width>
+          <height>20</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+      <item>
+       <widget class="QPushButton" name="port_PB">
+        <property name="text">
+         <string>REFRESH</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </item>
+
+    <item>
+     <layout class="QHBoxLayout" name="contentLayout">
+      <item>
+       <widget class="QGroupBox" name="graphsGroupBox">
+        <property name="title">
+         <string>Live Graphs</string>
+        </property>
+        <layout class="QVBoxLayout" name="graphsBoxLayout">
+         <item>
+          <layout class="QVBoxLayout" name="graphLayout"/>
+         </item>
+        </layout>
+       </widget>
+      </item>
+      <item>
+       <widget class="QGroupBox" name="controlGroupBox">
+        <property name="title">
+         <string>Controls</string>
+        </property>
+        <layout class="QVBoxLayout" name="controlVBox">
+         <item>
+          <layout class="QHBoxLayout" name="graphButtonsLayout">
+           <item>
+            <widget class="QPushButton" name="startGraph_PB">
+             <property name="text">
+              <string>Start graph</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="stopGraph_PB">
+             <property name="text">
+              <string>Stop graph</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+         <item>
+          <widget class="Line" name="line">
+           <property name="frameShape">
+            <enum>QFrame::HLine</enum>
+           </property>
+           <property name="frameShadow">
+            <enum>QFrame::Sunken</enum>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <layout class="QFormLayout" name="voltForm">
+           <item row="0" column="0">
+            <widget class="QLabel" name="targetVoltTitle">
+             <property name="text">
+              <string>Target Volt (V)</string>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="1">
+            <widget class="QLineEdit" name="hvpmVolt_LE"/>
+           </item>
+           <item row="1" column="0">
+            <widget class="QLabel" name="readbackTitle">
+             <property name="text">
+              <string>Readback</string>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="1">
+            <widget class="QLabel" name="hvpmVolt_LB">
+             <property name="text">
+              <string>__.__ V</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+         <item>
+          <layout class="QHBoxLayout" name="voltButtonsLayout">
+           <item>
+            <widget class="QPushButton" name="setVolt_PB">
+             <property name="text">
+              <string>Set Volt</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="readVolt_PB">
+             <property name="text">
+              <string>Read CurVolt</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+         <item>
+          <spacer name="controlSpacer">
+           <property name="orientation">
+            <enum>Qt::Vertical</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>20</width>
+             <height>40</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+        </layout>
+       </widget>
+      </item>
+     </layout>
+    </item>
+
+    <item>
+     <widget class="QGroupBox" name="logsGroupBox">
+      <property name="title">
+       <string>Logs</string>
+      </property>
+      <layout class="QVBoxLayout" name="logsVBox">
+       <item>
+        <widget class="QListWidget" name="log_LW"/>
+       </item>
+      </layout>
+     </widget>
+    </item>
+
+   </layout>
   </widget>
   <widget class="QMenuBar" name="menubar">
    <property name="geometry">
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>991</width>
+     <width>1100</width>
      <height>22</height>
     </rect>
    </property>
