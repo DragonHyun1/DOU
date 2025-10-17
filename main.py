@@ -601,8 +601,16 @@ class MainWindow(QtWidgets.QMainWindow):
         if not self._graphActive:
             self.start_graph()
         
+        # Get custom script if needed
+        custom_script = None
+        if scenario_data == "custom_script" and hasattr(self.ui, 'customScript_TE') and self.ui.customScript_TE:
+            custom_script = self.ui.customScript_TE.toPlainText().strip()
+            if not custom_script:
+                QtWidgets.QMessageBox.warning(self, "Custom Script Required", "Please enter ADB commands for the custom script test.")
+                return
+        
         # Start test
-        success = self.auto_test_service.start_test(scenario_data)
+        success = self.auto_test_service.start_test(scenario_data, custom_script)
         if success:
             self._update_auto_test_buttons()
             self.ui.testProgress_PB.setValue(0)
@@ -646,16 +654,103 @@ class MainWindow(QtWidgets.QMainWindow):
             result_text = f"[{timestamp}] Test {'PASSED' if success else 'FAILED'}: {message}\n"
             self.ui.testResults_TE.append(result_text)
         
+        # Save test results
+        self._save_test_results(success, message)
+        
         if success:
             if hasattr(self.ui, 'testProgress_PB') and self.ui.testProgress_PB:
                 self.ui.testProgress_PB.setValue(100)
             if hasattr(self.ui, 'testStatus_LB') and self.ui.testStatus_LB:
                 self.ui.testStatus_LB.setText("Test completed successfully")
-            QtWidgets.QMessageBox.information(self, "Test Complete", f"Automated test completed successfully!\n\n{message}")
+            
+            # Ask user if they want to save detailed results
+            reply = QtWidgets.QMessageBox.question(
+                self, "Test Complete", 
+                f"Automated test completed successfully!\n\n{message}\n\nWould you like to save detailed test results?",
+                QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No
+            )
+            if reply == QtWidgets.QMessageBox.StandardButton.Yes:
+                self._export_test_results()
         else:
             if hasattr(self.ui, 'testStatus_LB') and self.ui.testStatus_LB:
                 self.ui.testStatus_LB.setText("Test failed")
             QtWidgets.QMessageBox.warning(self, "Test Failed", f"Automated test failed:\n\n{message}")
+    
+    def _save_test_results(self, success: bool, message: str):
+        """Save test results to file"""
+        try:
+            import os
+            results_dir = "test_results"
+            if not os.path.exists(results_dir):
+                os.makedirs(results_dir)
+            
+            timestamp = time.strftime("%Y%m%d_%H%M%S")
+            filename = f"{results_dir}/test_result_{timestamp}.txt"
+            
+            scenario_name = self.ui.testScenario_CB.currentText() if hasattr(self.ui, 'testScenario_CB') else "Unknown"
+            stabilization_v = self.ui.stabilizationVoltage_SB.value() if hasattr(self.ui, 'stabilizationVoltage_SB') else 0
+            test_v = self.ui.testVoltage_SB.value() if hasattr(self.ui, 'testVoltage_SB') else 0
+            
+            with open(filename, 'w', encoding='utf-8') as f:
+                f.write(f"=== HVPM Auto Test Results ===\n")
+                f.write(f"Date: {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
+                f.write(f"Test Scenario: {scenario_name}\n")
+                f.write(f"Stabilization Voltage: {stabilization_v}V\n")
+                f.write(f"Test Voltage: {test_v}V\n")
+                f.write(f"Device: {self.selected_device or 'Unknown'}\n")
+                f.write(f"Result: {'PASSED' if success else 'FAILED'}\n")
+                f.write(f"Message: {message}\n")
+                f.write(f"\n=== Test Log ===\n")
+                
+                # Add test results from UI if available
+                if hasattr(self.ui, 'testResults_TE') and self.ui.testResults_TE:
+                    f.write(self.ui.testResults_TE.toPlainText())
+            
+            self._log(f"📁 Test results saved to {filename}", "info")
+            
+        except Exception as e:
+            self._log(f"❌ Failed to save test results: {e}", "error")
+    
+    def _export_test_results(self):
+        """Export detailed test results with measurement data"""
+        filename, _ = QtWidgets.QFileDialog.getSaveFileName(
+            self, "Export Test Results", f"test_results_{time.strftime('%Y%m%d_%H%M%S')}.csv", 
+            "CSV Files (*.csv);;Text Files (*.txt)"
+        )
+        
+        if filename:
+            try:
+                with open(filename, 'w', encoding='utf-8') as f:
+                    if filename.endswith('.csv'):
+                        # CSV format with measurement data
+                        f.write("Timestamp,Voltage(V),Current(A),Test_Phase\n")
+                        tb = list(self._tbuf)
+                        vb = list(self._vbuf) 
+                        ib = list(self._ibuf)
+                        
+                        max_len = max(len(vb), len(ib), len(tb)) if any([vb, ib, tb]) else 0
+                        for i in range(max_len):
+                            timestamp = tb[i] if i < len(tb) else ""
+                            voltage = vb[i] if i < len(vb) else ""
+                            current = ib[i] if i < len(ib) else ""
+                            f.write(f"{timestamp},{voltage},{current},Test_Execution\n")
+                    else:
+                        # Text format
+                        scenario_name = self.ui.testScenario_CB.currentText() if hasattr(self.ui, 'testScenario_CB') else "Unknown"
+                        f.write(f"=== HVPM Auto Test Detailed Results ===\n")
+                        f.write(f"Date: {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
+                        f.write(f"Test Scenario: {scenario_name}\n\n")
+                        
+                        if hasattr(self.ui, 'testResults_TE') and self.ui.testResults_TE:
+                            f.write("=== Test Log ===\n")
+                            f.write(self.ui.testResults_TE.toPlainText())
+                
+                self._log(f"📁 Detailed results exported to {filename}", "success")
+                QtWidgets.QMessageBox.information(self, "Export Complete", f"Test results exported to:\n{filename}")
+                
+            except Exception as e:
+                self._log(f"❌ Export failed: {e}", "error")
+                QtWidgets.QMessageBox.warning(self, "Export Error", f"Failed to export results:\n{e}")
 
     def _on_voltage_stabilized(self, voltage: float):
         """Handle voltage stabilization notification"""
@@ -678,6 +773,11 @@ class MainWindow(QtWidgets.QMainWindow):
         scenario_data = self.ui.testScenario_CB.currentData()
         scenario_name = self.ui.testScenario_CB.currentText()
         
+        # Show/hide custom script frame
+        if hasattr(self.ui, 'customScriptFrame') and self.ui.customScriptFrame:
+            is_custom = "Custom Script" in scenario_name
+            self.ui.customScriptFrame.setVisible(is_custom)
+        
         if scenario_data:
             self._log(f"📋 Test scenario selected: {scenario_name}", "info")
             
@@ -694,6 +794,11 @@ class MainWindow(QtWidgets.QMainWindow):
                 if hasattr(self.ui, 'testDuration_SB') and self.ui.testDuration_SB:
                     duration = 300 if "long" in scenario_data else 60
                     self.ui.testDuration_SB.setValue(duration)
+            elif scenario_data == "custom_script":
+                if hasattr(self.ui, 'testCycles_SB') and self.ui.testCycles_SB:
+                    self.ui.testCycles_SB.setValue(1)
+                if hasattr(self.ui, 'testDuration_SB') and self.ui.testDuration_SB:
+                    self.ui.testDuration_SB.setValue(30)
         else:
             self._log("⚠️ No scenario data found", "warn")
 

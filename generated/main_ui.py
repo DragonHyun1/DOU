@@ -340,25 +340,68 @@ class Ui_MainWindow(object):
         self.testScenarioLabel = QtWidgets.QLabel(parent=self.testConfigFrame)
         self.testScenarioLabel.setText("Test Scenario")
         self.testScenarioLabel.setMinimumSize(QtCore.QSize(0, 25))
-        self.testScenarioLabel.setStyleSheet("font-weight: bold; font-size: 12pt; color: #dcdcdc; padding: 2px;")
+        self.testScenarioLabel.setStyleSheet("font-weight: bold; font-size: 10pt; color: #dcdcdc; padding: 2px;")
         self.testScenarioLabel.setObjectName("testScenarioLabel")
         self.testConfigLayout.addWidget(self.testScenarioLabel)
         
         self.testScenario_CB = QtWidgets.QComboBox(parent=self.testConfigFrame)
         self.testScenario_CB.setMinimumSize(QtCore.QSize(0, 35))
-        self.testScenario_CB.setStyleSheet("QComboBox { font-size: 12pt; padding: 8px; min-height: 25px; }")
+        self.testScenario_CB.setStyleSheet("QComboBox { font-size: 10pt; padding: 6px; min-height: 25px; }")
         self.testScenario_CB.setObjectName("testScenario_CB")
         # Add default test scenarios
         self.testScenario_CB.addItem("Screen On/Off Test (5 cycles)", "screen_onoff")
         self.testScenario_CB.addItem("Screen On/Off Long Test (10 cycles)", "screen_onoff_long")
         self.testScenario_CB.addItem("CPU Stress Test (60s)", "cpu_stress")
         self.testScenario_CB.addItem("CPU Stress Test Long (5min)", "cpu_stress_long")
+        self.testScenario_CB.addItem("Custom Script", "custom_script")
         self.testConfigLayout.addWidget(self.testScenario_CB)
+        
+        # Custom Script Frame
+        self.customScriptFrame = QtWidgets.QFrame(parent=self.testConfigFrame)
+        self.customScriptFrame.setFrameShape(QtWidgets.QFrame.Shape.StyledPanel)
+        self.customScriptFrame.setFrameShadow(QtWidgets.QFrame.Shadow.Raised)
+        self.customScriptFrame.setStyleSheet("""
+            QFrame { 
+                background-color: #2a2a2a; 
+                border-radius: 5px; 
+                padding: 5px;
+            }
+        """)
+        self.customScriptFrame.setVisible(False)
+        self.customScriptFrame.setObjectName("customScriptFrame")
+        
+        self.customScriptLayout = QtWidgets.QVBoxLayout(self.customScriptFrame)
+        self.customScriptLayout.setSpacing(5)
+        self.customScriptLayout.setObjectName("customScriptLayout")
+        
+        self.customScriptLabel = QtWidgets.QLabel(parent=self.customScriptFrame)
+        self.customScriptLabel.setText("Custom ADB Commands (one per line):")
+        self.customScriptLabel.setStyleSheet("font-size: 9pt; color: #dcdcdc;")
+        self.customScriptLabel.setObjectName("customScriptLabel")
+        self.customScriptLayout.addWidget(self.customScriptLabel)
+        
+        self.customScript_TE = QtWidgets.QTextEdit(parent=self.customScriptFrame)
+        self.customScript_TE.setMaximumSize(QtCore.QSize(16777215, 80))
+        self.customScript_TE.setStyleSheet("""
+            QTextEdit { 
+                background-color: #1a1a1a; 
+                border: 1px solid #555; 
+                border-radius: 3px; 
+                font-family: 'Consolas', 'Courier New', monospace;
+                font-size: 9pt;
+                color: #dcdcdc;
+            }
+        """)
+        self.customScript_TE.setPlaceholderText("input keyevent KEYCODE_POWER\nsleep 5\ninput keyevent KEYCODE_WAKEUP")
+        self.customScript_TE.setObjectName("customScript_TE")
+        self.customScriptLayout.addWidget(self.customScript_TE)
+        
+        self.testConfigLayout.addWidget(self.customScriptFrame)
         
         self.voltageConfigLabel = QtWidgets.QLabel(parent=self.testConfigFrame)
         self.voltageConfigLabel.setText("Voltage Configuration")
         self.voltageConfigLabel.setMinimumSize(QtCore.QSize(0, 25))
-        self.voltageConfigLabel.setStyleSheet("font-weight: bold; font-size: 12pt; color: #dcdcdc; padding: 2px;")
+        self.voltageConfigLabel.setStyleSheet("font-weight: bold; font-size: 10pt; color: #dcdcdc; padding: 2px;")
         self.voltageConfigLabel.setObjectName("voltageConfigLabel")
         self.testConfigLayout.addWidget(self.voltageConfigLabel)
         
@@ -412,7 +455,7 @@ class Ui_MainWindow(object):
         self.testParametersLabel = QtWidgets.QLabel(parent=self.testConfigFrame)
         self.testParametersLabel.setText("Test Parameters")
         self.testParametersLabel.setMinimumSize(QtCore.QSize(0, 25))
-        self.testParametersLabel.setStyleSheet("font-weight: bold; font-size: 12pt; color: #dcdcdc; padding: 2px;")
+        self.testParametersLabel.setStyleSheet("font-weight: bold; font-size: 10pt; color: #dcdcdc; padding: 2px;")
         self.testParametersLabel.setObjectName("testParametersLabel")
         self.testConfigLayout.addWidget(self.testParametersLabel)
         

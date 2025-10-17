@@ -529,7 +529,7 @@
                </size>
               </property>
               <property name="styleSheet">
-               <string>font-weight: bold; font-size: 12pt; color: #dcdcdc; padding: 2px;</string>
+               <string>font-weight: bold; font-size: 10pt; color: #dcdcdc; padding: 2px;</string>
               </property>
              </widget>
             </item>
@@ -542,7 +542,7 @@
                </size>
               </property>
               <property name="styleSheet">
-               <string>QComboBox { font-size: 12pt; padding: 8px; min-height: 25px; }</string>
+               <string>QComboBox { font-size: 10pt; padding: 6px; min-height: 25px; }</string>
               </property>
               <item>
                <property name="text">
@@ -564,6 +564,71 @@
                 <string>CPU Stress Test Long (5min)</string>
                </property>
               </item>
+              <item>
+               <property name="text">
+                <string>Custom Script</string>
+               </property>
+              </item>
+             </widget>
+            </item>
+            <item>
+             <widget class="QFrame" name="customScriptFrame">
+              <property name="frameShape">
+               <enum>QFrame::StyledPanel</enum>
+              </property>
+              <property name="frameShadow">
+               <enum>QFrame::Raised</enum>
+              </property>
+              <property name="styleSheet">
+               <string>QFrame { 
+                 background-color: #2a2a2a; 
+                 border-radius: 5px; 
+                 padding: 5px;
+               }</string>
+              </property>
+              <property name="visible">
+               <bool>false</bool>
+              </property>
+              <layout class="QVBoxLayout" name="customScriptLayout">
+               <property name="spacing">
+                <number>5</number>
+               </property>
+               <item>
+                <widget class="QLabel" name="customScriptLabel">
+                 <property name="text">
+                  <string>Custom ADB Commands (one per line):</string>
+                 </property>
+                 <property name="styleSheet">
+                  <string>font-size: 9pt; color: #dcdcdc;</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QTextEdit" name="customScript_TE">
+                 <property name="maximumSize">
+                  <size>
+                   <width>16777215</width>
+                   <height>80</height>
+                  </size>
+                 </property>
+                 <property name="styleSheet">
+                  <string>QTextEdit { 
+                    background-color: #1a1a1a; 
+                    border: 1px solid #555; 
+                    border-radius: 3px; 
+                    font-family: 'Consolas', 'Courier New', monospace;
+                    font-size: 9pt;
+                    color: #dcdcdc;
+                  }</string>
+                 </property>
+                 <property name="placeholderText">
+                  <string>input keyevent KEYCODE_POWER
+sleep 5
+input keyevent KEYCODE_WAKEUP</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
              </widget>
             </item>
             <item>
@@ -578,7 +643,7 @@
                </size>
               </property>
               <property name="styleSheet">
-               <string>font-weight: bold; font-size: 12pt; color: #dcdcdc; padding: 2px;</string>
+               <string>font-weight: bold; font-size: 10pt; color: #dcdcdc; padding: 2px;</string>
               </property>
              </widget>
             </item>
@@ -672,7 +737,7 @@
                </size>
               </property>
               <property name="styleSheet">
-               <string>font-weight: bold; font-size: 12pt; color: #dcdcdc; padding: 2px;</string>
+               <string>font-weight: bold; font-size: 10pt; color: #dcdcdc; padding: 2px;</string>
               </property>
              </widget>
             </item>

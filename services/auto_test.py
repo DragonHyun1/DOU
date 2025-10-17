@@ -147,6 +147,71 @@ class CPUStressTest(TestScenario):
         finally:
             self.is_running = False
 
+class CustomScriptTest(TestScenario):
+    """Custom ADB script test scenario"""
+    
+    def __init__(self, script_commands: list, name: str = "Custom Script Test"):
+        super().__init__(name, f"Execute custom ADB commands: {len(script_commands)} commands")
+        self.script_commands = script_commands
+        
+    def execute(self, device: str, log_callback: Callable, progress_callback: Callable = None) -> bool:
+        """Execute custom script commands"""
+        self.is_running = True
+        
+        try:
+            log_callback(f"🔧 Starting {self.name} - {len(self.script_commands)} commands", "info")
+            
+            for i, command in enumerate(self.script_commands):
+                if not self.is_running:
+                    log_callback("⏹️ Custom script stopped by user", "warn")
+                    return False
+                
+                # Update progress
+                if progress_callback:
+                    progress = int((i / len(self.script_commands)) * 100)
+                    progress_callback(progress, f"Executing command {i + 1}/{len(self.script_commands)}")
+                
+                command = command.strip()
+                if not command or command.startswith('#'):
+                    continue  # Skip empty lines and comments
+                
+                log_callback(f"📱 Executing: {command}", "info")
+                
+                # Handle special commands
+                if command.startswith('sleep '):
+                    try:
+                        sleep_time = int(command.split()[1])
+                        for s in range(sleep_time):
+                            if not self.is_running:
+                                return False
+                            time.sleep(1)
+                            if progress_callback:
+                                sub_progress = int((s / sleep_time) * (100 / len(self.script_commands)))
+                                progress_callback(progress + sub_progress, f"Sleeping... {s+1}s/{sleep_time}s")
+                    except (ValueError, IndexError):
+                        log_callback(f"❌ Invalid sleep command: {command}", "error")
+                        continue
+                else:
+                    # Execute ADB command
+                    success = adb.execute_command(device, command)
+                    if not success:
+                        log_callback(f"❌ Command failed: {command}", "error")
+                        return False
+                
+                # Small delay between commands
+                time.sleep(0.5)
+            
+            if progress_callback:
+                progress_callback(100, "Custom script completed")
+            log_callback(f"✅ {self.name} completed successfully", "success")
+            return True
+            
+        except Exception as e:
+            log_callback(f"❌ Custom script failed: {e}", "error")
+            return False
+        finally:
+            self.is_running = False
+
 class AutoTestService(QObject):
     """Service for managing automated tests with HVPM monitoring"""
     
@@ -171,6 +236,7 @@ class AutoTestService(QObject):
             "screen_onoff_long": ScreenOnOffTest(cycles=10, on_duration=15, off_duration=10),
             "cpu_stress": CPUStressTest(duration=60),
             "cpu_stress_long": CPUStressTest(duration=300),
+            "custom_script": None,  # Will be created dynamically
         }
         
         # Test state
@@ -198,7 +264,7 @@ class AutoTestService(QObject):
         self.selected_device = device
         self.log_callback(f"📱 Target device set: {device}", "info")
     
-    def start_test(self, scenario_key: str) -> bool:
+    def start_test(self, scenario_key: str, custom_script: str = None) -> bool:
         """Start automated test"""
         if self.is_running:
             self.log_callback("⚠️ Test already running", "warn")
@@ -216,7 +282,22 @@ class AutoTestService(QObject):
             self.log_callback(f"❌ Unknown test scenario: {scenario_key}", "error")
             return False
         
-        self.current_test = self.scenarios[scenario_key]
+        # Handle custom script scenario
+        if scenario_key == "custom_script":
+            if not custom_script or not custom_script.strip():
+                self.log_callback("❌ Custom script is empty", "error")
+                return False
+            
+            # Parse script commands
+            commands = [cmd.strip() for cmd in custom_script.split('\n') if cmd.strip()]
+            if not commands:
+                self.log_callback("❌ No valid commands in custom script", "error")
+                return False
+            
+            self.current_test = CustomScriptTest(commands)
+        else:
+            self.current_test = self.scenarios[scenario_key]
+        
         self.is_running = True
         
         # Start test in separate thread
