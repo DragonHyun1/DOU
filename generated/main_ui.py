@@ -90,7 +90,7 @@ class Ui_MainWindow(object):
         self.graphGroupBox = QtWidgets.QGroupBox(parent=self.centralwidget)
         self.graphGroupBox.setTitle("Real-time Monitoring")
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Expanding)
-        sizePolicy.setHorizontalStretch(2)
+        sizePolicy.setHorizontalStretch(3)
         sizePolicy.setVerticalStretch(0)
         self.graphGroupBox.setSizePolicy(sizePolicy)
         self.graphGroupBox.setObjectName("graphGroupBox")
@@ -167,11 +167,11 @@ class Ui_MainWindow(object):
         self.controlGroupBox = QtWidgets.QGroupBox(parent=self.centralwidget)
         self.controlGroupBox.setTitle("Voltage Control")
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Preferred, QtWidgets.QSizePolicy.Policy.Preferred)
-        sizePolicy.setHorizontalStretch(1)
+        sizePolicy.setHorizontalStretch(2)
         sizePolicy.setVerticalStretch(1)
         self.controlGroupBox.setSizePolicy(sizePolicy)
-        self.controlGroupBox.setMinimumSize(QtCore.QSize(280, 200))
-        self.controlGroupBox.setMaximumSize(QtCore.QSize(350, 300))
+        self.controlGroupBox.setMinimumSize(QtCore.QSize(320, 220))
+        self.controlGroupBox.setMaximumSize(QtCore.QSize(400, 350))
         self.controlGroupBox.setObjectName("controlGroupBox")
         
         self.controlVerticalLayout = QtWidgets.QVBoxLayout(self.controlGroupBox)
@@ -197,7 +197,7 @@ class Ui_MainWindow(object):
         self.currentVoltageTitle = QtWidgets.QLabel(parent=self.currentVoltageFrame)
         self.currentVoltageTitle.setText("Current Voltage")
         self.currentVoltageTitle.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
-        self.currentVoltageTitle.setStyleSheet("font-weight: bold; font-size: 12pt; color: #dcdcdc;")
+        self.currentVoltageTitle.setStyleSheet("font-weight: bold; font-size: 11pt; color: #dcdcdc;")
         self.currentVoltageTitle.setObjectName("currentVoltageTitle")
         self.currentVoltageLayout.addWidget(self.currentVoltageTitle)
         
@@ -205,7 +205,7 @@ class Ui_MainWindow(object):
         self.hvpmVolt_LB.setText("__.__ V")
         self.hvpmVolt_LB.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
         self.hvpmVolt_LB.setStyleSheet("""
-            font-size: 18pt; 
+            font-size: 16pt; 
             font-weight: bold; 
             color: #4CAF50; 
             background-color: #2a2a2a; 
@@ -236,7 +236,7 @@ class Ui_MainWindow(object):
         self.setVoltageTitle = QtWidgets.QLabel(parent=self.voltageInputFrame)
         self.setVoltageTitle.setText("Set Target Voltage")
         self.setVoltageTitle.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
-        self.setVoltageTitle.setStyleSheet("font-weight: bold; font-size: 10pt; color: #dcdcdc;")
+        self.setVoltageTitle.setStyleSheet("font-weight: bold; font-size: 11pt; color: #dcdcdc;")
         self.setVoltageTitle.setObjectName("setVoltageTitle")
         self.voltageInputLayout.addWidget(self.setVoltageTitle)
         
@@ -245,8 +245,8 @@ class Ui_MainWindow(object):
         self.hvpmVolt_LE.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
         self.hvpmVolt_LE.setStyleSheet("""
             QLineEdit { 
-                font-size: 12pt; 
-                padding: 6px; 
+                font-size: 13pt; 
+                padding: 8px; 
                 border-radius: 5px; 
                 background-color: #2a2a2a; 
                 border: 2px solid #555;
@@ -309,11 +309,11 @@ class Ui_MainWindow(object):
         self.autoTestGroupBox = QtWidgets.QGroupBox(parent=self.centralwidget)
         self.autoTestGroupBox.setTitle("Auto Test")
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Preferred, QtWidgets.QSizePolicy.Policy.Expanding)
-        sizePolicy.setHorizontalStretch(1)
-        sizePolicy.setVerticalStretch(2)
+        sizePolicy.setHorizontalStretch(2)
+        sizePolicy.setVerticalStretch(3)
         self.autoTestGroupBox.setSizePolicy(sizePolicy)
-        self.autoTestGroupBox.setMinimumSize(QtCore.QSize(280, 300))
-        self.autoTestGroupBox.setMaximumSize(QtCore.QSize(350, 16777215))
+        self.autoTestGroupBox.setMinimumSize(QtCore.QSize(320, 400))
+        self.autoTestGroupBox.setMaximumSize(QtCore.QSize(450, 16777215))
         self.autoTestGroupBox.setObjectName("autoTestGroupBox")
         
         self.autoTestLayout = QtWidgets.QVBoxLayout(self.autoTestGroupBox)
@@ -338,18 +338,18 @@ class Ui_MainWindow(object):
         
         self.testScenarioLabel = QtWidgets.QLabel(parent=self.testConfigFrame)
         self.testScenarioLabel.setText("Test Scenario")
-        self.testScenarioLabel.setStyleSheet("font-weight: bold; font-size: 10pt; color: #dcdcdc;")
+        self.testScenarioLabel.setStyleSheet("font-weight: bold; font-size: 12pt; color: #dcdcdc;")
         self.testScenarioLabel.setObjectName("testScenarioLabel")
         self.testConfigLayout.addWidget(self.testScenarioLabel)
         
         self.testScenario_CB = QtWidgets.QComboBox(parent=self.testConfigFrame)
-        self.testScenario_CB.setStyleSheet("QComboBox { font-size: 10pt; }")
+        self.testScenario_CB.setStyleSheet("QComboBox { font-size: 11pt; padding: 5px; }")
         self.testScenario_CB.setObjectName("testScenario_CB")
         self.testConfigLayout.addWidget(self.testScenario_CB)
         
         self.voltageConfigLabel = QtWidgets.QLabel(parent=self.testConfigFrame)
         self.voltageConfigLabel.setText("Voltage Configuration")
-        self.voltageConfigLabel.setStyleSheet("font-weight: bold; font-size: 10pt; color: #dcdcdc;")
+        self.voltageConfigLabel.setStyleSheet("font-weight: bold; font-size: 12pt; color: #dcdcdc;")
         self.voltageConfigLabel.setObjectName("voltageConfigLabel")
         self.testConfigLayout.addWidget(self.voltageConfigLabel)
         
