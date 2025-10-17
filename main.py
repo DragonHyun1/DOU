@@ -59,6 +59,9 @@ class MainWindow(QtWidgets.QMainWindow):
         
         # Status bar 메시지
         self.ui.statusbar.showMessage("Ready - Connect devices to start monitoring and testing", 5000)
+        
+        # Debug: Check UI elements
+        self._check_ui_elements()
 
     def setup_graphs(self):
         """Setup enhanced graph widgets"""
@@ -100,21 +103,30 @@ class MainWindow(QtWidgets.QMainWindow):
     def setup_connections(self):
         """Setup signal connections"""
         # Button connections
-        self.ui.port_PB.clicked.connect(self.refresh_connections)
-        self.ui.readVolt_PB.clicked.connect(self.handle_read_voltage)
-        self.ui.setVolt_PB.clicked.connect(self.handle_set_voltage)
-        self.ui.startGraph_PB.clicked.connect(self.start_graph)
-        self.ui.stopGraph_PB.clicked.connect(self.stop_graph)
+        if hasattr(self.ui, 'port_PB') and self.ui.port_PB:
+            self.ui.port_PB.clicked.connect(self.refresh_connections)
+        if hasattr(self.ui, 'readVolt_PB') and self.ui.readVolt_PB:
+            self.ui.readVolt_PB.clicked.connect(self.handle_read_voltage)
+        if hasattr(self.ui, 'setVolt_PB') and self.ui.setVolt_PB:
+            self.ui.setVolt_PB.clicked.connect(self.handle_set_voltage)
+        if hasattr(self.ui, 'startGraph_PB') and self.ui.startGraph_PB:
+            self.ui.startGraph_PB.clicked.connect(self.start_graph)
+        if hasattr(self.ui, 'stopGraph_PB') and self.ui.stopGraph_PB:
+            self.ui.stopGraph_PB.clicked.connect(self.stop_graph)
         
-        # Auto test connections
-        self.ui.startAutoTest_PB.clicked.connect(self.start_auto_test)
-        self.ui.stopAutoTest_PB.clicked.connect(self.stop_auto_test)
+        # Auto test connections (check if they exist)
+        if hasattr(self.ui, 'startAutoTest_PB') and self.ui.startAutoTest_PB:
+            self.ui.startAutoTest_PB.clicked.connect(self.start_auto_test)
+        if hasattr(self.ui, 'stopAutoTest_PB') and self.ui.stopAutoTest_PB:
+            self.ui.stopAutoTest_PB.clicked.connect(self.stop_auto_test)
         
         # Combo box connections
-        self.ui.comport_CB.currentIndexChanged.connect(self._on_device_selected)
+        if hasattr(self.ui, 'comport_CB') and self.ui.comport_CB:
+            self.ui.comport_CB.currentIndexChanged.connect(self._on_device_selected)
         
         # Enter key for voltage input
-        self.ui.hvpmVolt_LE.returnPressed.connect(self.handle_set_voltage)
+        if hasattr(self.ui, 'hvpmVolt_LE') and self.ui.hvpmVolt_LE:
+            self.ui.hvpmVolt_LE.returnPressed.connect(self.handle_set_voltage)
         
         # Auto test service signals
         self.auto_test_service.progress_updated.connect(self._on_auto_test_progress)
@@ -159,6 +171,11 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def setup_auto_test_ui(self):
         """Setup auto test UI components"""
+        # Check if auto test UI elements exist
+        if not hasattr(self.ui, 'testScenario_CB') or not self.ui.testScenario_CB:
+            self._log("⚠️ Auto test UI elements not found - auto test features disabled", "warn")
+            return
+            
         # Populate test scenarios
         scenarios = self.auto_test_service.get_available_scenarios()
         self.ui.testScenario_CB.clear()
@@ -178,9 +195,11 @@ class MainWindow(QtWidgets.QMainWindow):
         if self.ui.testScenario_CB.count() > 0:
             self.ui.testScenario_CB.setCurrentIndex(0)
         
-        # Connect voltage spinbox changes
-        self.ui.stabilizationVoltage_SB.valueChanged.connect(self._on_voltage_config_changed)
-        self.ui.testVoltage_SB.valueChanged.connect(self._on_voltage_config_changed)
+        # Connect voltage spinbox changes (check if they exist)
+        if hasattr(self.ui, 'stabilizationVoltage_SB') and self.ui.stabilizationVoltage_SB:
+            self.ui.stabilizationVoltage_SB.valueChanged.connect(self._on_voltage_config_changed)
+        if hasattr(self.ui, 'testVoltage_SB') and self.ui.testVoltage_SB:
+            self.ui.testVoltage_SB.valueChanged.connect(self._on_voltage_config_changed)
         
         # Initial voltage configuration
         self._on_voltage_config_changed()
@@ -221,24 +240,31 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def _update_auto_test_buttons(self):
         """Update auto test button states"""
+        # Check if auto test UI elements exist
+        if not hasattr(self.ui, 'startAutoTest_PB') or not hasattr(self.ui, 'stopAutoTest_PB'):
+            return
+            
         hvpm_connected = self.hvpm_service.is_connected()
         adb_connected = self.selected_device and self.selected_device != "No devices found"
         test_running = self.auto_test_service.is_running
         
         can_start = hvpm_connected and adb_connected and not test_running
         
-        self.ui.startAutoTest_PB.setEnabled(can_start)
-        self.ui.stopAutoTest_PB.setEnabled(test_running)
+        if self.ui.startAutoTest_PB:
+            self.ui.startAutoTest_PB.setEnabled(can_start)
+        if self.ui.stopAutoTest_PB:
+            self.ui.stopAutoTest_PB.setEnabled(test_running)
         
         # Update tooltips based on status
-        if not hvpm_connected:
-            self.ui.startAutoTest_PB.setToolTip("HVPM device must be connected")
-        elif not adb_connected:
-            self.ui.startAutoTest_PB.setToolTip("ADB device must be connected")
-        elif test_running:
-            self.ui.startAutoTest_PB.setToolTip("Test is currently running")
-        else:
-            self.ui.startAutoTest_PB.setToolTip("Start automated test with voltage control")
+        if self.ui.startAutoTest_PB:
+            if not hvpm_connected:
+                self.ui.startAutoTest_PB.setToolTip("HVPM device must be connected")
+            elif not adb_connected:
+                self.ui.startAutoTest_PB.setToolTip("ADB device must be connected")
+            elif test_running:
+                self.ui.startAutoTest_PB.setToolTip("Test is currently running")
+            else:
+                self.ui.startAutoTest_PB.setToolTip("Start automated test with voltage control")
 
     # ---------- 로그 ----------
     def _log(self, msg: str, level: str = "info"):
@@ -503,6 +529,12 @@ class MainWindow(QtWidgets.QMainWindow):
     # ---------- Auto Test ----------
     def _on_voltage_config_changed(self):
         """Handle voltage configuration changes"""
+        # Check if voltage spinboxes exist
+        if not (hasattr(self.ui, 'stabilizationVoltage_SB') and hasattr(self.ui, 'testVoltage_SB')):
+            return
+        if not (self.ui.stabilizationVoltage_SB and self.ui.testVoltage_SB):
+            return
+            
         stabilization_voltage = self.ui.stabilizationVoltage_SB.value()
         test_voltage = self.ui.testVoltage_SB.value()
         
@@ -573,24 +605,47 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def _on_auto_test_progress(self, progress: int, status: str):
         """Handle auto test progress updates"""
-        self.ui.testProgress_PB.setValue(progress)
-        self.ui.testStatus_LB.setText(status)
+        if hasattr(self.ui, 'testProgress_PB') and self.ui.testProgress_PB:
+            self.ui.testProgress_PB.setValue(progress)
+        if hasattr(self.ui, 'testStatus_LB') and self.ui.testStatus_LB:
+            self.ui.testStatus_LB.setText(status)
 
     def _on_auto_test_completed(self, success: bool, message: str):
         """Handle auto test completion"""
         self._update_auto_test_buttons()
         
         if success:
-            self.ui.testProgress_PB.setValue(100)
-            self.ui.testStatus_LB.setText("Test completed successfully")
+            if hasattr(self.ui, 'testProgress_PB') and self.ui.testProgress_PB:
+                self.ui.testProgress_PB.setValue(100)
+            if hasattr(self.ui, 'testStatus_LB') and self.ui.testStatus_LB:
+                self.ui.testStatus_LB.setText("Test completed successfully")
             QtWidgets.QMessageBox.information(self, "Test Complete", f"Automated test completed successfully!\n\n{message}")
         else:
-            self.ui.testStatus_LB.setText("Test failed")
+            if hasattr(self.ui, 'testStatus_LB') and self.ui.testStatus_LB:
+                self.ui.testStatus_LB.setText("Test failed")
             QtWidgets.QMessageBox.warning(self, "Test Failed", f"Automated test failed:\n\n{message}")
 
     def _on_voltage_stabilized(self, voltage: float):
         """Handle voltage stabilization notification"""
         self._log(f"✅ Voltage stabilized at {voltage:.2f}V", "success")
+
+    def _check_ui_elements(self):
+        """Debug function to check UI elements"""
+        ui_elements = [
+            'startAutoTest_PB', 'stopAutoTest_PB', 'testScenario_CB',
+            'stabilizationVoltage_SB', 'testVoltage_SB', 'testProgress_PB', 'testStatus_LB'
+        ]
+        
+        missing_elements = []
+        for element in ui_elements:
+            if not hasattr(self.ui, element) or getattr(self.ui, element) is None:
+                missing_elements.append(element)
+        
+        if missing_elements:
+            self._log(f"⚠️ Missing UI elements: {', '.join(missing_elements)}", "warn")
+            self._log("Auto test features may be limited", "warn")
+        else:
+            self._log("✅ All auto test UI elements loaded successfully", "info")
 
     # ---------- Menu Actions ----------
     def export_data(self):
