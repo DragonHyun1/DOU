@@ -1,4 +1,4 @@
-# Form implementation generated from reading ui file 'ui/main_ui_with_autotest.ui'
+# Form implementation generated from reading ui file 'ui/main_ui.ui'
 #
 # Created by: PyQt6 UI code generator 6.4.2
 #
@@ -81,12 +81,12 @@ class Ui_MainWindow(object):
         
         self.mainVerticalLayout.addWidget(self.connectionGroupBox)
         
-        # Main content layout (horizontal)
+        # Main content layout (horizontal - 3 equal sections)
         self.mainContentLayout = QtWidgets.QHBoxLayout()
         self.mainContentLayout.setSpacing(15)
         self.mainContentLayout.setObjectName("mainContentLayout")
         
-        # Graph Group Box
+        # Real-time Monitoring - 1/3
         self.graphGroupBox = QtWidgets.QGroupBox(parent=self.centralwidget)
         self.graphGroupBox.setTitle("Real-time Monitoring")
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Expanding)
@@ -104,14 +104,15 @@ class Ui_MainWindow(object):
         self.graphControlLayout.setObjectName("graphControlLayout")
         
         self.startGraph_PB = QtWidgets.QPushButton(parent=self.graphGroupBox)
-        self.startGraph_PB.setText("▶️ Start Monitoring")
-        self.startGraph_PB.setMinimumSize(QtCore.QSize(140, 35))
+        self.startGraph_PB.setText("▶️ Start")
+        self.startGraph_PB.setMinimumSize(QtCore.QSize(80, 35))
         self.startGraph_PB.setStyleSheet("""
             QPushButton { 
                 background-color: #4CAF50; 
                 color: white; 
                 font-weight: bold; 
                 border-radius: 5px;
+                font-size: 11pt;
             }
             QPushButton:hover { 
                 background-color: #45a049; 
@@ -121,14 +122,15 @@ class Ui_MainWindow(object):
         self.graphControlLayout.addWidget(self.startGraph_PB)
         
         self.stopGraph_PB = QtWidgets.QPushButton(parent=self.graphGroupBox)
-        self.stopGraph_PB.setText("⏹️ Stop Monitoring")
-        self.stopGraph_PB.setMinimumSize(QtCore.QSize(140, 35))
+        self.stopGraph_PB.setText("⏹️ Stop")
+        self.stopGraph_PB.setMinimumSize(QtCore.QSize(80, 35))
         self.stopGraph_PB.setStyleSheet("""
             QPushButton { 
                 background-color: #f44336; 
                 color: white; 
                 font-weight: bold; 
                 border-radius: 5px;
+                font-size: 11pt;
             }
             QPushButton:hover { 
                 background-color: #da190b; 
@@ -146,7 +148,6 @@ class Ui_MainWindow(object):
         self.graphContainer = QtWidgets.QWidget(parent=self.graphGroupBox)
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Expanding)
         self.graphContainer.setSizePolicy(sizePolicy)
-        self.graphContainer.setMinimumSize(QtCore.QSize(400, 250))
         self.graphContainer.setObjectName("graphContainer")
         
         self.graphLayout = QtWidgets.QVBoxLayout(self.graphContainer)
@@ -158,20 +159,13 @@ class Ui_MainWindow(object):
         
         self.mainContentLayout.addWidget(self.graphGroupBox)
         
-        # Right controls layout
-        self.rightControlsLayout = QtWidgets.QVBoxLayout()
-        self.rightControlsLayout.setSpacing(15)
-        self.rightControlsLayout.setObjectName("rightControlsLayout")
-        
-        # Voltage Control Group Box
+        # Voltage Control - 1/3
         self.controlGroupBox = QtWidgets.QGroupBox(parent=self.centralwidget)
         self.controlGroupBox.setTitle("Voltage Control")
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Preferred, QtWidgets.QSizePolicy.Policy.Preferred)
+        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Expanding)
         sizePolicy.setHorizontalStretch(1)
-        sizePolicy.setVerticalStretch(1)
+        sizePolicy.setVerticalStretch(0)
         self.controlGroupBox.setSizePolicy(sizePolicy)
-        self.controlGroupBox.setMinimumSize(QtCore.QSize(350, 300))
-        self.controlGroupBox.setMaximumSize(QtCore.QSize(500, 400))
         self.controlGroupBox.setObjectName("controlGroupBox")
         
         self.controlVerticalLayout = QtWidgets.QVBoxLayout(self.controlGroupBox)
@@ -197,7 +191,7 @@ class Ui_MainWindow(object):
         self.currentVoltageTitle = QtWidgets.QLabel(parent=self.currentVoltageFrame)
         self.currentVoltageTitle.setText("Current Voltage")
         self.currentVoltageTitle.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
-        self.currentVoltageTitle.setStyleSheet("font-weight: bold; font-size: 11pt; color: #dcdcdc;")
+        self.currentVoltageTitle.setStyleSheet("font-weight: bold; font-size: 12pt; color: #dcdcdc;")
         self.currentVoltageTitle.setObjectName("currentVoltageTitle")
         self.currentVoltageLayout.addWidget(self.currentVoltageTitle)
         
@@ -205,12 +199,12 @@ class Ui_MainWindow(object):
         self.hvpmVolt_LB.setText("__.__ V")
         self.hvpmVolt_LB.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
         self.hvpmVolt_LB.setStyleSheet("""
-            font-size: 16pt; 
+            font-size: 18pt; 
             font-weight: bold; 
             color: #4CAF50; 
             background-color: #2a2a2a; 
             border-radius: 5px; 
-            padding: 8px;
+            padding: 10px;
         """)
         self.hvpmVolt_LB.setObjectName("hvpmVolt_LB")
         self.currentVoltageLayout.addWidget(self.hvpmVolt_LB)
@@ -236,7 +230,7 @@ class Ui_MainWindow(object):
         self.setVoltageTitle = QtWidgets.QLabel(parent=self.voltageInputFrame)
         self.setVoltageTitle.setText("Set Target Voltage")
         self.setVoltageTitle.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
-        self.setVoltageTitle.setStyleSheet("font-weight: bold; font-size: 11pt; color: #dcdcdc;")
+        self.setVoltageTitle.setStyleSheet("font-weight: bold; font-size: 12pt; color: #dcdcdc;")
         self.setVoltageTitle.setObjectName("setVoltageTitle")
         self.voltageInputLayout.addWidget(self.setVoltageTitle)
         
@@ -245,8 +239,8 @@ class Ui_MainWindow(object):
         self.hvpmVolt_LE.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
         self.hvpmVolt_LE.setStyleSheet("""
             QLineEdit { 
-                font-size: 13pt; 
-                padding: 8px; 
+                font-size: 14pt; 
+                padding: 10px; 
                 border-radius: 5px; 
                 background-color: #2a2a2a; 
                 border: 2px solid #555;
@@ -262,19 +256,19 @@ class Ui_MainWindow(object):
         
         # Button layout
         self.buttonLayout = QtWidgets.QHBoxLayout()
-        self.buttonLayout.setSpacing(5)
+        self.buttonLayout.setSpacing(10)
         self.buttonLayout.setObjectName("buttonLayout")
         
         self.readVolt_PB = QtWidgets.QPushButton(parent=self.controlGroupBox)
         self.readVolt_PB.setText("📊 Read")
-        self.readVolt_PB.setMinimumSize(QtCore.QSize(0, 35))
+        self.readVolt_PB.setMinimumSize(QtCore.QSize(0, 40))
         self.readVolt_PB.setStyleSheet("""
             QPushButton { 
                 background-color: #2196F3; 
                 color: white; 
                 font-weight: bold; 
                 border-radius: 5px; 
-                font-size: 10pt;
+                font-size: 12pt;
             }
             QPushButton:hover { 
                 background-color: #1976D2; 
@@ -285,14 +279,14 @@ class Ui_MainWindow(object):
         
         self.setVolt_PB = QtWidgets.QPushButton(parent=self.controlGroupBox)
         self.setVolt_PB.setText("⚡ Set")
-        self.setVolt_PB.setMinimumSize(QtCore.QSize(0, 35))
+        self.setVolt_PB.setMinimumSize(QtCore.QSize(0, 40))
         self.setVolt_PB.setStyleSheet("""
             QPushButton { 
                 background-color: #FF9800; 
                 color: white; 
                 font-weight: bold; 
                 border-radius: 5px; 
-                font-size: 10pt;
+                font-size: 12pt;
             }
             QPushButton:hover { 
                 background-color: #F57C00; 
@@ -303,21 +297,22 @@ class Ui_MainWindow(object):
         
         self.controlVerticalLayout.addLayout(self.buttonLayout)
         
-        self.rightControlsLayout.addWidget(self.controlGroupBox)
+        controlSpacer = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Expanding)
+        self.controlVerticalLayout.addItem(controlSpacer)
         
-        # Auto Test Group Box
+        self.mainContentLayout.addWidget(self.controlGroupBox)
+        
+        # Auto Test - 1/3
         self.autoTestGroupBox = QtWidgets.QGroupBox(parent=self.centralwidget)
         self.autoTestGroupBox.setTitle("Auto Test")
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Preferred, QtWidgets.QSizePolicy.Policy.Expanding)
+        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Expanding)
         sizePolicy.setHorizontalStretch(1)
-        sizePolicy.setVerticalStretch(1)
+        sizePolicy.setVerticalStretch(0)
         self.autoTestGroupBox.setSizePolicy(sizePolicy)
-        self.autoTestGroupBox.setMinimumSize(QtCore.QSize(350, 500))
-        self.autoTestGroupBox.setMaximumSize(QtCore.QSize(500, 16777215))
         self.autoTestGroupBox.setObjectName("autoTestGroupBox")
         
         self.autoTestLayout = QtWidgets.QVBoxLayout(self.autoTestGroupBox)
-        self.autoTestLayout.setSpacing(10)
+        self.autoTestLayout.setSpacing(15)
         self.autoTestLayout.setObjectName("autoTestLayout")
         
         # Test config frame
@@ -343,7 +338,7 @@ class Ui_MainWindow(object):
         self.testConfigLayout.addWidget(self.testScenarioLabel)
         
         self.testScenario_CB = QtWidgets.QComboBox(parent=self.testConfigFrame)
-        self.testScenario_CB.setStyleSheet("QComboBox { font-size: 11pt; padding: 5px; }")
+        self.testScenario_CB.setStyleSheet("QComboBox { font-size: 12pt; padding: 8px; }")
         self.testScenario_CB.setObjectName("testScenario_CB")
         self.testConfigLayout.addWidget(self.testScenario_CB)
         
@@ -359,7 +354,7 @@ class Ui_MainWindow(object):
         
         self.stabilizationVoltageLabel = QtWidgets.QLabel(parent=self.testConfigFrame)
         self.stabilizationVoltageLabel.setText("Stabilization:")
-        self.stabilizationVoltageLabel.setStyleSheet("font-size: 9pt;")
+        self.stabilizationVoltageLabel.setStyleSheet("font-size: 11pt;")
         self.stabilizationVoltageLabel.setObjectName("stabilizationVoltageLabel")
         self.stabilizationVoltageLayout.addWidget(self.stabilizationVoltageLabel)
         
@@ -370,7 +365,7 @@ class Ui_MainWindow(object):
         self.stabilizationVoltage_SB.setMaximum(5.5)
         self.stabilizationVoltage_SB.setSingleStep(0.1)
         self.stabilizationVoltage_SB.setValue(4.8)
-        self.stabilizationVoltage_SB.setStyleSheet("QDoubleSpinBox { font-size: 10pt; }")
+        self.stabilizationVoltage_SB.setStyleSheet("QDoubleSpinBox { font-size: 11pt; padding: 6px; }")
         self.stabilizationVoltage_SB.setObjectName("stabilizationVoltage_SB")
         self.stabilizationVoltageLayout.addWidget(self.stabilizationVoltage_SB)
         
@@ -382,7 +377,7 @@ class Ui_MainWindow(object):
         
         self.testVoltageLabel = QtWidgets.QLabel(parent=self.testConfigFrame)
         self.testVoltageLabel.setText("Test:")
-        self.testVoltageLabel.setStyleSheet("font-size: 9pt;")
+        self.testVoltageLabel.setStyleSheet("font-size: 11pt;")
         self.testVoltageLabel.setObjectName("testVoltageLabel")
         self.testVoltageLayout.addWidget(self.testVoltageLabel)
         
@@ -393,7 +388,7 @@ class Ui_MainWindow(object):
         self.testVoltage_SB.setMaximum(5.5)
         self.testVoltage_SB.setSingleStep(0.1)
         self.testVoltage_SB.setValue(4.0)
-        self.testVoltage_SB.setStyleSheet("QDoubleSpinBox { font-size: 10pt; }")
+        self.testVoltage_SB.setStyleSheet("QDoubleSpinBox { font-size: 11pt; padding: 6px; }")
         self.testVoltage_SB.setObjectName("testVoltage_SB")
         self.testVoltageLayout.addWidget(self.testVoltage_SB)
         
@@ -419,7 +414,7 @@ class Ui_MainWindow(object):
         
         self.testProgressLabel = QtWidgets.QLabel(parent=self.testProgressFrame)
         self.testProgressLabel.setText("Test Progress")
-        self.testProgressLabel.setStyleSheet("font-weight: bold; font-size: 10pt; color: #dcdcdc;")
+        self.testProgressLabel.setStyleSheet("font-weight: bold; font-size: 12pt; color: #dcdcdc;")
         self.testProgressLabel.setObjectName("testProgressLabel")
         self.testProgressLayout.addWidget(self.testProgressLabel)
         
@@ -431,6 +426,7 @@ class Ui_MainWindow(object):
                 border-radius: 5px;
                 text-align: center;
                 font-weight: bold;
+                font-size: 11pt;
                 background-color: #2a2a2a;
             }
             QProgressBar::chunk {
@@ -444,7 +440,7 @@ class Ui_MainWindow(object):
         self.testStatus_LB = QtWidgets.QLabel(parent=self.testProgressFrame)
         self.testStatus_LB.setText("Ready")
         self.testStatus_LB.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
-        self.testStatus_LB.setStyleSheet("font-size: 9pt; color: #aaa;")
+        self.testStatus_LB.setStyleSheet("font-size: 11pt; color: #aaa;")
         self.testStatus_LB.setObjectName("testStatus_LB")
         self.testProgressLayout.addWidget(self.testStatus_LB)
         
@@ -452,19 +448,19 @@ class Ui_MainWindow(object):
         
         # Test control layout
         self.testControlLayout = QtWidgets.QHBoxLayout()
-        self.testControlLayout.setSpacing(5)
+        self.testControlLayout.setSpacing(10)
         self.testControlLayout.setObjectName("testControlLayout")
         
         self.startAutoTest_PB = QtWidgets.QPushButton(parent=self.autoTestGroupBox)
         self.startAutoTest_PB.setText("🚀 Start Test")
-        self.startAutoTest_PB.setMinimumSize(QtCore.QSize(0, 40))
+        self.startAutoTest_PB.setMinimumSize(QtCore.QSize(0, 45))
         self.startAutoTest_PB.setStyleSheet("""
             QPushButton { 
                 background-color: #9C27B0; 
                 color: white; 
                 font-weight: bold; 
                 border-radius: 5px; 
-                font-size: 11pt;
+                font-size: 12pt;
             }
             QPushButton:hover { 
                 background-color: #7B1FA2; 
@@ -479,7 +475,7 @@ class Ui_MainWindow(object):
         
         self.stopAutoTest_PB = QtWidgets.QPushButton(parent=self.autoTestGroupBox)
         self.stopAutoTest_PB.setText("⏹️ Stop")
-        self.stopAutoTest_PB.setMinimumSize(QtCore.QSize(0, 40))
+        self.stopAutoTest_PB.setMinimumSize(QtCore.QSize(0, 45))
         self.stopAutoTest_PB.setEnabled(False)
         self.stopAutoTest_PB.setStyleSheet("""
             QPushButton { 
@@ -487,7 +483,7 @@ class Ui_MainWindow(object):
                 color: white; 
                 font-weight: bold; 
                 border-radius: 5px; 
-                font-size: 11pt;
+                font-size: 12pt;
             }
             QPushButton:hover { 
                 background-color: #da190b; 
@@ -505,17 +501,15 @@ class Ui_MainWindow(object):
         autoTestSpacer = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Expanding)
         self.autoTestLayout.addItem(autoTestSpacer)
         
-        self.rightControlsLayout.addWidget(self.autoTestGroupBox)
-        
-        self.mainContentLayout.addLayout(self.rightControlsLayout)
+        self.mainContentLayout.addWidget(self.autoTestGroupBox)
         
         self.mainVerticalLayout.addLayout(self.mainContentLayout)
         
         # Log Group Box
         self.logGroupBox = QtWidgets.QGroupBox(parent=self.centralwidget)
         self.logGroupBox.setTitle("System Log")
-        self.logGroupBox.setMinimumSize(QtCore.QSize(0, 180))
-        self.logGroupBox.setMaximumSize(QtCore.QSize(16777215, 220))
+        self.logGroupBox.setMinimumSize(QtCore.QSize(0, 150))
+        self.logGroupBox.setMaximumSize(QtCore.QSize(16777215, 200))
         self.logGroupBox.setObjectName("logGroupBox")
         
         self.logLayout = QtWidgets.QVBoxLayout(self.logGroupBox)
