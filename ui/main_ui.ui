@@ -151,11 +151,14 @@
       <property name="spacing">
        <number>15</number>
       </property>
-      <!-- Real-time Monitoring - Balanced -->
+      <!-- Real-time Monitoring - Hidden for automation focus -->
       <item>
        <widget class="QGroupBox" name="graphGroupBox">
         <property name="title">
          <string>Real-time Monitoring</string>
+        </property>
+        <property name="visible">
+         <bool>false</bool>
         </property>
         <property name="sizePolicy">
          <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
@@ -270,78 +273,169 @@
         </layout>
        </widget>
       </item>
-      <!-- Voltage Control - Reduced size -->
+      <!-- HVPM Control & Monitoring -->
       <item>
        <widget class="QGroupBox" name="controlGroupBox">
         <property name="title">
-         <string>Voltage Control</string>
+         <string>HVPM Control & Monitoring</string>
         </property>
         <property name="sizePolicy">
-         <sizepolicy hsizetype="Fixed" vsizetype="Expanding">
-          <horstretch>0</horstretch>
+         <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+          <horstretch>2</horstretch>
           <verstretch>0</verstretch>
          </sizepolicy>
         </property>
         <property name="minimumSize">
          <size>
-          <width>300</width>
+          <width>450</width>
           <height>0</height>
-         </size>
-        </property>
-        <property name="maximumSize">
-         <size>
-          <width>300</width>
-          <height>16777215</height>
          </size>
         </property>
         <layout class="QVBoxLayout" name="controlVerticalLayout">
          <property name="spacing">
-          <number>15</number>
+          <number>12</number>
          </property>
          <item>
-          <widget class="QFrame" name="currentVoltageFrame">
-           <property name="frameShape">
-            <enum>QFrame::StyledPanel</enum>
+          <layout class="QHBoxLayout" name="monitoringLayout">
+           <property name="spacing">
+            <number>10</number>
            </property>
-           <property name="frameShadow">
-            <enum>QFrame::Raised</enum>
-           </property>
-           <property name="styleSheet">
-            <string>QFrame { 
-              background-color: #3a3a3a; 
-              border-radius: 8px; 
-              padding: 10px;
-            }</string>
-           </property>
-           <layout class="QVBoxLayout" name="currentVoltageLayout">
-            <item>
-             <widget class="QLabel" name="currentVoltageTitle">
-              <property name="text">
-               <string>Current Voltage</string>
-              </property>
-              <property name="alignment">
-               <set>Qt::AlignCenter</set>
-              </property>
-              <property name="styleSheet">
-               <string>font-weight: bold; font-size: 12pt; color: #dcdcdc;</string>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QLabel" name="hvpmVolt_LB">
-              <property name="text">
-               <string>__.__ V</string>
-              </property>
-              <property name="alignment">
-               <set>Qt::AlignCenter</set>
-              </property>
-              <property name="styleSheet">
-               <string>font-size: 18pt; font-weight: bold; color: #4CAF50; background-color: #2a2a2a; border-radius: 5px; padding: 10px;</string>
-              </property>
-             </widget>
-            </item>
-           </layout>
-          </widget>
+           <item>
+            <widget class="QFrame" name="currentVoltageFrame">
+             <property name="frameShape">
+              <enum>QFrame::StyledPanel</enum>
+             </property>
+             <property name="frameShadow">
+              <enum>QFrame::Raised</enum>
+             </property>
+             <property name="styleSheet">
+              <string>QFrame { 
+                background-color: #3a3a3a; 
+                border-radius: 8px; 
+                padding: 10px;
+              }</string>
+             </property>
+             <layout class="QVBoxLayout" name="currentVoltageLayout">
+              <item>
+               <widget class="QLabel" name="currentVoltageTitle">
+                <property name="text">
+                 <string>Voltage</string>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignCenter</set>
+                </property>
+                <property name="styleSheet">
+                 <string>font-weight: bold; font-size: 11pt; color: #dcdcdc;</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QLabel" name="hvpmVolt_LB">
+                <property name="text">
+                 <string>__.__ V</string>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignCenter</set>
+                </property>
+                <property name="styleSheet">
+                 <string>font-size: 16pt; font-weight: bold; color: #4CAF50; background-color: #2a2a2a; border-radius: 5px; padding: 8px;</string>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </widget>
+           </item>
+           <item>
+            <widget class="QFrame" name="currentCurrentFrame">
+             <property name="frameShape">
+              <enum>QFrame::StyledPanel</enum>
+             </property>
+             <property name="frameShadow">
+              <enum>QFrame::Raised</enum>
+             </property>
+             <property name="styleSheet">
+              <string>QFrame { 
+                background-color: #3a3a3a; 
+                border-radius: 8px; 
+                padding: 10px;
+              }</string>
+             </property>
+             <layout class="QVBoxLayout" name="currentCurrentLayout">
+              <item>
+               <widget class="QLabel" name="currentCurrentTitle">
+                <property name="text">
+                 <string>Current</string>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignCenter</set>
+                </property>
+                <property name="styleSheet">
+                 <string>font-weight: bold; font-size: 11pt; color: #dcdcdc;</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QLabel" name="hvpmCurrent_LB">
+                <property name="text">
+                 <string>__.__ A</string>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignCenter</set>
+                </property>
+                <property name="styleSheet">
+                 <string>font-size: 16pt; font-weight: bold; color: #FF9800; background-color: #2a2a2a; border-radius: 5px; padding: 8px;</string>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </widget>
+           </item>
+           <item>
+            <widget class="QFrame" name="powerFrame">
+             <property name="frameShape">
+              <enum>QFrame::StyledPanel</enum>
+             </property>
+             <property name="frameShadow">
+              <enum>QFrame::Raised</enum>
+             </property>
+             <property name="styleSheet">
+              <string>QFrame { 
+                background-color: #3a3a3a; 
+                border-radius: 8px; 
+                padding: 10px;
+              }</string>
+             </property>
+             <layout class="QVBoxLayout" name="powerLayout">
+              <item>
+               <widget class="QLabel" name="powerTitle">
+                <property name="text">
+                 <string>Power</string>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignCenter</set>
+                </property>
+                <property name="styleSheet">
+                 <string>font-weight: bold; font-size: 11pt; color: #dcdcdc;</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QLabel" name="hvpmPower_LB">
+                <property name="text">
+                 <string>__.__ W</string>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignCenter</set>
+                </property>
+                <property name="styleSheet">
+                 <string>font-size: 16pt; font-weight: bold; color: #E91E63; background-color: #2a2a2a; border-radius: 5px; padding: 8px;</string>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </widget>
+           </item>
+          </layout>
          </item>
          <item>
           <widget class="QFrame" name="voltageInputFrame">
@@ -400,17 +494,17 @@
          <item>
           <layout class="QHBoxLayout" name="buttonLayout">
            <property name="spacing">
-            <number>10</number>
+            <number>8</number>
            </property>
            <item>
-            <widget class="QPushButton" name="readVolt_PB">
+            <widget class="QPushButton" name="readVoltCurrent_PB">
              <property name="text">
-              <string>📊 Read</string>
+              <string>📊 Read V&amp;I</string>
              </property>
              <property name="minimumSize">
               <size>
                <width>0</width>
-               <height>40</height>
+               <height>35</height>
               </size>
              </property>
              <property name="styleSheet">
@@ -419,7 +513,7 @@
                 color: white; 
                 font-weight: bold; 
                 border-radius: 5px; 
-                font-size: 12pt;
+                font-size: 11pt;
               }
               QPushButton:hover { 
                 background-color: #1976D2; 
@@ -430,12 +524,12 @@
            <item>
             <widget class="QPushButton" name="setVolt_PB">
              <property name="text">
-              <string>⚡ Set</string>
+              <string>⚡ Set V</string>
              </property>
              <property name="minimumSize">
               <size>
                <width>0</width>
-               <height>40</height>
+               <height>35</height>
               </size>
              </property>
              <property name="styleSheet">
@@ -444,10 +538,35 @@
                 color: white; 
                 font-weight: bold; 
                 border-radius: 5px; 
-                font-size: 12pt;
+                font-size: 11pt;
               }
               QPushButton:hover { 
                 background-color: #F57C00; 
+              }</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="startMonitoring_PB">
+             <property name="text">
+              <string>▶️ Monitor</string>
+             </property>
+             <property name="minimumSize">
+              <size>
+               <width>0</width>
+               <height>35</height>
+              </size>
+             </property>
+             <property name="styleSheet">
+              <string>QPushButton { 
+                background-color: #4CAF50; 
+                color: white; 
+                font-weight: bold; 
+                border-radius: 5px; 
+                font-size: 11pt;
+              }
+              QPushButton:hover { 
+                background-color: #45a049; 
               }</string>
              </property>
             </widget>
@@ -470,6 +589,240 @@
         </layout>
        </widget>
       </item>
+      <!-- NI USB-6289 Current Monitoring -->
+      <item>
+       <widget class="QGroupBox" name="niCurrentGroupBox">
+        <property name="title">
+         <string>NI USB-6289 Current Monitoring</string>
+        </property>
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+          <horstretch>1</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>300</width>
+          <height>0</height>
+         </size>
+        </property>
+        <layout class="QVBoxLayout" name="niCurrentLayout">
+         <property name="spacing">
+          <number>10</number>
+         </property>
+         <item>
+          <widget class="QFrame" name="niConnectionFrame">
+           <property name="frameShape">
+            <enum>QFrame::StyledPanel</enum>
+           </property>
+           <property name="frameShadow">
+            <enum>QFrame::Raised</enum>
+           </property>
+           <property name="styleSheet">
+            <string>QFrame { 
+              background-color: #3a3a3a; 
+              border-radius: 8px; 
+              padding: 8px;
+            }</string>
+           </property>
+           <layout class="QVBoxLayout" name="niConnectionLayout">
+            <property name="spacing">
+             <number>6</number>
+            </property>
+            <item>
+             <layout class="QHBoxLayout" name="niDeviceLayout">
+              <item>
+               <widget class="QLabel" name="niDeviceLabel">
+                <property name="text">
+                 <string>Device:</string>
+                </property>
+                <property name="styleSheet">
+                 <string>font-weight: bold; font-size: 9pt; color: #dcdcdc;</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QComboBox" name="niDevice_CB">
+                <property name="minimumSize">
+                 <size>
+                  <width>0</width>
+                  <height>25</height>
+                 </size>
+                </property>
+                <property name="styleSheet">
+                 <string>QComboBox { font-size: 9pt; padding: 4px; }</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QPushButton" name="niRefresh_PB">
+                <property name="text">
+                 <string>🔄</string>
+                </property>
+                <property name="minimumSize">
+                 <size>
+                  <width>25</width>
+                  <height>25</height>
+                 </size>
+                </property>
+                <property name="maximumSize">
+                 <size>
+                  <width>25</width>
+                  <height>25</height>
+                 </size>
+                </property>
+                <property name="styleSheet">
+                 <string>QPushButton { 
+                   background-color: #555; 
+                   color: white; 
+                   border-radius: 4px; 
+                   font-size: 10pt;
+                 }
+                 QPushButton:hover { 
+                   background-color: #666; 
+                 }</string>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </item>
+            <item>
+             <layout class="QHBoxLayout" name="niChannelLayout">
+              <item>
+               <widget class="QLabel" name="niChannelLabel">
+                <property name="text">
+                 <string>Channel:</string>
+                </property>
+                <property name="styleSheet">
+                 <string>font-weight: bold; font-size: 9pt; color: #dcdcdc;</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QComboBox" name="niChannel_CB">
+                <property name="minimumSize">
+                 <size>
+                  <width>0</width>
+                  <height>25</height>
+                 </size>
+                </property>
+                <property name="styleSheet">
+                 <string>QComboBox { font-size: 9pt; padding: 4px; }</string>
+                </property>
+                <item>
+                 <property name="text">
+                  <string>ai0</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>ai1</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>ai2</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>ai3</string>
+                 </property>
+                </item>
+               </widget>
+              </item>
+              <item>
+               <widget class="QPushButton" name="niConnect_PB">
+                <property name="text">
+                 <string>Connect</string>
+                </property>
+                <property name="minimumSize">
+                 <size>
+                  <width>60</width>
+                  <height>25</height>
+                 </size>
+                </property>
+                <property name="styleSheet">
+                 <string>QPushButton { 
+                   background-color: #2196F3; 
+                   color: white; 
+                   border-radius: 4px; 
+                   font-size: 9pt;
+                   font-weight: bold;
+                 }
+                 QPushButton:hover { 
+                   background-color: #1976D2; 
+                 }</string>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </item>
+           </layout>
+          </widget>
+         </item>
+         <item>
+          <widget class="QFrame" name="niCurrentReadingFrame">
+           <property name="frameShape">
+            <enum>QFrame::StyledPanel</enum>
+           </property>
+           <property name="frameShadow">
+            <enum>QFrame::Raised</enum>
+           </property>
+           <property name="styleSheet">
+            <string>QFrame { 
+              background-color: #3a3a3a; 
+              border-radius: 8px; 
+              padding: 10px;
+            }</string>
+           </property>
+           <layout class="QVBoxLayout" name="niCurrentReadingLayout">
+            <item>
+             <widget class="QLabel" name="niCurrentTitle">
+              <property name="text">
+               <string>NI Current Reading</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignCenter</set>
+              </property>
+              <property name="styleSheet">
+               <string>font-weight: bold; font-size: 11pt; color: #dcdcdc;</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="niCurrent_LB">
+              <property name="text">
+               <string>__.__ A</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignCenter</set>
+              </property>
+              <property name="styleSheet">
+               <string>font-size: 16pt; font-weight: bold; color: #00BCD4; background-color: #2a2a2a; border-radius: 5px; padding: 8px;</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+         </item>
+         <item>
+          <spacer name="niCurrentSpacer">
+           <property name="orientation">
+            <enum>Qt::Vertical</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>20</width>
+             <height>40</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+        </layout>
+       </widget>
+      </item>
       <!-- Auto Test - Expanded -->
       <item>
        <widget class="QGroupBox" name="autoTestGroupBox">
@@ -478,13 +831,13 @@
         </property>
         <property name="sizePolicy">
          <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-          <horstretch>4</horstretch>
+          <horstretch>2</horstretch>
           <verstretch>0</verstretch>
          </sizepolicy>
         </property>
         <property name="minimumSize">
          <size>
-          <width>400</width>
+          <width>350</width>
           <height>0</height>
          </size>
         </property>

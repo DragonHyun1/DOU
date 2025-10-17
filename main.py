@@ -5,6 +5,7 @@ from PyQt6.QtCore import QTimer
 from generated import main_ui
 from services.hvpm import HvpmService
 from services.auto_test import AutoTestService
+from services.ni_daq import create_ni_service
 from services import theme, adb
 from ui.test_settings_dialog import TestSettingsDialog
 from collections import deque
@@ -32,6 +33,12 @@ class MainWindow(QtWidgets.QMainWindow):
             hvpm_service=self.hvpm_service,
             log_callback=self._log
         )
+        
+        # NI DAQ 서비스
+        self.ni_service = create_ni_service()
+        self.ni_service.current_updated.connect(self._on_ni_current_updated)
+        self.ni_service.connection_changed.connect(self._on_ni_connection_changed)
+        self.ni_service.error_occurred.connect(self._on_ni_error)
         
         # Test configuration settings
         self.test_config = {
@@ -77,6 +84,9 @@ class MainWindow(QtWidgets.QMainWindow):
         
         # 초기화 - UI 설정 완료 후 실행
         self.refresh_connections()
+        
+        # Initialize NI devices
+        self.refresh_ni_devices()
         
         # Initialize voltage configuration from settings
         self._on_voltage_config_changed()
@@ -126,14 +136,22 @@ class MainWindow(QtWidgets.QMainWindow):
         # Button connections
         if hasattr(self.ui, 'port_PB') and self.ui.port_PB:
             self.ui.port_PB.clicked.connect(self.refresh_connections)
-        if hasattr(self.ui, 'readVolt_PB') and self.ui.readVolt_PB:
-            self.ui.readVolt_PB.clicked.connect(self.handle_read_voltage)
+        if hasattr(self.ui, 'readVoltCurrent_PB') and self.ui.readVoltCurrent_PB:
+            self.ui.readVoltCurrent_PB.clicked.connect(self.handle_read_voltage_current)
         if hasattr(self.ui, 'setVolt_PB') and self.ui.setVolt_PB:
             self.ui.setVolt_PB.clicked.connect(self.handle_set_voltage)
+        if hasattr(self.ui, 'startMonitoring_PB') and self.ui.startMonitoring_PB:
+            self.ui.startMonitoring_PB.clicked.connect(self.toggle_monitoring)
         if hasattr(self.ui, 'startGraph_PB') and self.ui.startGraph_PB:
             self.ui.startGraph_PB.clicked.connect(self.start_graph)
         if hasattr(self.ui, 'stopGraph_PB') and self.ui.stopGraph_PB:
             self.ui.stopGraph_PB.clicked.connect(self.stop_graph)
+        
+        # NI DAQ connections
+        if hasattr(self.ui, 'niRefresh_PB') and self.ui.niRefresh_PB:
+            self.ui.niRefresh_PB.clicked.connect(self.refresh_ni_devices)
+        if hasattr(self.ui, 'niConnect_PB') and self.ui.niConnect_PB:
+            self.ui.niConnect_PB.clicked.connect(self.toggle_ni_connection)
         
         # Auto test connections (check if they exist)
         if hasattr(self.ui, 'startAutoTest_PB') and self.ui.startAutoTest_PB:
@@ -316,6 +334,80 @@ class MainWindow(QtWidgets.QMainWindow):
         except Exception as e:
             # If anything goes wrong, just log and continue
             self._log(f"Error in _update_auto_test_buttons: {e}", "error")
+    
+    # ---------- NI DAQ ----------
+    def refresh_ni_devices(self):
+        """Refresh NI DAQ devices"""
+        if hasattr(self.ui, 'niDevice_CB') and self.ui.niDevice_CB:
+            self.ui.niDevice_CB.clear()
+            devices = self.ni_service.get_available_devices()
+            
+            if devices:
+                self.ui.niDevice_CB.addItems(devices)
+                self._log(f"📡 Found {len(devices)} NI devices", "info")
+            else:
+                self.ui.niDevice_CB.addItem("No devices found")
+                self._log("⚠️ No NI DAQ devices found", "warn")
+    
+    def toggle_ni_connection(self):
+        """Toggle NI DAQ connection"""
+        if not hasattr(self.ui, 'niConnect_PB') or not self.ui.niConnect_PB:
+            return
+            
+        if self.ni_service.is_connected():
+            # Disconnect
+            self.ni_service.disconnect_device()
+            self.ui.niConnect_PB.setText("Connect")
+            self._log("📡 NI DAQ disconnected", "info")
+        else:
+            # Connect
+            if not hasattr(self.ui, 'niDevice_CB') or not hasattr(self.ui, 'niChannel_CB'):
+                return
+                
+            device = self.ui.niDevice_CB.currentText()
+            channel = self.ui.niChannel_CB.currentText()
+            
+            if device and device != "No devices found":
+                success = self.ni_service.connect_device(device, channel)
+                if success:
+                    self.ui.niConnect_PB.setText("Disconnect")
+                    self._log(f"📡 NI DAQ connected: {device}/{channel}", "success")
+                else:
+                    self._log(f"❌ Failed to connect to {device}/{channel}", "error")
+    
+    def toggle_monitoring(self):
+        """Toggle HVPM monitoring"""
+        if not hasattr(self.ui, 'startMonitoring_PB') or not self.ui.startMonitoring_PB:
+            return
+            
+        if self.ni_service.is_monitoring():
+            # Stop monitoring
+            self.ni_service.stop_monitoring()
+            self.ui.startMonitoring_PB.setText("▶️ Monitor")
+            self._log("⏹️ Monitoring stopped", "info")
+        else:
+            # Start monitoring
+            if self.ni_service.is_connected():
+                success = self.ni_service.start_monitoring(1000)  # 1 second interval
+                if success:
+                    self.ui.startMonitoring_PB.setText("⏹️ Stop")
+                    self._log("▶️ Monitoring started", "info")
+            else:
+                self._log("❌ NI DAQ not connected", "error")
+    
+    def _on_ni_current_updated(self, current: float):
+        """Handle NI current reading update"""
+        if hasattr(self.ui, 'niCurrent_LB') and self.ui.niCurrent_LB:
+            self.ui.niCurrent_LB.setText(f"{current:.3f} A")
+    
+    def _on_ni_connection_changed(self, connected: bool):
+        """Handle NI DAQ connection status change"""
+        if hasattr(self.ui, 'niConnect_PB') and self.ui.niConnect_PB:
+            self.ui.niConnect_PB.setText("Disconnect" if connected else "Connect")
+    
+    def _on_ni_error(self, error_msg: str):
+        """Handle NI DAQ errors"""
+        self._log(f"❌ NI DAQ Error: {error_msg}", "error")
 
     # ---------- 로그 ----------
     def _log(self, msg: str, level: str = "info"):
@@ -509,24 +601,53 @@ class MainWindow(QtWidgets.QMainWindow):
         self._update_auto_test_buttons()
 
     # ---------- HVPM ----------
-    def handle_read_voltage(self):
-        """Enhanced voltage reading with better feedback"""
-        self.ui.readVolt_PB.setEnabled(False)
-        self.ui.readVolt_PB.setText("📊 Reading...")
+    def handle_read_voltage_current(self):
+        """Read both voltage and current"""
+        if hasattr(self.ui, 'readVoltCurrent_PB') and self.ui.readVoltCurrent_PB:
+            self.ui.readVoltCurrent_PB.setEnabled(False)
+            self.ui.readVoltCurrent_PB.setText("📊 Reading...")
         
         try:
-            v = self.hvpm_service.read_voltage(log_callback=self._log)
+            # Read HVPM voltage and current
+            v, i = self.hvpm_service.read_vi(log_callback=self._log)
+            
             if v is not None:
                 self.hvpm_service.last_set_vout = v
                 self.hvpm_service.enabled = v > 0
                 self.hvpm_service._update_volt_label()
-                self._log(f"📊 Current voltage: {v:.3f} V", "info")
-                self.ui.statusbar.showMessage(f"Voltage read: {v:.3f} V", 3000)
+                
+                # Update current display
+                if hasattr(self.ui, 'hvpmCurrent_LB') and self.ui.hvpmCurrent_LB:
+                    if i is not None:
+                        self.ui.hvpmCurrent_LB.setText(f"{i:.3f} A")
+                    else:
+                        self.ui.hvpmCurrent_LB.setText("__.__ A")
+                
+                # Update power display
+                if hasattr(self.ui, 'hvpmPower_LB') and self.ui.hvpmPower_LB:
+                    if v is not None and i is not None:
+                        power = v * i
+                        self.ui.hvpmPower_LB.setText(f"{power:.3f} W")
+                    else:
+                        self.ui.hvpmPower_LB.setText("__.__ W")
+                
+                self._log(f"📊 HVPM - Voltage: {v:.3f}V, Current: {i:.3f}A", "info")
+                self.ui.statusbar.showMessage(f"HVPM - V: {v:.3f}V, I: {i:.3f}A", 3000)
             else:
-                self._log("❌ Failed to read voltage", "error")
+                self._log("❌ Failed to read HVPM values", "error")
+            
+            # Also read NI current if connected
+            if self.ni_service.is_connected():
+                ni_current = self.ni_service.read_current_once()
+                if ni_current is not None:
+                    self._log(f"📊 NI Current: {ni_current:.3f}A", "info")
+                
+        except Exception as e:
+            self._log(f"❌ Read error: {e}", "error")
         finally:
-            self.ui.readVolt_PB.setEnabled(True)
-            self.ui.readVolt_PB.setText("📊 Read")
+            if hasattr(self.ui, 'readVoltCurrent_PB') and self.ui.readVoltCurrent_PB:
+                self.ui.readVoltCurrent_PB.setEnabled(True)
+                self.ui.readVoltCurrent_PB.setText("📊 Read V&I")
 
     def handle_set_voltage(self):
         """Enhanced voltage setting with validation"""
@@ -617,9 +738,10 @@ class MainWindow(QtWidgets.QMainWindow):
         if reply == QtWidgets.QMessageBox.StandardButton.No:
             return
         
-        # Start monitoring if not already active
-        if not self._graphActive:
-            self.start_graph()
+        # Start monitoring during auto test
+        if self.ni_service.is_connected() and not self.ni_service.is_monitoring():
+            self.ni_service.start_monitoring(1000)  # 1 second interval
+            self._log("📊 Started NI current monitoring for test", "info")
         
         # Get custom script if needed
         custom_script = None
