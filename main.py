@@ -469,9 +469,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self._t0 = time.perf_counter()
         
         # Update UI state
-        self.ui.readVolt_PB.setEnabled(False)
-        self.ui.startGraph_PB.setEnabled(False)
-        self.ui.stopGraph_PB.setEnabled(True)
+        if hasattr(self.ui, 'readVoltCurrent_PB') and self.ui.readVoltCurrent_PB:
+            self.ui.readVoltCurrent_PB.setEnabled(False)
+        if hasattr(self.ui, 'startGraph_PB') and self.ui.startGraph_PB:
+            self.ui.startGraph_PB.setEnabled(False)
+        if hasattr(self.ui, 'stopGraph_PB') and self.ui.stopGraph_PB:
+            self.ui.stopGraph_PB.setEnabled(True)
         
         self._graphActive = True
         self._graphTimer.start()
@@ -488,9 +491,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self._graphActive = False
         
         # Update UI state
-        self.ui.readVolt_PB.setEnabled(True)
-        self.ui.startGraph_PB.setEnabled(True)
-        self.ui.stopGraph_PB.setEnabled(False)
+        if hasattr(self.ui, 'readVoltCurrent_PB') and self.ui.readVoltCurrent_PB:
+            self.ui.readVoltCurrent_PB.setEnabled(True)
+        if hasattr(self.ui, 'startGraph_PB') and self.ui.startGraph_PB:
+            self.ui.startGraph_PB.setEnabled(True)
+        if hasattr(self.ui, 'stopGraph_PB') and self.ui.stopGraph_PB:
+            self.ui.stopGraph_PB.setEnabled(False)
         
         self._log("⏹️ Real-time monitoring stopped", "info")
         self.ui.statusbar.showMessage("Monitoring stopped", 3000)
