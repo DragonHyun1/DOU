@@ -40,6 +40,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ni_service.connection_changed.connect(self._on_ni_connection_changed)
         self.ni_service.error_occurred.connect(self._on_ni_error)
         
+        # 동시 제어 충돌 방지
+        self._measurement_mode = "none"  # "hvpm", "ni_daq", "both", "none"
+        self._show_conflict_warning = True
+        
         # Test configuration settings
         self.test_config = {
             'stabilization_voltage': 4.8,
@@ -363,14 +367,31 @@ class MainWindow(QtWidgets.QMainWindow):
         """Refresh NI DAQ devices"""
         if hasattr(self.ui, 'daqDevice_CB') and self.ui.daqDevice_CB:
             self.ui.daqDevice_CB.clear()
-            devices = self.ni_service.get_available_devices()
             
-            if devices:
-                self.ui.daqDevice_CB.addItems(devices)
-                self._log(f"📡 Found {len(devices)} NI devices", "info")
-            else:
-                self.ui.daqDevice_CB.addItem("No devices found")
-                self._log("⚠️ No NI DAQ devices found", "warn")
+            try:
+                devices = self.ni_service.get_available_devices()
+                
+                if devices:
+                    # Filter out mock devices for cleaner display
+                    real_devices = [d for d in devices if "(Mock)" not in d]
+                    mock_devices = [d for d in devices if "(Mock)" in d]
+                    
+                    if real_devices:
+                        self.ui.daqDevice_CB.addItems(real_devices)
+                        self._log(f"📡 Found {len(real_devices)} NI DAQ devices", "success")
+                    elif mock_devices:
+                        self.ui.daqDevice_CB.addItems(mock_devices)
+                        self._log("⚠️ NI-DAQmx not installed - using simulation mode", "warn")
+                    else:
+                        self.ui.daqDevice_CB.addItem("No devices found")
+                        self._log("❌ No NI DAQ devices available", "error")
+                else:
+                    self.ui.daqDevice_CB.addItem("No devices found")
+                    self._log("❌ No NI DAQ devices found - check drivers", "error")
+                    
+            except Exception as e:
+                self.ui.daqDevice_CB.addItem("Error detecting devices")
+                self._log(f"❌ NI DAQ detection error: {e}", "error")
     
     def toggle_ni_connection(self):
         """Toggle NI DAQ connection"""
@@ -435,9 +456,18 @@ class MainWindow(QtWidgets.QMainWindow):
             self.ni_service.stop_monitoring()
             self.ui.niMonitor_PB.setText("▶️ Start Monitor")
             self._log("⏹️ NI monitoring stopped", "info")
+            self._measurement_mode = "hvpm" if self._graphActive else "none"
         else:
             # Start monitoring
             if self.ni_service.is_connected():
+                # 충돌 경고 표시
+                if self._graphActive and self._show_conflict_warning:
+                    self._log("⚠️ WARNING: HVPM and NI DAQ monitoring simultaneously", "warn")
+                    self._log("⚠️ This may cause measurement interference", "warn")
+                    self._measurement_mode = "both"
+                else:
+                    self._measurement_mode = "ni_daq"
+                
                 success = self.ni_service.start_monitoring(1000)  # 1 second interval
                 if success:
                     self.ui.niMonitor_PB.setText("⏹️ Stop Monitor")
@@ -446,6 +476,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 self._log("❌ NI DAQ not connected", "error")
         
         self._update_ni_status()
+        self._update_measurement_mode_status()
     
     def _update_ni_status(self):
         """Update NI DAQ status display"""
@@ -470,6 +501,22 @@ class MainWindow(QtWidgets.QMainWindow):
     def _on_ni_error(self, error_msg: str):
         """Handle NI DAQ errors"""
         self._log(f"❌ NI DAQ Error: {error_msg}", "error")
+    
+    def _update_measurement_mode_status(self):
+        """Update status bar with current measurement mode"""
+        mode_messages = {
+            "none": "No active monitoring",
+            "hvpm": "HVPM monitoring active",
+            "ni_daq": "NI DAQ monitoring active", 
+            "both": "⚠️ DUAL monitoring - potential interference"
+        }
+        
+        message = mode_messages.get(self._measurement_mode, "Unknown mode")
+        
+        if self._measurement_mode == "both":
+            self.ui.statusbar.showMessage(message, 0)  # Persistent warning
+        else:
+            self.ui.statusbar.showMessage(message, 3000)  # 3 second display
 
     # ---------- 로그 ----------
     def _log(self, msg: str, level: str = "info"):
@@ -531,6 +578,10 @@ class MainWindow(QtWidgets.QMainWindow):
             
         self._graphTimer.stop()
         self._graphActive = False
+        
+        # Update measurement mode
+        self._measurement_mode = "ni_daq" if self.ni_service.is_monitoring() else "none"
+        self._update_measurement_mode_status()
         
         # Update UI state
         if hasattr(self.ui, 'readVoltCurrent_PB') and self.ui.readVoltCurrent_PB:

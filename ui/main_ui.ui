@@ -358,11 +358,11 @@
         </layout>
        </widget>
       </item>
-      <!-- HVPM Control & Monitoring -->
+      <!-- HVPM Control -->
       <item>
        <widget class="QGroupBox" name="controlGroupBox">
         <property name="title">
-         <string>HVPM Control & Monitoring</string>
+         <string>HVPM Control</string>
         </property>
         <property name="sizePolicy">
          <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
@@ -678,7 +678,7 @@
       <item>
        <widget class="QGroupBox" name="niCurrentGroupBox">
         <property name="title">
-         <string>NI DAQ Current Monitoring</string>
+         <string>NI DAQ Control</string>
         </property>
         <property name="sizePolicy">
          <sizepolicy hsizetype="Expanding" vsizetype="Expanding">

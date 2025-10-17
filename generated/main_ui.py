@@ -210,9 +210,9 @@ class Ui_MainWindow(object):
         
         self.mainContentLayout.addWidget(self.graphGroupBox)
         
-        # HVPM Control & Monitoring
+        # HVPM Control
         self.controlGroupBox = QtWidgets.QGroupBox(parent=self.centralwidget)
-        self.controlGroupBox.setTitle("HVPM Control & Monitoring")
+        self.controlGroupBox.setTitle("HVPM Control")
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Expanding)
         sizePolicy.setHorizontalStretch(2)
         sizePolicy.setVerticalStretch(0)
@@ -457,9 +457,9 @@ class Ui_MainWindow(object):
         
         self.mainContentLayout.addWidget(self.controlGroupBox)
         
-        # NI DAQ Current Monitoring
+        # NI DAQ Control
         self.niCurrentGroupBox = QtWidgets.QGroupBox(parent=self.centralwidget)
-        self.niCurrentGroupBox.setTitle("NI DAQ Current Monitoring")
+        self.niCurrentGroupBox.setTitle("NI DAQ Control")
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Expanding)
         sizePolicy.setHorizontalStretch(1)
         sizePolicy.setVerticalStretch(0)
