@@ -1,4 +1,4 @@
-# Form implementation generated from reading ui file 'ui/main_ui.ui'
+# Form implementation generated from reading ui file 'ui/main_ui_with_autotest.ui'
 #
 # Created by: PyQt6 UI code generator 6.4.2
 #
@@ -12,87 +12,618 @@ from PyQt6 import QtCore, QtGui, QtWidgets
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
-        MainWindow.resize(991, 721)
+        MainWindow.resize(1400, 900)
+        MainWindow.setMinimumSize(QtCore.QSize(1200, 700))
+        MainWindow.setWindowTitle("HVPM Monitor - Power Measurement Tool with Auto Test")
+        
         self.centralwidget = QtWidgets.QWidget(parent=MainWindow)
         self.centralwidget.setObjectName("centralwidget")
-        self.horizontalLayoutWidget = QtWidgets.QWidget(parent=self.centralwidget)
-        self.horizontalLayoutWidget.setGeometry(QtCore.QRect(10, 620, 731, 41))
-        self.horizontalLayoutWidget.setObjectName("horizontalLayoutWidget")
-        self.horizontalLayout = QtWidgets.QHBoxLayout(self.horizontalLayoutWidget)
-        self.horizontalLayout.setContentsMargins(0, 0, 0, 0)
-        self.horizontalLayout.setObjectName("horizontalLayout")
-        self.PM_LB = QtWidgets.QLabel(parent=self.horizontalLayoutWidget)
+        
+        # Main vertical layout
+        self.mainVerticalLayout = QtWidgets.QVBoxLayout(self.centralwidget)
+        self.mainVerticalLayout.setContentsMargins(15, 15, 15, 15)
+        self.mainVerticalLayout.setSpacing(10)
+        self.mainVerticalLayout.setObjectName("mainVerticalLayout")
+        
+        # Connection Group Box
+        self.connectionGroupBox = QtWidgets.QGroupBox(parent=self.centralwidget)
+        self.connectionGroupBox.setTitle("Connection Settings")
+        self.connectionGroupBox.setMinimumSize(QtCore.QSize(0, 80))
+        self.connectionGroupBox.setObjectName("connectionGroupBox")
+        
+        self.connectionLayout = QtWidgets.QHBoxLayout(self.connectionGroupBox)
+        self.connectionLayout.setSpacing(15)
+        self.connectionLayout.setObjectName("connectionLayout")
+        
+        self.PM_LB = QtWidgets.QLabel(parent=self.connectionGroupBox)
+        self.PM_LB.setText("Power Monitor:")
+        self.PM_LB.setMinimumSize(QtCore.QSize(100, 0))
         self.PM_LB.setObjectName("PM_LB")
-        self.horizontalLayout.addWidget(self.PM_LB)
-        self.hvpmStatus_LB = QtWidgets.QLabel(parent=self.horizontalLayoutWidget)
+        self.connectionLayout.addWidget(self.PM_LB)
+        
+        self.hvpmStatus_LB = QtWidgets.QLabel(parent=self.connectionGroupBox)
+        self.hvpmStatus_LB.setText("Disconnected")
+        self.hvpmStatus_LB.setStyleSheet("color: #ff6b6b; font-weight: bold;")
         self.hvpmStatus_LB.setObjectName("hvpmStatus_LB")
-        self.horizontalLayout.addWidget(self.hvpmStatus_LB)
-        self.hvpm_CB = QtWidgets.QComboBox(parent=self.horizontalLayoutWidget)
+        self.connectionLayout.addWidget(self.hvpmStatus_LB)
+        
+        self.hvpm_CB = QtWidgets.QComboBox(parent=self.connectionGroupBox)
+        self.hvpm_CB.setMinimumSize(QtCore.QSize(150, 0))
         self.hvpm_CB.setObjectName("hvpm_CB")
-        self.horizontalLayout.addWidget(self.hvpm_CB)
-        self.comport_LB = QtWidgets.QLabel(parent=self.horizontalLayoutWidget)
+        self.connectionLayout.addWidget(self.hvpm_CB)
+        
+        self.line_1 = QtWidgets.QFrame(parent=self.connectionGroupBox)
+        self.line_1.setFrameShape(QtWidgets.QFrame.Shape.VLine)
+        self.line_1.setFrameShadow(QtWidgets.QFrame.Shadow.Sunken)
+        self.line_1.setObjectName("line_1")
+        self.connectionLayout.addWidget(self.line_1)
+        
+        self.comport_LB = QtWidgets.QLabel(parent=self.connectionGroupBox)
+        self.comport_LB.setText("ADB Device:")
+        self.comport_LB.setMinimumSize(QtCore.QSize(80, 0))
         self.comport_LB.setObjectName("comport_LB")
-        self.horizontalLayout.addWidget(self.comport_LB)
-        self.comport_CB = QtWidgets.QComboBox(parent=self.horizontalLayoutWidget)
+        self.connectionLayout.addWidget(self.comport_LB)
+        
+        self.comport_CB = QtWidgets.QComboBox(parent=self.connectionGroupBox)
+        self.comport_CB.setMinimumSize(QtCore.QSize(200, 0))
         self.comport_CB.setObjectName("comport_CB")
-        self.horizontalLayout.addWidget(self.comport_CB)
-        self.port_PB = QtWidgets.QPushButton(parent=self.horizontalLayoutWidget)
+        self.connectionLayout.addWidget(self.comport_CB)
+        
+        self.port_PB = QtWidgets.QPushButton(parent=self.connectionGroupBox)
+        self.port_PB.setText("🔄 Refresh")
+        self.port_PB.setMinimumSize(QtCore.QSize(100, 35))
+        self.port_PB.setStyleSheet("QPushButton { font-weight: bold; }")
         self.port_PB.setObjectName("port_PB")
-        self.horizontalLayout.addWidget(self.port_PB)
-        self.log_LW = QtWidgets.QListWidget(parent=self.centralwidget)
-        self.log_LW.setGeometry(QtCore.QRect(10, 410, 771, 192))
-        self.log_LW.setObjectName("log_LW")
-        self.graphContainer = QtWidgets.QWidget(parent=self.centralwidget)
-        self.graphContainer.setGeometry(QtCore.QRect(10, 10, 661, 381))
-        self.graphContainer.setObjectName("graphContainer")
-        self.verticalLayoutWidget = QtWidgets.QWidget(parent=self.graphContainer)
-        self.verticalLayoutWidget.setGeometry(QtCore.QRect(10, 10, 641, 361))
-        self.verticalLayoutWidget.setObjectName("verticalLayoutWidget")
-        self.graphLayout = QtWidgets.QVBoxLayout(self.verticalLayoutWidget)
-        self.graphLayout.setContentsMargins(0, 0, 0, 0)
-        self.graphLayout.setObjectName("graphLayout")
-        self.startGraph_PB = QtWidgets.QPushButton(parent=self.centralwidget)
-        self.startGraph_PB.setGeometry(QtCore.QRect(690, 20, 151, 24))
+        self.connectionLayout.addWidget(self.port_PB)
+        
+        connectionSpacer = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Minimum)
+        self.connectionLayout.addItem(connectionSpacer)
+        
+        self.mainVerticalLayout.addWidget(self.connectionGroupBox)
+        
+        # Main content layout (horizontal)
+        self.mainContentLayout = QtWidgets.QHBoxLayout()
+        self.mainContentLayout.setSpacing(15)
+        self.mainContentLayout.setObjectName("mainContentLayout")
+        
+        # Graph Group Box
+        self.graphGroupBox = QtWidgets.QGroupBox(parent=self.centralwidget)
+        self.graphGroupBox.setTitle("Real-time Monitoring")
+        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Expanding)
+        sizePolicy.setHorizontalStretch(2)
+        sizePolicy.setVerticalStretch(0)
+        self.graphGroupBox.setSizePolicy(sizePolicy)
+        self.graphGroupBox.setObjectName("graphGroupBox")
+        
+        self.graphVerticalLayout = QtWidgets.QVBoxLayout(self.graphGroupBox)
+        self.graphVerticalLayout.setSpacing(10)
+        self.graphVerticalLayout.setObjectName("graphVerticalLayout")
+        
+        # Graph control layout
+        self.graphControlLayout = QtWidgets.QHBoxLayout()
+        self.graphControlLayout.setObjectName("graphControlLayout")
+        
+        self.startGraph_PB = QtWidgets.QPushButton(parent=self.graphGroupBox)
+        self.startGraph_PB.setText("▶️ Start Monitoring")
+        self.startGraph_PB.setMinimumSize(QtCore.QSize(140, 35))
+        self.startGraph_PB.setStyleSheet("""
+            QPushButton { 
+                background-color: #4CAF50; 
+                color: white; 
+                font-weight: bold; 
+                border-radius: 5px;
+            }
+            QPushButton:hover { 
+                background-color: #45a049; 
+            }
+        """)
         self.startGraph_PB.setObjectName("startGraph_PB")
-        self.stopGraph_PB = QtWidgets.QPushButton(parent=self.centralwidget)
-        self.stopGraph_PB.setGeometry(QtCore.QRect(690, 50, 152, 24))
+        self.graphControlLayout.addWidget(self.startGraph_PB)
+        
+        self.stopGraph_PB = QtWidgets.QPushButton(parent=self.graphGroupBox)
+        self.stopGraph_PB.setText("⏹️ Stop Monitoring")
+        self.stopGraph_PB.setMinimumSize(QtCore.QSize(140, 35))
+        self.stopGraph_PB.setStyleSheet("""
+            QPushButton { 
+                background-color: #f44336; 
+                color: white; 
+                font-weight: bold; 
+                border-radius: 5px;
+            }
+            QPushButton:hover { 
+                background-color: #da190b; 
+            }
+        """)
         self.stopGraph_PB.setObjectName("stopGraph_PB")
-        self.hvpmVolt_LE = QtWidgets.QLineEdit(parent=self.centralwidget)
-        self.hvpmVolt_LE.setGeometry(QtCore.QRect(770, 90, 113, 22))
-        self.hvpmVolt_LE.setObjectName("hvpmVolt_LE")
-        self.setVolt_PB = QtWidgets.QPushButton(parent=self.centralwidget)
-        self.setVolt_PB.setGeometry(QtCore.QRect(800, 130, 91, 24))
-        self.setVolt_PB.setObjectName("setVolt_PB")
-        self.hvpmVolt_LB = QtWidgets.QLabel(parent=self.centralwidget)
-        self.hvpmVolt_LB.setGeometry(QtCore.QRect(690, 90, 71, 16))
+        self.graphControlLayout.addWidget(self.stopGraph_PB)
+        
+        graphControlSpacer = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Minimum)
+        self.graphControlLayout.addItem(graphControlSpacer)
+        
+        self.graphVerticalLayout.addLayout(self.graphControlLayout)
+        
+        # Graph container
+        self.graphContainer = QtWidgets.QWidget(parent=self.graphGroupBox)
+        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Expanding)
+        self.graphContainer.setSizePolicy(sizePolicy)
+        self.graphContainer.setMinimumSize(QtCore.QSize(600, 300))
+        self.graphContainer.setObjectName("graphContainer")
+        
+        self.graphLayout = QtWidgets.QVBoxLayout(self.graphContainer)
+        self.graphLayout.setContentsMargins(0, 0, 0, 0)
+        self.graphLayout.setSpacing(0)
+        self.graphLayout.setObjectName("graphLayout")
+        
+        self.graphVerticalLayout.addWidget(self.graphContainer)
+        
+        self.mainContentLayout.addWidget(self.graphGroupBox)
+        
+        # Right controls layout
+        self.rightControlsLayout = QtWidgets.QVBoxLayout()
+        self.rightControlsLayout.setSpacing(15)
+        self.rightControlsLayout.setObjectName("rightControlsLayout")
+        
+        # Voltage Control Group Box
+        self.controlGroupBox = QtWidgets.QGroupBox(parent=self.centralwidget)
+        self.controlGroupBox.setTitle("Voltage Control")
+        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Preferred, QtWidgets.QSizePolicy.Policy.Preferred)
+        sizePolicy.setHorizontalStretch(1)
+        sizePolicy.setVerticalStretch(1)
+        self.controlGroupBox.setSizePolicy(sizePolicy)
+        self.controlGroupBox.setMinimumSize(QtCore.QSize(280, 200))
+        self.controlGroupBox.setMaximumSize(QtCore.QSize(350, 300))
+        self.controlGroupBox.setObjectName("controlGroupBox")
+        
+        self.controlVerticalLayout = QtWidgets.QVBoxLayout(self.controlGroupBox)
+        self.controlVerticalLayout.setSpacing(15)
+        self.controlVerticalLayout.setObjectName("controlVerticalLayout")
+        
+        # Current voltage frame
+        self.currentVoltageFrame = QtWidgets.QFrame(parent=self.controlGroupBox)
+        self.currentVoltageFrame.setFrameShape(QtWidgets.QFrame.Shape.StyledPanel)
+        self.currentVoltageFrame.setFrameShadow(QtWidgets.QFrame.Shadow.Raised)
+        self.currentVoltageFrame.setStyleSheet("""
+            QFrame { 
+                background-color: #3a3a3a; 
+                border-radius: 8px; 
+                padding: 10px;
+            }
+        """)
+        self.currentVoltageFrame.setObjectName("currentVoltageFrame")
+        
+        self.currentVoltageLayout = QtWidgets.QVBoxLayout(self.currentVoltageFrame)
+        self.currentVoltageLayout.setObjectName("currentVoltageLayout")
+        
+        self.currentVoltageTitle = QtWidgets.QLabel(parent=self.currentVoltageFrame)
+        self.currentVoltageTitle.setText("Current Voltage")
+        self.currentVoltageTitle.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+        self.currentVoltageTitle.setStyleSheet("font-weight: bold; font-size: 12pt; color: #dcdcdc;")
+        self.currentVoltageTitle.setObjectName("currentVoltageTitle")
+        self.currentVoltageLayout.addWidget(self.currentVoltageTitle)
+        
+        self.hvpmVolt_LB = QtWidgets.QLabel(parent=self.currentVoltageFrame)
+        self.hvpmVolt_LB.setText("__.__ V")
+        self.hvpmVolt_LB.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+        self.hvpmVolt_LB.setStyleSheet("""
+            font-size: 18pt; 
+            font-weight: bold; 
+            color: #4CAF50; 
+            background-color: #2a2a2a; 
+            border-radius: 5px; 
+            padding: 8px;
+        """)
         self.hvpmVolt_LB.setObjectName("hvpmVolt_LB")
-        self.readVolt_PB = QtWidgets.QPushButton(parent=self.centralwidget)
-        self.readVolt_PB.setGeometry(QtCore.QRect(680, 130, 101, 24))
+        self.currentVoltageLayout.addWidget(self.hvpmVolt_LB)
+        
+        self.controlVerticalLayout.addWidget(self.currentVoltageFrame)
+        
+        # Voltage input frame
+        self.voltageInputFrame = QtWidgets.QFrame(parent=self.controlGroupBox)
+        self.voltageInputFrame.setFrameShape(QtWidgets.QFrame.Shape.StyledPanel)
+        self.voltageInputFrame.setFrameShadow(QtWidgets.QFrame.Shadow.Raised)
+        self.voltageInputFrame.setStyleSheet("""
+            QFrame { 
+                background-color: #3a3a3a; 
+                border-radius: 8px; 
+                padding: 10px;
+            }
+        """)
+        self.voltageInputFrame.setObjectName("voltageInputFrame")
+        
+        self.voltageInputLayout = QtWidgets.QVBoxLayout(self.voltageInputFrame)
+        self.voltageInputLayout.setObjectName("voltageInputLayout")
+        
+        self.setVoltageTitle = QtWidgets.QLabel(parent=self.voltageInputFrame)
+        self.setVoltageTitle.setText("Set Target Voltage")
+        self.setVoltageTitle.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+        self.setVoltageTitle.setStyleSheet("font-weight: bold; font-size: 10pt; color: #dcdcdc;")
+        self.setVoltageTitle.setObjectName("setVoltageTitle")
+        self.voltageInputLayout.addWidget(self.setVoltageTitle)
+        
+        self.hvpmVolt_LE = QtWidgets.QLineEdit(parent=self.voltageInputFrame)
+        self.hvpmVolt_LE.setPlaceholderText("Enter voltage (V)")
+        self.hvpmVolt_LE.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+        self.hvpmVolt_LE.setStyleSheet("""
+            QLineEdit { 
+                font-size: 12pt; 
+                padding: 6px; 
+                border-radius: 5px; 
+                background-color: #2a2a2a; 
+                border: 2px solid #555;
+            }
+            QLineEdit:focus { 
+                border: 2px solid #4CAF50; 
+            }
+        """)
+        self.hvpmVolt_LE.setObjectName("hvpmVolt_LE")
+        self.voltageInputLayout.addWidget(self.hvpmVolt_LE)
+        
+        self.controlVerticalLayout.addWidget(self.voltageInputFrame)
+        
+        # Button layout
+        self.buttonLayout = QtWidgets.QHBoxLayout()
+        self.buttonLayout.setSpacing(5)
+        self.buttonLayout.setObjectName("buttonLayout")
+        
+        self.readVolt_PB = QtWidgets.QPushButton(parent=self.controlGroupBox)
+        self.readVolt_PB.setText("📊 Read")
+        self.readVolt_PB.setMinimumSize(QtCore.QSize(0, 35))
+        self.readVolt_PB.setStyleSheet("""
+            QPushButton { 
+                background-color: #2196F3; 
+                color: white; 
+                font-weight: bold; 
+                border-radius: 5px; 
+                font-size: 10pt;
+            }
+            QPushButton:hover { 
+                background-color: #1976D2; 
+            }
+        """)
         self.readVolt_PB.setObjectName("readVolt_PB")
+        self.buttonLayout.addWidget(self.readVolt_PB)
+        
+        self.setVolt_PB = QtWidgets.QPushButton(parent=self.controlGroupBox)
+        self.setVolt_PB.setText("⚡ Set")
+        self.setVolt_PB.setMinimumSize(QtCore.QSize(0, 35))
+        self.setVolt_PB.setStyleSheet("""
+            QPushButton { 
+                background-color: #FF9800; 
+                color: white; 
+                font-weight: bold; 
+                border-radius: 5px; 
+                font-size: 10pt;
+            }
+            QPushButton:hover { 
+                background-color: #F57C00; 
+            }
+        """)
+        self.setVolt_PB.setObjectName("setVolt_PB")
+        self.buttonLayout.addWidget(self.setVolt_PB)
+        
+        self.controlVerticalLayout.addLayout(self.buttonLayout)
+        
+        self.rightControlsLayout.addWidget(self.controlGroupBox)
+        
+        # Auto Test Group Box
+        self.autoTestGroupBox = QtWidgets.QGroupBox(parent=self.centralwidget)
+        self.autoTestGroupBox.setTitle("Auto Test")
+        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Preferred, QtWidgets.QSizePolicy.Policy.Expanding)
+        sizePolicy.setHorizontalStretch(1)
+        sizePolicy.setVerticalStretch(2)
+        self.autoTestGroupBox.setSizePolicy(sizePolicy)
+        self.autoTestGroupBox.setMinimumSize(QtCore.QSize(280, 300))
+        self.autoTestGroupBox.setMaximumSize(QtCore.QSize(350, 16777215))
+        self.autoTestGroupBox.setObjectName("autoTestGroupBox")
+        
+        self.autoTestLayout = QtWidgets.QVBoxLayout(self.autoTestGroupBox)
+        self.autoTestLayout.setSpacing(10)
+        self.autoTestLayout.setObjectName("autoTestLayout")
+        
+        # Test config frame
+        self.testConfigFrame = QtWidgets.QFrame(parent=self.autoTestGroupBox)
+        self.testConfigFrame.setFrameShape(QtWidgets.QFrame.Shape.StyledPanel)
+        self.testConfigFrame.setFrameShadow(QtWidgets.QFrame.Shadow.Raised)
+        self.testConfigFrame.setStyleSheet("""
+            QFrame { 
+                background-color: #3a3a3a; 
+                border-radius: 8px; 
+                padding: 10px;
+            }
+        """)
+        self.testConfigFrame.setObjectName("testConfigFrame")
+        
+        self.testConfigLayout = QtWidgets.QVBoxLayout(self.testConfigFrame)
+        self.testConfigLayout.setObjectName("testConfigLayout")
+        
+        self.testScenarioLabel = QtWidgets.QLabel(parent=self.testConfigFrame)
+        self.testScenarioLabel.setText("Test Scenario")
+        self.testScenarioLabel.setStyleSheet("font-weight: bold; font-size: 10pt; color: #dcdcdc;")
+        self.testScenarioLabel.setObjectName("testScenarioLabel")
+        self.testConfigLayout.addWidget(self.testScenarioLabel)
+        
+        self.testScenario_CB = QtWidgets.QComboBox(parent=self.testConfigFrame)
+        self.testScenario_CB.setStyleSheet("QComboBox { font-size: 10pt; }")
+        self.testScenario_CB.setObjectName("testScenario_CB")
+        self.testConfigLayout.addWidget(self.testScenario_CB)
+        
+        self.voltageConfigLabel = QtWidgets.QLabel(parent=self.testConfigFrame)
+        self.voltageConfigLabel.setText("Voltage Configuration")
+        self.voltageConfigLabel.setStyleSheet("font-weight: bold; font-size: 10pt; color: #dcdcdc;")
+        self.voltageConfigLabel.setObjectName("voltageConfigLabel")
+        self.testConfigLayout.addWidget(self.voltageConfigLabel)
+        
+        # Stabilization voltage layout
+        self.stabilizationVoltageLayout = QtWidgets.QHBoxLayout()
+        self.stabilizationVoltageLayout.setObjectName("stabilizationVoltageLayout")
+        
+        self.stabilizationVoltageLabel = QtWidgets.QLabel(parent=self.testConfigFrame)
+        self.stabilizationVoltageLabel.setText("Stabilization:")
+        self.stabilizationVoltageLabel.setStyleSheet("font-size: 9pt;")
+        self.stabilizationVoltageLabel.setObjectName("stabilizationVoltageLabel")
+        self.stabilizationVoltageLayout.addWidget(self.stabilizationVoltageLabel)
+        
+        self.stabilizationVoltage_SB = QtWidgets.QDoubleSpinBox(parent=self.testConfigFrame)
+        self.stabilizationVoltage_SB.setSuffix("V")
+        self.stabilizationVoltage_SB.setDecimals(1)
+        self.stabilizationVoltage_SB.setMinimum(0.0)
+        self.stabilizationVoltage_SB.setMaximum(5.5)
+        self.stabilizationVoltage_SB.setSingleStep(0.1)
+        self.stabilizationVoltage_SB.setValue(4.8)
+        self.stabilizationVoltage_SB.setStyleSheet("QDoubleSpinBox { font-size: 10pt; }")
+        self.stabilizationVoltage_SB.setObjectName("stabilizationVoltage_SB")
+        self.stabilizationVoltageLayout.addWidget(self.stabilizationVoltage_SB)
+        
+        self.testConfigLayout.addLayout(self.stabilizationVoltageLayout)
+        
+        # Test voltage layout
+        self.testVoltageLayout = QtWidgets.QHBoxLayout()
+        self.testVoltageLayout.setObjectName("testVoltageLayout")
+        
+        self.testVoltageLabel = QtWidgets.QLabel(parent=self.testConfigFrame)
+        self.testVoltageLabel.setText("Test:")
+        self.testVoltageLabel.setStyleSheet("font-size: 9pt;")
+        self.testVoltageLabel.setObjectName("testVoltageLabel")
+        self.testVoltageLayout.addWidget(self.testVoltageLabel)
+        
+        self.testVoltage_SB = QtWidgets.QDoubleSpinBox(parent=self.testConfigFrame)
+        self.testVoltage_SB.setSuffix("V")
+        self.testVoltage_SB.setDecimals(1)
+        self.testVoltage_SB.setMinimum(0.0)
+        self.testVoltage_SB.setMaximum(5.5)
+        self.testVoltage_SB.setSingleStep(0.1)
+        self.testVoltage_SB.setValue(4.0)
+        self.testVoltage_SB.setStyleSheet("QDoubleSpinBox { font-size: 10pt; }")
+        self.testVoltage_SB.setObjectName("testVoltage_SB")
+        self.testVoltageLayout.addWidget(self.testVoltage_SB)
+        
+        self.testConfigLayout.addLayout(self.testVoltageLayout)
+        
+        self.autoTestLayout.addWidget(self.testConfigFrame)
+        
+        # Test progress frame
+        self.testProgressFrame = QtWidgets.QFrame(parent=self.autoTestGroupBox)
+        self.testProgressFrame.setFrameShape(QtWidgets.QFrame.Shape.StyledPanel)
+        self.testProgressFrame.setFrameShadow(QtWidgets.QFrame.Shadow.Raised)
+        self.testProgressFrame.setStyleSheet("""
+            QFrame { 
+                background-color: #3a3a3a; 
+                border-radius: 8px; 
+                padding: 10px;
+            }
+        """)
+        self.testProgressFrame.setObjectName("testProgressFrame")
+        
+        self.testProgressLayout = QtWidgets.QVBoxLayout(self.testProgressFrame)
+        self.testProgressLayout.setObjectName("testProgressLayout")
+        
+        self.testProgressLabel = QtWidgets.QLabel(parent=self.testProgressFrame)
+        self.testProgressLabel.setText("Test Progress")
+        self.testProgressLabel.setStyleSheet("font-weight: bold; font-size: 10pt; color: #dcdcdc;")
+        self.testProgressLabel.setObjectName("testProgressLabel")
+        self.testProgressLayout.addWidget(self.testProgressLabel)
+        
+        self.testProgress_PB = QtWidgets.QProgressBar(parent=self.testProgressFrame)
+        self.testProgress_PB.setValue(0)
+        self.testProgress_PB.setStyleSheet("""
+            QProgressBar {
+                border: 2px solid #555;
+                border-radius: 5px;
+                text-align: center;
+                font-weight: bold;
+                background-color: #2a2a2a;
+            }
+            QProgressBar::chunk {
+                background-color: #4CAF50;
+                border-radius: 3px;
+            }
+        """)
+        self.testProgress_PB.setObjectName("testProgress_PB")
+        self.testProgressLayout.addWidget(self.testProgress_PB)
+        
+        self.testStatus_LB = QtWidgets.QLabel(parent=self.testProgressFrame)
+        self.testStatus_LB.setText("Ready")
+        self.testStatus_LB.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+        self.testStatus_LB.setStyleSheet("font-size: 9pt; color: #aaa;")
+        self.testStatus_LB.setObjectName("testStatus_LB")
+        self.testProgressLayout.addWidget(self.testStatus_LB)
+        
+        self.autoTestLayout.addWidget(self.testProgressFrame)
+        
+        # Test control layout
+        self.testControlLayout = QtWidgets.QHBoxLayout()
+        self.testControlLayout.setSpacing(5)
+        self.testControlLayout.setObjectName("testControlLayout")
+        
+        self.startAutoTest_PB = QtWidgets.QPushButton(parent=self.autoTestGroupBox)
+        self.startAutoTest_PB.setText("🚀 Start Test")
+        self.startAutoTest_PB.setMinimumSize(QtCore.QSize(0, 40))
+        self.startAutoTest_PB.setStyleSheet("""
+            QPushButton { 
+                background-color: #9C27B0; 
+                color: white; 
+                font-weight: bold; 
+                border-radius: 5px; 
+                font-size: 11pt;
+            }
+            QPushButton:hover { 
+                background-color: #7B1FA2; 
+            }
+            QPushButton:disabled {
+                background-color: #555;
+                color: #999;
+            }
+        """)
+        self.startAutoTest_PB.setObjectName("startAutoTest_PB")
+        self.testControlLayout.addWidget(self.startAutoTest_PB)
+        
+        self.stopAutoTest_PB = QtWidgets.QPushButton(parent=self.autoTestGroupBox)
+        self.stopAutoTest_PB.setText("⏹️ Stop")
+        self.stopAutoTest_PB.setMinimumSize(QtCore.QSize(0, 40))
+        self.stopAutoTest_PB.setEnabled(False)
+        self.stopAutoTest_PB.setStyleSheet("""
+            QPushButton { 
+                background-color: #f44336; 
+                color: white; 
+                font-weight: bold; 
+                border-radius: 5px; 
+                font-size: 11pt;
+            }
+            QPushButton:hover { 
+                background-color: #da190b; 
+            }
+            QPushButton:disabled {
+                background-color: #555;
+                color: #999;
+            }
+        """)
+        self.stopAutoTest_PB.setObjectName("stopAutoTest_PB")
+        self.testControlLayout.addWidget(self.stopAutoTest_PB)
+        
+        self.autoTestLayout.addLayout(self.testControlLayout)
+        
+        autoTestSpacer = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Expanding)
+        self.autoTestLayout.addItem(autoTestSpacer)
+        
+        self.rightControlsLayout.addWidget(self.autoTestGroupBox)
+        
+        self.mainContentLayout.addLayout(self.rightControlsLayout)
+        
+        self.mainVerticalLayout.addLayout(self.mainContentLayout)
+        
+        # Log Group Box
+        self.logGroupBox = QtWidgets.QGroupBox(parent=self.centralwidget)
+        self.logGroupBox.setTitle("System Log")
+        self.logGroupBox.setMinimumSize(QtCore.QSize(0, 180))
+        self.logGroupBox.setMaximumSize(QtCore.QSize(16777215, 220))
+        self.logGroupBox.setObjectName("logGroupBox")
+        
+        self.logLayout = QtWidgets.QVBoxLayout(self.logGroupBox)
+        self.logLayout.setObjectName("logLayout")
+        
+        self.log_LW = QtWidgets.QListWidget(parent=self.logGroupBox)
+        self.log_LW.setStyleSheet("""
+            QListWidget { 
+                background-color: #1e1e1e; 
+                border: 1px solid #555; 
+                border-radius: 5px; 
+                font-family: 'Consolas', 'Courier New', monospace;
+                font-size: 10pt;
+            }
+        """)
+        self.log_LW.setObjectName("log_LW")
+        self.logLayout.addWidget(self.log_LW)
+        
+        self.mainVerticalLayout.addWidget(self.logGroupBox)
+        
         MainWindow.setCentralWidget(self.centralwidget)
+        
+        # Menu bar
         self.menubar = QtWidgets.QMenuBar(parent=MainWindow)
-        self.menubar.setGeometry(QtCore.QRect(0, 0, 991, 22))
+        self.menubar.setGeometry(QtCore.QRect(0, 0, 1400, 22))
         self.menubar.setObjectName("menubar")
+        
+        self.menuFile = QtWidgets.QMenu(parent=self.menubar)
+        self.menuFile.setTitle("File")
+        self.menuFile.setObjectName("menuFile")
+        
+        self.menuView = QtWidgets.QMenu(parent=self.menubar)
+        self.menuView.setTitle("View")
+        self.menuView.setObjectName("menuView")
+        
+        self.menuTest = QtWidgets.QMenu(parent=self.menubar)
+        self.menuTest.setTitle("Test")
+        self.menuTest.setObjectName("menuTest")
+        
+        self.menuHelp = QtWidgets.QMenu(parent=self.menubar)
+        self.menuHelp.setTitle("Help")
+        self.menuHelp.setObjectName("menuHelp")
+        
         MainWindow.setMenuBar(self.menubar)
+        
+        # Status bar
         self.statusbar = QtWidgets.QStatusBar(parent=MainWindow)
+        self.statusbar.setStyleSheet("""
+            QStatusBar { 
+                background-color: #3a3a3a; 
+                color: #dcdcdc; 
+                border-top: 1px solid #555;
+            }
+        """)
         self.statusbar.setObjectName("statusbar")
         MainWindow.setStatusBar(self.statusbar)
-
-        self.retranslateUi(MainWindow)
+        
+        # Actions
+        self.actionExport_Data = QtGui.QAction(parent=MainWindow)
+        self.actionExport_Data.setText("Export Data...")
+        self.actionExport_Data.setObjectName("actionExport_Data")
+        
+        self.actionExit = QtGui.QAction(parent=MainWindow)
+        self.actionExit.setText("Exit")
+        self.actionExit.setObjectName("actionExit")
+        
+        self.actionToggle_Theme = QtGui.QAction(parent=MainWindow)
+        self.actionToggle_Theme.setText("Toggle Theme")
+        self.actionToggle_Theme.setObjectName("actionToggle_Theme")
+        
+        self.actionReset_Layout = QtGui.QAction(parent=MainWindow)
+        self.actionReset_Layout.setText("Reset Layout")
+        self.actionReset_Layout.setObjectName("actionReset_Layout")
+        
+        self.actionQuick_Test = QtGui.QAction(parent=MainWindow)
+        self.actionQuick_Test.setText("Quick Test")
+        self.actionQuick_Test.setObjectName("actionQuick_Test")
+        
+        self.actionTest_Settings = QtGui.QAction(parent=MainWindow)
+        self.actionTest_Settings.setText("Test Settings...")
+        self.actionTest_Settings.setObjectName("actionTest_Settings")
+        
+        self.actionAbout = QtGui.QAction(parent=MainWindow)
+        self.actionAbout.setText("About")
+        self.actionAbout.setObjectName("actionAbout")
+        
+        # Add actions to menus
+        self.menuFile.addAction(self.actionExport_Data)
+        self.menuFile.addSeparator()
+        self.menuFile.addAction(self.actionExit)
+        
+        self.menuView.addAction(self.actionToggle_Theme)
+        self.menuView.addAction(self.actionReset_Layout)
+        
+        self.menuTest.addAction(self.actionQuick_Test)
+        self.menuTest.addAction(self.actionTest_Settings)
+        
+        self.menuHelp.addAction(self.actionAbout)
+        
+        self.menubar.addAction(self.menuFile.menuAction())
+        self.menubar.addAction(self.menuView.menuAction())
+        self.menubar.addAction(self.menuTest.menuAction())
+        self.menubar.addAction(self.menuHelp.menuAction())
+        
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
     def retranslateUi(self, MainWindow):
-        _translate = QtCore.QCoreApplication.translate
-        MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))
-        self.PM_LB.setText(_translate("MainWindow", "Power monitor"))
-        self.hvpmStatus_LB.setText(_translate("MainWindow", "-"))
-        self.comport_LB.setText(_translate("MainWindow", "COM PORT"))
-        self.port_PB.setText(_translate("MainWindow", "REFRESH"))
-        self.startGraph_PB.setText(_translate("MainWindow", "Start graph"))
-        self.stopGraph_PB.setText(_translate("MainWindow", "Stop graph"))
-        self.setVolt_PB.setText(_translate("MainWindow", "Set Volt"))
-        self.hvpmVolt_LB.setText(_translate("MainWindow", "__.__ V"))
-        self.readVolt_PB.setText(_translate("MainWindow", "Read CurVolt"))
+        pass
 
 
 if __name__ == "__main__":

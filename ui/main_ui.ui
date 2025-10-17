@@ -6,178 +6,881 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>991</width>
-    <height>721</height>
+    <width>1400</width>
+    <height>900</height>
    </rect>
   </property>
+  <property name="minimumSize">
+   <size>
+    <width>1200</width>
+    <height>700</height>
+   </size>
+  </property>
   <property name="windowTitle">
-   <string>MainWindow</string>
+   <string>HVPM Monitor - Power Measurement Tool with Auto Test</string>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <widget class="QWidget" name="horizontalLayoutWidget">
-    <property name="geometry">
-     <rect>
-      <x>10</x>
-      <y>620</y>
-      <width>731</width>
-      <height>41</height>
-     </rect>
+   <layout class="QVBoxLayout" name="mainVerticalLayout">
+    <property name="spacing">
+     <number>10</number>
     </property>
-    <layout class="QHBoxLayout" name="horizontalLayout">
-     <item>
-      <widget class="QLabel" name="PM_LB">
-       <property name="text">
-        <string>Power monitor</string>
+    <property name="leftMargin">
+     <number>15</number>
+    </property>
+    <property name="topMargin">
+     <number>15</number>
+    </property>
+    <property name="rightMargin">
+     <number>15</number>
+    </property>
+    <property name="bottomMargin">
+     <number>15</number>
+    </property>
+    <item>
+     <widget class="QGroupBox" name="connectionGroupBox">
+      <property name="title">
+       <string>Connection Settings</string>
+      </property>
+      <property name="minimumSize">
+       <size>
+        <width>0</width>
+        <height>80</height>
+       </size>
+      </property>
+      <layout class="QHBoxLayout" name="connectionLayout">
+       <property name="spacing">
+        <number>15</number>
        </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QLabel" name="hvpmStatus_LB">
-       <property name="text">
-        <string>-</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QComboBox" name="hvpm_CB"/>
-     </item>
-     <item>
-      <widget class="QLabel" name="comport_LB">
-       <property name="text">
-        <string>COM PORT</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QComboBox" name="comport_CB"/>
-     </item>
-     <item>
-      <widget class="QPushButton" name="port_PB">
-       <property name="text">
-        <string>REFRESH</string>
-       </property>
-      </widget>
-     </item>
-    </layout>
-   </widget>
-   <widget class="QListWidget" name="log_LW">
-    <property name="geometry">
-     <rect>
-      <x>10</x>
-      <y>410</y>
-      <width>771</width>
-      <height>192</height>
-     </rect>
-    </property>
-   </widget>
-   <widget class="QWidget" name="graphContainer" native="true">
-    <property name="geometry">
-     <rect>
-      <x>10</x>
-      <y>10</y>
-      <width>661</width>
-      <height>381</height>
-     </rect>
-    </property>
-    <widget class="QWidget" name="verticalLayoutWidget">
-     <property name="geometry">
-      <rect>
-       <x>10</x>
-       <y>10</y>
-       <width>641</width>
-       <height>361</height>
-      </rect>
-     </property>
-     <layout class="QVBoxLayout" name="graphLayout"/>
-    </widget>
-   </widget>
-   <widget class="QPushButton" name="startGraph_PB">
-    <property name="geometry">
-     <rect>
-      <x>690</x>
-      <y>20</y>
-      <width>151</width>
-      <height>24</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>Start graph</string>
-    </property>
-   </widget>
-   <widget class="QPushButton" name="stopGraph_PB">
-    <property name="geometry">
-     <rect>
-      <x>690</x>
-      <y>50</y>
-      <width>152</width>
-      <height>24</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>Stop graph</string>
-    </property>
-   </widget>
-   <widget class="QLineEdit" name="hvpmVolt_LE">
-    <property name="geometry">
-     <rect>
-      <x>770</x>
-      <y>90</y>
-      <width>113</width>
-      <height>22</height>
-     </rect>
-    </property>
-   </widget>
-   <widget class="QPushButton" name="setVolt_PB">
-    <property name="geometry">
-     <rect>
-      <x>800</x>
-      <y>130</y>
-      <width>91</width>
-      <height>24</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>Set Volt</string>
-    </property>
-   </widget>
-   <widget class="QLabel" name="hvpmVolt_LB">
-    <property name="geometry">
-     <rect>
-      <x>690</x>
-      <y>90</y>
-      <width>71</width>
-      <height>16</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>__.__ V</string>
-    </property>
-   </widget>
-   <widget class="QPushButton" name="readVolt_PB">
-    <property name="geometry">
-     <rect>
-      <x>680</x>
-      <y>130</y>
-      <width>101</width>
-      <height>24</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>Read CurVolt</string>
-    </property>
-   </widget>
+       <item>
+        <widget class="QLabel" name="PM_LB">
+         <property name="text">
+          <string>Power Monitor:</string>
+         </property>
+         <property name="minimumSize">
+          <size>
+           <width>100</width>
+           <height>0</height>
+          </size>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="hvpmStatus_LB">
+         <property name="text">
+          <string>Disconnected</string>
+         </property>
+         <property name="styleSheet">
+          <string>color: #ff6b6b; font-weight: bold;</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QComboBox" name="hvpm_CB">
+         <property name="minimumSize">
+          <size>
+           <width>150</width>
+           <height>0</height>
+          </size>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="Line" name="line_1">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="comport_LB">
+         <property name="text">
+          <string>ADB Device:</string>
+         </property>
+         <property name="minimumSize">
+          <size>
+           <width>80</width>
+           <height>0</height>
+          </size>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QComboBox" name="comport_CB">
+         <property name="minimumSize">
+          <size>
+           <width>200</width>
+           <height>0</height>
+          </size>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="port_PB">
+         <property name="text">
+          <string>🔄 Refresh</string>
+         </property>
+         <property name="minimumSize">
+          <size>
+           <width>100</width>
+           <height>35</height>
+          </size>
+         </property>
+         <property name="styleSheet">
+          <string>QPushButton { font-weight: bold; }</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <spacer name="connectionSpacer">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>40</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+      </layout>
+     </widget>
+    </item>
+    <item>
+     <layout class="QHBoxLayout" name="mainContentLayout">
+      <property name="spacing">
+       <number>15</number>
+      </property>
+      <item>
+       <widget class="QGroupBox" name="graphGroupBox">
+        <property name="title">
+         <string>Real-time Monitoring</string>
+        </property>
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+          <horstretch>2</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <layout class="QVBoxLayout" name="graphVerticalLayout">
+         <property name="spacing">
+          <number>10</number>
+         </property>
+         <item>
+          <layout class="QHBoxLayout" name="graphControlLayout">
+           <item>
+            <widget class="QPushButton" name="startGraph_PB">
+             <property name="text">
+              <string>▶️ Start Monitoring</string>
+             </property>
+             <property name="minimumSize">
+              <size>
+               <width>140</width>
+               <height>35</height>
+              </size>
+             </property>
+             <property name="styleSheet">
+              <string>QPushButton { 
+                background-color: #4CAF50; 
+                color: white; 
+                font-weight: bold; 
+                border-radius: 5px;
+              }
+              QPushButton:hover { 
+                background-color: #45a049; 
+              }</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="stopGraph_PB">
+             <property name="text">
+              <string>⏹️ Stop Monitoring</string>
+             </property>
+             <property name="minimumSize">
+              <size>
+               <width>140</width>
+               <height>35</height>
+              </size>
+             </property>
+             <property name="styleSheet">
+              <string>QPushButton { 
+                background-color: #f44336; 
+                color: white; 
+                font-weight: bold; 
+                border-radius: 5px;
+              }
+              QPushButton:hover { 
+                background-color: #da190b; 
+              }</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <spacer name="graphControlSpacer">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>40</width>
+               <height>20</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
+          </layout>
+         </item>
+         <item>
+          <widget class="QWidget" name="graphContainer" native="true">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>600</width>
+             <height>300</height>
+            </size>
+           </property>
+           <layout class="QVBoxLayout" name="graphLayout">
+            <property name="spacing">
+             <number>0</number>
+            </property>
+            <property name="leftMargin">
+             <number>0</number>
+            </property>
+            <property name="topMargin">
+             <number>0</number>
+            </property>
+            <property name="rightMargin">
+             <number>0</number>
+            </property>
+            <property name="bottomMargin">
+             <number>0</number>
+            </property>
+           </layout>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+      </item>
+      <item>
+       <layout class="QVBoxLayout" name="rightControlsLayout">
+        <property name="spacing">
+         <number>15</number>
+        </property>
+        <item>
+         <widget class="QGroupBox" name="controlGroupBox">
+          <property name="title">
+           <string>Voltage Control</string>
+          </property>
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+            <horstretch>1</horstretch>
+            <verstretch>1</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="minimumSize">
+           <size>
+            <width>280</width>
+            <height>200</height>
+           </size>
+          </property>
+          <property name="maximumSize">
+           <size>
+            <width>350</width>
+            <height>300</height>
+           </size>
+          </property>
+          <layout class="QVBoxLayout" name="controlVerticalLayout">
+           <property name="spacing">
+            <number>15</number>
+           </property>
+           <item>
+            <widget class="QFrame" name="currentVoltageFrame">
+             <property name="frameShape">
+              <enum>QFrame::StyledPanel</enum>
+             </property>
+             <property name="frameShadow">
+              <enum>QFrame::Raised</enum>
+             </property>
+             <property name="styleSheet">
+              <string>QFrame { 
+                background-color: #3a3a3a; 
+                border-radius: 8px; 
+                padding: 10px;
+              }</string>
+             </property>
+             <layout class="QVBoxLayout" name="currentVoltageLayout">
+              <item>
+               <widget class="QLabel" name="currentVoltageTitle">
+                <property name="text">
+                 <string>Current Voltage</string>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignCenter</set>
+                </property>
+                <property name="styleSheet">
+                 <string>font-weight: bold; font-size: 12pt; color: #dcdcdc;</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QLabel" name="hvpmVolt_LB">
+                <property name="text">
+                 <string>__.__ V</string>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignCenter</set>
+                </property>
+                <property name="styleSheet">
+                 <string>font-size: 18pt; font-weight: bold; color: #4CAF50; background-color: #2a2a2a; border-radius: 5px; padding: 8px;</string>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </widget>
+           </item>
+           <item>
+            <widget class="QFrame" name="voltageInputFrame">
+             <property name="frameShape">
+              <enum>QFrame::StyledPanel</enum>
+             </property>
+             <property name="frameShadow">
+              <enum>QFrame::Raised</enum>
+             </property>
+             <property name="styleSheet">
+              <string>QFrame { 
+                background-color: #3a3a3a; 
+                border-radius: 8px; 
+                padding: 10px;
+              }</string>
+             </property>
+             <layout class="QVBoxLayout" name="voltageInputLayout">
+              <item>
+               <widget class="QLabel" name="setVoltageTitle">
+                <property name="text">
+                 <string>Set Target Voltage</string>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignCenter</set>
+                </property>
+                <property name="styleSheet">
+                 <string>font-weight: bold; font-size: 10pt; color: #dcdcdc;</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QLineEdit" name="hvpmVolt_LE">
+                <property name="placeholderText">
+                 <string>Enter voltage (V)</string>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignCenter</set>
+                </property>
+                <property name="styleSheet">
+                 <string>QLineEdit { 
+                   font-size: 12pt; 
+                   padding: 6px; 
+                   border-radius: 5px; 
+                   background-color: #2a2a2a; 
+                   border: 2px solid #555;
+                 }
+                 QLineEdit:focus { 
+                   border: 2px solid #4CAF50; 
+                 }</string>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </widget>
+           </item>
+           <item>
+            <layout class="QHBoxLayout" name="buttonLayout">
+             <property name="spacing">
+              <number>5</number>
+             </property>
+             <item>
+              <widget class="QPushButton" name="readVolt_PB">
+               <property name="text">
+                <string>📊 Read</string>
+               </property>
+               <property name="minimumSize">
+                <size>
+                 <width>0</width>
+                 <height>35</height>
+                </size>
+               </property>
+               <property name="styleSheet">
+                <string>QPushButton { 
+                  background-color: #2196F3; 
+                  color: white; 
+                  font-weight: bold; 
+                  border-radius: 5px; 
+                  font-size: 10pt;
+                }
+                QPushButton:hover { 
+                  background-color: #1976D2; 
+                }</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QPushButton" name="setVolt_PB">
+               <property name="text">
+                <string>⚡ Set</string>
+               </property>
+               <property name="minimumSize">
+                <size>
+                 <width>0</width>
+                 <height>35</height>
+                </size>
+               </property>
+               <property name="styleSheet">
+                <string>QPushButton { 
+                  background-color: #FF9800; 
+                  color: white; 
+                  font-weight: bold; 
+                  border-radius: 5px; 
+                  font-size: 10pt;
+                }
+                QPushButton:hover { 
+                  background-color: #F57C00; 
+                }</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+          </layout>
+         </widget>
+        </item>
+        <item>
+         <widget class="QGroupBox" name="autoTestGroupBox">
+          <property name="title">
+           <string>Auto Test</string>
+          </property>
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+            <horstretch>1</horstretch>
+            <verstretch>2</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="minimumSize">
+           <size>
+            <width>280</width>
+            <height>300</height>
+           </size>
+          </property>
+          <property name="maximumSize">
+           <size>
+            <width>350</width>
+            <height>16777215</height>
+           </size>
+          </property>
+          <layout class="QVBoxLayout" name="autoTestLayout">
+           <property name="spacing">
+            <number>10</number>
+           </property>
+           <item>
+            <widget class="QFrame" name="testConfigFrame">
+             <property name="frameShape">
+              <enum>QFrame::StyledPanel</enum>
+             </property>
+             <property name="frameShadow">
+              <enum>QFrame::Raised</enum>
+             </property>
+             <property name="styleSheet">
+              <string>QFrame { 
+                background-color: #3a3a3a; 
+                border-radius: 8px; 
+                padding: 10px;
+              }</string>
+             </property>
+             <layout class="QVBoxLayout" name="testConfigLayout">
+              <item>
+               <widget class="QLabel" name="testScenarioLabel">
+                <property name="text">
+                 <string>Test Scenario</string>
+                </property>
+                <property name="styleSheet">
+                 <string>font-weight: bold; font-size: 10pt; color: #dcdcdc;</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QComboBox" name="testScenario_CB">
+                <property name="styleSheet">
+                 <string>QComboBox { font-size: 10pt; }</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QLabel" name="voltageConfigLabel">
+                <property name="text">
+                 <string>Voltage Configuration</string>
+                </property>
+                <property name="styleSheet">
+                 <string>font-weight: bold; font-size: 10pt; color: #dcdcdc;</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <layout class="QHBoxLayout" name="stabilizationVoltageLayout">
+                <item>
+                 <widget class="QLabel" name="stabilizationVoltageLabel">
+                  <property name="text">
+                   <string>Stabilization:</string>
+                  </property>
+                  <property name="styleSheet">
+                   <string>font-size: 9pt;</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QDoubleSpinBox" name="stabilizationVoltage_SB">
+                  <property name="suffix">
+                   <string>V</string>
+                  </property>
+                  <property name="decimals">
+                   <number>1</number>
+                  </property>
+                  <property name="minimum">
+                   <double>0.000000000000000</double>
+                  </property>
+                  <property name="maximum">
+                   <double>5.500000000000000</double>
+                  </property>
+                  <property name="singleStep">
+                   <double>0.100000000000000</double>
+                  </property>
+                  <property name="value">
+                   <double>4.800000000000000</double>
+                  </property>
+                  <property name="styleSheet">
+                   <string>QDoubleSpinBox { font-size: 10pt; }</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </item>
+              <item>
+               <layout class="QHBoxLayout" name="testVoltageLayout">
+                <item>
+                 <widget class="QLabel" name="testVoltageLabel">
+                  <property name="text">
+                   <string>Test:</string>
+                  </property>
+                  <property name="styleSheet">
+                   <string>font-size: 9pt;</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QDoubleSpinBox" name="testVoltage_SB">
+                  <property name="suffix">
+                   <string>V</string>
+                  </property>
+                  <property name="decimals">
+                   <number>1</number>
+                  </property>
+                  <property name="minimum">
+                   <double>0.000000000000000</double>
+                  </property>
+                  <property name="maximum">
+                   <double>5.500000000000000</double>
+                  </property>
+                  <property name="singleStep">
+                   <double>0.100000000000000</double>
+                  </property>
+                  <property name="value">
+                   <double>4.000000000000000</double>
+                  </property>
+                  <property name="styleSheet">
+                   <string>QDoubleSpinBox { font-size: 10pt; }</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </item>
+             </layout>
+            </widget>
+           </item>
+           <item>
+            <widget class="QFrame" name="testProgressFrame">
+             <property name="frameShape">
+              <enum>QFrame::StyledPanel</enum>
+             </property>
+             <property name="frameShadow">
+              <enum>QFrame::Raised</enum>
+             </property>
+             <property name="styleSheet">
+              <string>QFrame { 
+                background-color: #3a3a3a; 
+                border-radius: 8px; 
+                padding: 10px;
+              }</string>
+             </property>
+             <layout class="QVBoxLayout" name="testProgressLayout">
+              <item>
+               <widget class="QLabel" name="testProgressLabel">
+                <property name="text">
+                 <string>Test Progress</string>
+                </property>
+                <property name="styleSheet">
+                 <string>font-weight: bold; font-size: 10pt; color: #dcdcdc;</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QProgressBar" name="testProgress_PB">
+                <property name="value">
+                 <number>0</number>
+                </property>
+                <property name="styleSheet">
+                 <string>QProgressBar {
+                   border: 2px solid #555;
+                   border-radius: 5px;
+                   text-align: center;
+                   font-weight: bold;
+                   background-color: #2a2a2a;
+                 }
+                 QProgressBar::chunk {
+                   background-color: #4CAF50;
+                   border-radius: 3px;
+                 }</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QLabel" name="testStatus_LB">
+                <property name="text">
+                 <string>Ready</string>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignCenter</set>
+                </property>
+                <property name="styleSheet">
+                 <string>font-size: 9pt; color: #aaa;</string>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </widget>
+           </item>
+           <item>
+            <layout class="QHBoxLayout" name="testControlLayout">
+             <property name="spacing">
+              <number>5</number>
+             </property>
+             <item>
+              <widget class="QPushButton" name="startAutoTest_PB">
+               <property name="text">
+                <string>🚀 Start Test</string>
+               </property>
+               <property name="minimumSize">
+                <size>
+                 <width>0</width>
+                 <height>40</height>
+                </size>
+               </property>
+               <property name="styleSheet">
+                <string>QPushButton { 
+                  background-color: #9C27B0; 
+                  color: white; 
+                  font-weight: bold; 
+                  border-radius: 5px; 
+                  font-size: 11pt;
+                }
+                QPushButton:hover { 
+                  background-color: #7B1FA2; 
+                }
+                QPushButton:disabled {
+                  background-color: #555;
+                  color: #999;
+                }</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QPushButton" name="stopAutoTest_PB">
+               <property name="text">
+                <string>⏹️ Stop</string>
+               </property>
+               <property name="minimumSize">
+                <size>
+                 <width>0</width>
+                 <height>40</height>
+                </size>
+               </property>
+               <property name="enabled">
+                <bool>false</bool>
+               </property>
+               <property name="styleSheet">
+                <string>QPushButton { 
+                  background-color: #f44336; 
+                  color: white; 
+                  font-weight: bold; 
+                  border-radius: 5px; 
+                  font-size: 11pt;
+                }
+                QPushButton:hover { 
+                  background-color: #da190b; 
+                }
+                QPushButton:disabled {
+                  background-color: #555;
+                  color: #999;
+                }</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+           <item>
+            <spacer name="autoTestSpacer">
+             <property name="orientation">
+              <enum>Qt::Vertical</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>20</width>
+               <height>40</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
+          </layout>
+         </widget>
+        </item>
+       </layout>
+      </item>
+     </layout>
+    </item>
+    <item>
+     <widget class="QGroupBox" name="logGroupBox">
+      <property name="title">
+       <string>System Log</string>
+      </property>
+      <property name="minimumSize">
+       <size>
+        <width>0</width>
+        <height>180</height>
+       </size>
+      </property>
+      <property name="maximumSize">
+       <size>
+        <width>16777215</width>
+        <height>220</height>
+       </size>
+      </property>
+      <layout class="QVBoxLayout" name="logLayout">
+       <item>
+        <widget class="QListWidget" name="log_LW">
+         <property name="styleSheet">
+          <string>QListWidget { 
+            background-color: #1e1e1e; 
+            border: 1px solid #555; 
+            border-radius: 5px; 
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 10pt;
+          }</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+    </item>
+   </layout>
   </widget>
   <widget class="QMenuBar" name="menubar">
    <property name="geometry">
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>991</width>
+     <width>1400</width>
      <height>22</height>
     </rect>
    </property>
+   <widget class="QMenu" name="menuFile">
+    <property name="title">
+     <string>File</string>
+    </property>
+    <addaction name="actionExport_Data"/>
+    <addaction name="separator"/>
+    <addaction name="actionExit"/>
+   </widget>
+   <widget class="QMenu" name="menuView">
+    <property name="title">
+     <string>View</string>
+    </property>
+    <addaction name="actionToggle_Theme"/>
+    <addaction name="actionReset_Layout"/>
+   </widget>
+   <widget class="QMenu" name="menuTest">
+    <property name="title">
+     <string>Test</string>
+    </property>
+    <addaction name="actionQuick_Test"/>
+    <addaction name="actionTest_Settings"/>
+   </widget>
+   <widget class="QMenu" name="menuHelp">
+    <property name="title">
+     <string>Help</string>
+    </property>
+    <addaction name="actionAbout"/>
+   </widget>
+   <addaction name="menuFile"/>
+   <addaction name="menuView"/>
+   <addaction name="menuTest"/>
+   <addaction name="menuHelp"/>
   </widget>
-  <widget class="QStatusBar" name="statusbar"/>
+  <widget class="QStatusBar" name="statusbar">
+   <property name="styleSheet">
+    <string>QStatusBar { 
+      background-color: #3a3a3a; 
+      color: #dcdcdc; 
+      border-top: 1px solid #555;
+    }</string>
+   </property>
+  </widget>
+  <action name="actionExport_Data">
+   <property name="text">
+    <string>Export Data...</string>
+   </property>
+  </action>
+  <action name="actionExit">
+   <property name="text">
+    <string>Exit</string>
+   </property>
+  </action>
+  <action name="actionToggle_Theme">
+   <property name="text">
+    <string>Toggle Theme</string>
+   </property>
+  </action>
+  <action name="actionReset_Layout">
+   <property name="text">
+    <string>Reset Layout</string>
+   </property>
+  </action>
+  <action name="actionQuick_Test">
+   <property name="text">
+    <string>Quick Test</string>
+   </property>
+  </action>
+  <action name="actionTest_Settings">
+   <property name="text">
+    <string>Test Settings...</string>
+   </property>
+  </action>
+  <action name="actionAbout">
+   <property name="text">
+    <string>About</string>
+   </property>
+  </action>
  </widget>
  <resources/>
  <connections/>

@@ -2,8 +2,9 @@ import sys, time, math
 from PyQt6 import QtWidgets, QtCore
 from PyQt6.QtGui import QColor, QAction
 from PyQt6.QtCore import QTimer
-from generated import main_ui_improved
+from generated import main_ui
 from services.hvpm import HvpmService
+from services.auto_test import AutoTestService
 from services import theme, adb
 from collections import deque
 import pyqtgraph as pg
@@ -11,7 +12,7 @@ import pyqtgraph as pg
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self):
         super().__init__()
-        self.ui = main_ui_improved.Ui_MainWindow()
+        self.ui = main_ui.Ui_MainWindow()
         self.ui.setupUi(self)
 
         # Apply modern theme
@@ -25,11 +26,18 @@ class MainWindow(QtWidgets.QMainWindow):
             volt_entry=self.ui.hvpmVolt_LE
         )
 
+        # Auto Test 서비스
+        self.auto_test_service = AutoTestService(
+            hvpm_service=self.hvpm_service,
+            log_callback=self._log
+        )
+
         # Setup enhanced UI components
         self.setup_graphs()
         self.setup_connections()
         self.setup_status_indicators()
         self.setup_menu_actions()
+        self.setup_auto_test_ui()
         
         # 버퍼/타이머
         self._t0 = None
@@ -50,7 +58,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.refresh_connections()
         
         # Status bar 메시지
-        self.ui.statusbar.showMessage("Ready - Connect devices to start monitoring", 5000)
+        self.ui.statusbar.showMessage("Ready - Connect devices to start monitoring and testing", 5000)
 
     def setup_graphs(self):
         """Setup enhanced graph widgets"""
@@ -98,11 +106,20 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui.startGraph_PB.clicked.connect(self.start_graph)
         self.ui.stopGraph_PB.clicked.connect(self.stop_graph)
         
+        # Auto test connections
+        self.ui.startAutoTest_PB.clicked.connect(self.start_auto_test)
+        self.ui.stopAutoTest_PB.clicked.connect(self.stop_auto_test)
+        
         # Combo box connections
         self.ui.comport_CB.currentIndexChanged.connect(self._on_device_selected)
         
         # Enter key for voltage input
         self.ui.hvpmVolt_LE.returnPressed.connect(self.handle_set_voltage)
+        
+        # Auto test service signals
+        self.auto_test_service.progress_updated.connect(self._on_auto_test_progress)
+        self.auto_test_service.test_completed.connect(self._on_auto_test_completed)
+        self.auto_test_service.voltage_stabilized.connect(self._on_voltage_stabilized)
 
     def setup_status_indicators(self):
         """Setup status indicators and tooltips"""
@@ -115,6 +132,13 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui.setVolt_PB.setToolTip("Set voltage to specified value")
         self.ui.startGraph_PB.setToolTip("Start real-time monitoring")
         self.ui.stopGraph_PB.setToolTip("Stop real-time monitoring")
+        
+        # Auto test tooltips
+        self.ui.testScenario_CB.setToolTip("Select test scenario to run")
+        self.ui.stabilizationVoltage_SB.setToolTip("Voltage for device stabilization before test")
+        self.ui.testVoltage_SB.setToolTip("Voltage during actual test execution")
+        self.ui.startAutoTest_PB.setToolTip("Start automated test with voltage control")
+        self.ui.stopAutoTest_PB.setToolTip("Stop current automated test")
 
     def setup_menu_actions(self):
         """Setup menu actions"""
@@ -126,8 +150,40 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui.actionToggle_Theme.triggered.connect(self.toggle_theme)
         self.ui.actionReset_Layout.triggered.connect(self.reset_layout)
         
+        # Test menu actions
+        self.ui.actionQuick_Test.triggered.connect(self.quick_test)
+        self.ui.actionTest_Settings.triggered.connect(self.test_settings)
+        
         # Help menu actions
         self.ui.actionAbout.triggered.connect(self.show_about)
+
+    def setup_auto_test_ui(self):
+        """Setup auto test UI components"""
+        # Populate test scenarios
+        scenarios = self.auto_test_service.get_available_scenarios()
+        self.ui.testScenario_CB.clear()
+        
+        scenario_items = [
+            ("screen_onoff", "Screen On/Off (5 cycles)"),
+            ("screen_onoff_long", "Screen On/Off Long (10 cycles)"),
+            ("cpu_stress", "CPU Stress Test (60s)"),
+            ("cpu_stress_long", "CPU Stress Test Long (5min)"),
+        ]
+        
+        for key, display_name in scenario_items:
+            if key in scenarios:
+                self.ui.testScenario_CB.addItem(display_name, key)
+        
+        # Set default selection
+        if self.ui.testScenario_CB.count() > 0:
+            self.ui.testScenario_CB.setCurrentIndex(0)
+        
+        # Connect voltage spinbox changes
+        self.ui.stabilizationVoltage_SB.valueChanged.connect(self._on_voltage_config_changed)
+        self.ui.testVoltage_SB.valueChanged.connect(self._on_voltage_config_changed)
+        
+        # Initial voltage configuration
+        self._on_voltage_config_changed()
 
     def refresh_connections(self):
         """Enhanced connection refresh with better feedback"""
@@ -159,6 +215,30 @@ class MainWindow(QtWidgets.QMainWindow):
         else:
             self.ui.hvpmStatus_LB.setText("Disconnected")
             self.ui.hvpmStatus_LB.setStyleSheet(f"color: {theme.get_status_color('disconnected')}; font-weight: bold;")
+        
+        # Update auto test button availability
+        self._update_auto_test_buttons()
+
+    def _update_auto_test_buttons(self):
+        """Update auto test button states"""
+        hvpm_connected = self.hvpm_service.is_connected()
+        adb_connected = self.selected_device and self.selected_device != "No devices found"
+        test_running = self.auto_test_service.is_running
+        
+        can_start = hvpm_connected and adb_connected and not test_running
+        
+        self.ui.startAutoTest_PB.setEnabled(can_start)
+        self.ui.stopAutoTest_PB.setEnabled(test_running)
+        
+        # Update tooltips based on status
+        if not hvpm_connected:
+            self.ui.startAutoTest_PB.setToolTip("HVPM device must be connected")
+        elif not adb_connected:
+            self.ui.startAutoTest_PB.setToolTip("ADB device must be connected")
+        elif test_running:
+            self.ui.startAutoTest_PB.setToolTip("Test is currently running")
+        else:
+            self.ui.startAutoTest_PB.setToolTip("Start automated test with voltage control")
 
     # ---------- 로그 ----------
     def _log(self, msg: str, level: str = "info"):
@@ -324,12 +404,16 @@ class MainWindow(QtWidgets.QMainWindow):
             self.ui.comport_CB.setCurrentIndex(0)
             self.selected_device = devices[0]
             self._log(f"📱 ADB device selected: {self.selected_device}", "info")
+            
+            # Update auto test service
+            self.auto_test_service.set_device(self.selected_device)
         else:
             self.ui.comport_CB.addItem("No devices found")
             self.selected_device = None
             self._log("⚠️ No ADB devices found", "warn")
             
         self._refreshing_adb = False
+        self._update_auto_test_buttons()
 
     def _on_device_selected(self):
         """Handle ADB device selection"""
@@ -340,9 +424,12 @@ class MainWindow(QtWidgets.QMainWindow):
         if device and device != "No devices found":
             self.selected_device = device
             self._log(f"📱 ADB device changed: {device}", "info")
+            self.auto_test_service.set_device(device)
         else:
             self.selected_device = None
             self._log("⚠️ No ADB device selected", "warn")
+        
+        self._update_auto_test_buttons()
 
     # ---------- HVPM ----------
     def handle_read_voltage(self):
@@ -362,7 +449,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 self._log("❌ Failed to read voltage", "error")
         finally:
             self.ui.readVolt_PB.setEnabled(True)
-            self.ui.readVolt_PB.setText("📊 Read Current Voltage")
+            self.ui.readVolt_PB.setText("📊 Read")
 
     def handle_set_voltage(self):
         """Enhanced voltage setting with validation"""
@@ -411,7 +498,99 @@ class MainWindow(QtWidgets.QMainWindow):
                 
         finally:
             self.ui.setVolt_PB.setEnabled(True)
-            self.ui.setVolt_PB.setText("⚡ Set Voltage")
+            self.ui.setVolt_PB.setText("⚡ Set")
+
+    # ---------- Auto Test ----------
+    def _on_voltage_config_changed(self):
+        """Handle voltage configuration changes"""
+        stabilization_voltage = self.ui.stabilizationVoltage_SB.value()
+        test_voltage = self.ui.testVoltage_SB.value()
+        
+        self.auto_test_service.set_voltages(stabilization_voltage, test_voltage)
+
+    def start_auto_test(self):
+        """Start automated test"""
+        if self.auto_test_service.is_running:
+            return
+        
+        # Get selected scenario
+        scenario_data = self.ui.testScenario_CB.currentData()
+        if not scenario_data:
+            QtWidgets.QMessageBox.warning(self, "No Scenario", "Please select a test scenario.")
+            return
+        
+        # Confirm test start
+        scenario_name = self.ui.testScenario_CB.currentText()
+        stabilization_v = self.ui.stabilizationVoltage_SB.value()
+        test_v = self.ui.testVoltage_SB.value()
+        
+        reply = QtWidgets.QMessageBox.question(
+            self,
+            "Start Auto Test",
+            f"Start automated test?\n\n"
+            f"Scenario: {scenario_name}\n"
+            f"Stabilization Voltage: {stabilization_v}V\n"
+            f"Test Voltage: {test_v}V\n"
+            f"Device: {self.selected_device}\n\n"
+            f"This will automatically control voltage and device.",
+            QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No
+        )
+        
+        if reply == QtWidgets.QMessageBox.StandardButton.No:
+            return
+        
+        # Start monitoring if not already active
+        if not self._graphActive:
+            self.start_graph()
+        
+        # Start test
+        success = self.auto_test_service.start_test(scenario_data)
+        if success:
+            self._update_auto_test_buttons()
+            self.ui.testProgress_PB.setValue(0)
+            self.ui.testStatus_LB.setText("Starting test...")
+            self._log(f"🚀 Starting automated test: {scenario_name}", "info")
+        else:
+            QtWidgets.QMessageBox.warning(self, "Test Start Failed", "Failed to start automated test. Check connections and try again.")
+
+    def stop_auto_test(self):
+        """Stop automated test"""
+        if not self.auto_test_service.is_running:
+            return
+        
+        reply = QtWidgets.QMessageBox.question(
+            self,
+            "Stop Auto Test",
+            "Are you sure you want to stop the current test?",
+            QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No
+        )
+        
+        if reply == QtWidgets.QMessageBox.StandardButton.Yes:
+            self.auto_test_service.stop_test()
+            self._update_auto_test_buttons()
+            self.ui.testProgress_PB.setValue(0)
+            self.ui.testStatus_LB.setText("Test stopped")
+
+    def _on_auto_test_progress(self, progress: int, status: str):
+        """Handle auto test progress updates"""
+        self.ui.testProgress_PB.setValue(progress)
+        self.ui.testStatus_LB.setText(status)
+
+    def _on_auto_test_completed(self, success: bool, message: str):
+        """Handle auto test completion"""
+        self._update_auto_test_buttons()
+        
+        if success:
+            self.ui.testProgress_PB.setValue(100)
+            self.ui.testStatus_LB.setText("Test completed successfully")
+            QtWidgets.QMessageBox.information(self, "Test Complete", f"Automated test completed successfully!\n\n{message}")
+        else:
+            self.ui.testStatus_LB.setText("Test failed")
+            QtWidgets.QMessageBox.warning(self, "Test Failed", f"Automated test failed:\n\n{message}")
+
+    def _on_voltage_stabilized(self, voltage: float):
+        """Handle voltage stabilization notification"""
+        self._log(f"✅ Voltage stabilized at {voltage:.2f}V", "success")
 
     # ---------- Menu Actions ----------
     def export_data(self):
@@ -451,24 +630,67 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def reset_layout(self):
         """Reset window layout"""
-        self.resize(1200, 800)
+        self.resize(1400, 900)
         self._log("🔄 Layout reset", "info")
+
+    def quick_test(self):
+        """Quick test shortcut"""
+        if self.ui.testScenario_CB.count() > 0:
+            self.ui.testScenario_CB.setCurrentIndex(0)  # Select first scenario
+            self.start_auto_test()
+
+    def test_settings(self):
+        """Test settings dialog (placeholder)"""
+        QtWidgets.QMessageBox.information(
+            self,
+            "Test Settings",
+            "Test settings dialog not implemented yet.\n\n"
+            "Use the Auto Test panel to configure test parameters."
+        )
 
     def show_about(self):
         """Show about dialog"""
         QtWidgets.QMessageBox.about(
             self, 
-            "About HVPM Monitor", 
-            "HVPM Monitor v2.0\n\n"
-            "Enhanced power measurement tool with real-time monitoring.\n"
-            "Features modern UI design and improved functionality.\n\n"
+            "About HVPM Monitor with Auto Test", 
+            "HVPM Monitor v3.0 with Auto Test\n\n"
+            "Enhanced power measurement tool with automated testing capabilities.\n"
+            "Features real-time monitoring, voltage control, and ADB-based device testing.\n\n"
+            "New Features:\n"
+            "• Automated test scenarios\n"
+            "• Voltage stabilization\n"
+            "• ADB device control\n"
+            "• Enhanced UI and logging\n\n"
             "Built with PyQt6 and PyQtGraph"
         )
+
+    def closeEvent(self, event):
+        """Handle application close"""
+        # Stop any running tests
+        if self.auto_test_service.is_running:
+            reply = QtWidgets.QMessageBox.question(
+                self,
+                "Test Running",
+                "An automated test is currently running. Stop the test and exit?",
+                QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No
+            )
+            
+            if reply == QtWidgets.QMessageBox.StandardButton.Yes:
+                self.auto_test_service.stop_test()
+            else:
+                event.ignore()
+                return
+        
+        # Stop monitoring
+        if self._graphActive:
+            self.stop_graph()
+        
+        event.accept()
 
 def main():
     app = QtWidgets.QApplication(sys.argv)
     app.setApplicationName("HVPM Monitor")
-    app.setApplicationVersion("2.0")
+    app.setApplicationVersion("3.0")
     
     w = MainWindow()
     w.show()
