@@ -86,13 +86,14 @@ class Ui_MainWindow(object):
         self.mainContentLayout.setSpacing(15)
         self.mainContentLayout.setObjectName("mainContentLayout")
         
-        # Real-time Monitoring - 1/3
+        # Real-time Monitoring - Balanced
         self.graphGroupBox = QtWidgets.QGroupBox(parent=self.centralwidget)
         self.graphGroupBox.setTitle("Real-time Monitoring")
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Expanding)
-        sizePolicy.setHorizontalStretch(1)
+        sizePolicy.setHorizontalStretch(3)
         sizePolicy.setVerticalStretch(0)
         self.graphGroupBox.setSizePolicy(sizePolicy)
+        self.graphGroupBox.setMinimumSize(QtCore.QSize(400, 0))
         self.graphGroupBox.setObjectName("graphGroupBox")
         
         self.graphVerticalLayout = QtWidgets.QVBoxLayout(self.graphGroupBox)
@@ -308,13 +309,14 @@ class Ui_MainWindow(object):
         self.autoTestGroupBox = QtWidgets.QGroupBox(parent=self.centralwidget)
         self.autoTestGroupBox.setTitle("Auto Test")
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Expanding)
-        sizePolicy.setHorizontalStretch(2)
+        sizePolicy.setHorizontalStretch(4)
         sizePolicy.setVerticalStretch(0)
         self.autoTestGroupBox.setSizePolicy(sizePolicy)
+        self.autoTestGroupBox.setMinimumSize(QtCore.QSize(500, 0))
         self.autoTestGroupBox.setObjectName("autoTestGroupBox")
         
         self.autoTestLayout = QtWidgets.QVBoxLayout(self.autoTestGroupBox)
-        self.autoTestLayout.setSpacing(15)
+        self.autoTestLayout.setSpacing(10)
         self.autoTestLayout.setObjectName("autoTestLayout")
         
         # Test config frame
@@ -331,6 +333,7 @@ class Ui_MainWindow(object):
         self.testConfigFrame.setObjectName("testConfigFrame")
         
         self.testConfigLayout = QtWidgets.QVBoxLayout(self.testConfigFrame)
+        self.testConfigLayout.setSpacing(8)
         self.testConfigLayout.setObjectName("testConfigLayout")
         
         self.testScenarioLabel = QtWidgets.QLabel(parent=self.testConfigFrame)
@@ -576,7 +579,8 @@ class Ui_MainWindow(object):
         self.testResultsLayout.addWidget(self.testResultsLabel)
         
         self.testResults_TE = QtWidgets.QTextEdit(parent=self.testResultsFrame)
-        self.testResults_TE.setMaximumSize(QtCore.QSize(16777215, 120))
+        self.testResults_TE.setMinimumSize(QtCore.QSize(0, 80))
+        self.testResults_TE.setMaximumSize(QtCore.QSize(16777215, 100))
         self.testResults_TE.setStyleSheet("""
             QTextEdit { 
                 background-color: #2a2a2a; 
