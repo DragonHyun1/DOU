@@ -115,6 +115,91 @@
         </widget>
        </item>
        <item>
+        <widget class="Line" name="line_2">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="daqLabel">
+         <property name="text">
+          <string>NI DAQ:</string>
+         </property>
+         <property name="minimumSize">
+          <size>
+           <width>60</width>
+           <height>0</height>
+          </size>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QComboBox" name="daqDevice_CB">
+         <property name="minimumSize">
+          <size>
+           <width>120</width>
+           <height>0</height>
+          </size>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QComboBox" name="daqChannel_CB">
+         <property name="minimumSize">
+          <size>
+           <width>50</width>
+           <height>0</height>
+          </size>
+         </property>
+         <item>
+          <property name="text">
+           <string>ai0</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>ai1</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>ai2</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>ai3</string>
+          </property>
+         </item>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="daqConnect_PB">
+         <property name="text">
+          <string>📡 DAQ</string>
+         </property>
+         <property name="minimumSize">
+          <size>
+           <width>60</width>
+           <height>35</height>
+          </size>
+         </property>
+         <property name="styleSheet">
+          <string>QPushButton { 
+            background-color: #2196F3; 
+            color: white; 
+            font-weight: bold; 
+            border-radius: 5px; 
+            font-size: 9pt;
+          }
+          QPushButton:hover { 
+            background-color: #1976D2; 
+          }</string>
+         </property>
+        </widget>
+       </item>
+       <item>
         <widget class="QPushButton" name="port_PB">
          <property name="text">
           <string>🔄 Refresh</string>
@@ -593,7 +678,7 @@
       <item>
        <widget class="QGroupBox" name="niCurrentGroupBox">
         <property name="title">
-         <string>NI USB-6289 Current Monitoring</string>
+         <string>NI DAQ Current Monitoring</string>
         </property>
         <property name="sizePolicy">
          <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
@@ -603,7 +688,7 @@
         </property>
         <property name="minimumSize">
          <size>
-          <width>300</width>
+          <width>250</width>
           <height>0</height>
          </size>
         </property>

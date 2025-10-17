@@ -69,6 +69,55 @@ class Ui_MainWindow(object):
         self.comport_CB.setObjectName("comport_CB")
         self.connectionLayout.addWidget(self.comport_CB)
         
+        # Line separator
+        self.line_2 = QtWidgets.QFrame(parent=self.connectionGroupBox)
+        self.line_2.setFrameShape(QtWidgets.QFrame.Shape.VLine)
+        self.line_2.setFrameShadow(QtWidgets.QFrame.Shadow.Sunken)
+        self.line_2.setObjectName("line_2")
+        self.connectionLayout.addWidget(self.line_2)
+        
+        # DAQ Label
+        self.daqLabel = QtWidgets.QLabel(parent=self.connectionGroupBox)
+        self.daqLabel.setText("NI DAQ:")
+        self.daqLabel.setMinimumSize(QtCore.QSize(60, 0))
+        self.daqLabel.setObjectName("daqLabel")
+        self.connectionLayout.addWidget(self.daqLabel)
+        
+        # DAQ Device ComboBox
+        self.daqDevice_CB = QtWidgets.QComboBox(parent=self.connectionGroupBox)
+        self.daqDevice_CB.setMinimumSize(QtCore.QSize(120, 0))
+        self.daqDevice_CB.setObjectName("daqDevice_CB")
+        self.connectionLayout.addWidget(self.daqDevice_CB)
+        
+        # DAQ Channel ComboBox
+        self.daqChannel_CB = QtWidgets.QComboBox(parent=self.connectionGroupBox)
+        self.daqChannel_CB.setMinimumSize(QtCore.QSize(50, 0))
+        self.daqChannel_CB.addItem("ai0")
+        self.daqChannel_CB.addItem("ai1")
+        self.daqChannel_CB.addItem("ai2")
+        self.daqChannel_CB.addItem("ai3")
+        self.daqChannel_CB.setObjectName("daqChannel_CB")
+        self.connectionLayout.addWidget(self.daqChannel_CB)
+        
+        # DAQ Connect Button
+        self.daqConnect_PB = QtWidgets.QPushButton(parent=self.connectionGroupBox)
+        self.daqConnect_PB.setText("📡 DAQ")
+        self.daqConnect_PB.setMinimumSize(QtCore.QSize(60, 35))
+        self.daqConnect_PB.setStyleSheet("""
+            QPushButton { 
+                background-color: #2196F3; 
+                color: white; 
+                font-weight: bold; 
+                border-radius: 5px; 
+                font-size: 9pt;
+            }
+            QPushButton:hover { 
+                background-color: #1976D2; 
+            }
+        """)
+        self.daqConnect_PB.setObjectName("daqConnect_PB")
+        self.connectionLayout.addWidget(self.daqConnect_PB)
+        
         self.port_PB = QtWidgets.QPushButton(parent=self.connectionGroupBox)
         self.port_PB.setText("🔄 Refresh")
         self.port_PB.setMinimumSize(QtCore.QSize(100, 35))
@@ -408,14 +457,14 @@ class Ui_MainWindow(object):
         
         self.mainContentLayout.addWidget(self.controlGroupBox)
         
-        # NI USB-6289 Current Monitoring
+        # NI DAQ Current Monitoring
         self.niCurrentGroupBox = QtWidgets.QGroupBox(parent=self.centralwidget)
-        self.niCurrentGroupBox.setTitle("NI USB-6289 Current Monitoring")
+        self.niCurrentGroupBox.setTitle("NI DAQ Current Monitoring")
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Expanding)
         sizePolicy.setHorizontalStretch(1)
         sizePolicy.setVerticalStretch(0)
         self.niCurrentGroupBox.setSizePolicy(sizePolicy)
-        self.niCurrentGroupBox.setMinimumSize(QtCore.QSize(300, 0))
+        self.niCurrentGroupBox.setMinimumSize(QtCore.QSize(250, 0))
         self.niCurrentGroupBox.setObjectName("niCurrentGroupBox")
         
         self.niCurrentLayout = QtWidgets.QVBoxLayout(self.niCurrentGroupBox)
@@ -555,6 +604,49 @@ class Ui_MainWindow(object):
         self.niCurrentReadingLayout.addWidget(self.niCurrent_LB)
         
         self.niCurrentLayout.addWidget(self.niCurrentReadingFrame)
+        
+        # NI Status frame
+        self.niStatusFrame = QtWidgets.QFrame(parent=self.niCurrentGroupBox)
+        self.niStatusFrame.setFrameShape(QtWidgets.QFrame.Shape.StyledPanel)
+        self.niStatusFrame.setFrameShadow(QtWidgets.QFrame.Shadow.Raised)
+        self.niStatusFrame.setStyleSheet("""
+            QFrame { 
+                background-color: #3a3a3a; 
+                border-radius: 8px; 
+                padding: 8px;
+            }
+        """)
+        self.niStatusFrame.setObjectName("niStatusFrame")
+        
+        self.niStatusLayout = QtWidgets.QVBoxLayout(self.niStatusFrame)
+        self.niStatusLayout.setObjectName("niStatusLayout")
+        
+        self.niStatus_LB = QtWidgets.QLabel(parent=self.niStatusFrame)
+        self.niStatus_LB.setText("📡 Disconnected")
+        self.niStatus_LB.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+        self.niStatus_LB.setStyleSheet("font-weight: bold; font-size: 10pt; color: #ff6b6b;")
+        self.niStatus_LB.setObjectName("niStatus_LB")
+        self.niStatusLayout.addWidget(self.niStatus_LB)
+        
+        self.niMonitor_PB = QtWidgets.QPushButton(parent=self.niStatusFrame)
+        self.niMonitor_PB.setText("▶️ Start Monitor")
+        self.niMonitor_PB.setMinimumSize(QtCore.QSize(0, 30))
+        self.niMonitor_PB.setStyleSheet("""
+            QPushButton { 
+                background-color: #4CAF50; 
+                color: white; 
+                border-radius: 4px; 
+                font-size: 9pt;
+                font-weight: bold;
+            }
+            QPushButton:hover { 
+                background-color: #45a049; 
+            }
+        """)
+        self.niMonitor_PB.setObjectName("niMonitor_PB")
+        self.niStatusLayout.addWidget(self.niMonitor_PB)
+        
+        self.niCurrentLayout.addWidget(self.niStatusFrame)
         
         # NI spacer
         niCurrentSpacer = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Expanding)

@@ -87,6 +87,7 @@ class MainWindow(QtWidgets.QMainWindow):
         
         # Initialize NI devices
         self.refresh_ni_devices()
+        self._update_ni_status()
         
         # Initialize voltage configuration from settings
         self._on_voltage_config_changed()
@@ -147,11 +148,13 @@ class MainWindow(QtWidgets.QMainWindow):
         if hasattr(self.ui, 'stopGraph_PB') and self.ui.stopGraph_PB:
             self.ui.stopGraph_PB.clicked.connect(self.stop_graph)
         
-        # NI DAQ connections
-        if hasattr(self.ui, 'niRefresh_PB') and self.ui.niRefresh_PB:
-            self.ui.niRefresh_PB.clicked.connect(self.refresh_ni_devices)
-        if hasattr(self.ui, 'niConnect_PB') and self.ui.niConnect_PB:
-            self.ui.niConnect_PB.clicked.connect(self.toggle_ni_connection)
+        # NI DAQ connections (Connection Settings)
+        if hasattr(self.ui, 'daqConnect_PB') and self.ui.daqConnect_PB:
+            self.ui.daqConnect_PB.clicked.connect(self.toggle_ni_connection)
+        
+        # NI DAQ monitoring connections
+        if hasattr(self.ui, 'niMonitor_PB') and self.ui.niMonitor_PB:
+            self.ui.niMonitor_PB.clicked.connect(self.toggle_ni_monitoring)
         
         # Auto test connections (check if they exist)
         if hasattr(self.ui, 'startAutoTest_PB') and self.ui.startAutoTest_PB:
@@ -197,14 +200,14 @@ class MainWindow(QtWidgets.QMainWindow):
             self.ui.stopGraph_PB.setToolTip("Stop real-time monitoring")
         
         # NI DAQ tooltips (check if elements exist)
-        if hasattr(self.ui, 'niDevice_CB') and self.ui.niDevice_CB:
-            self.ui.niDevice_CB.setToolTip("Select NI DAQ device")
-        if hasattr(self.ui, 'niChannel_CB') and self.ui.niChannel_CB:
-            self.ui.niChannel_CB.setToolTip("Select analog input channel")
-        if hasattr(self.ui, 'niRefresh_PB') and self.ui.niRefresh_PB:
-            self.ui.niRefresh_PB.setToolTip("Refresh available NI devices")
-        if hasattr(self.ui, 'niConnect_PB') and self.ui.niConnect_PB:
-            self.ui.niConnect_PB.setToolTip("Connect/disconnect NI DAQ device")
+        if hasattr(self.ui, 'daqDevice_CB') and self.ui.daqDevice_CB:
+            self.ui.daqDevice_CB.setToolTip("Select NI DAQ device")
+        if hasattr(self.ui, 'daqChannel_CB') and self.ui.daqChannel_CB:
+            self.ui.daqChannel_CB.setToolTip("Select analog input channel")
+        if hasattr(self.ui, 'daqConnect_PB') and self.ui.daqConnect_PB:
+            self.ui.daqConnect_PB.setToolTip("Connect/disconnect NI DAQ device")
+        if hasattr(self.ui, 'niMonitor_PB') and self.ui.niMonitor_PB:
+            self.ui.niMonitor_PB.setToolTip("Start/stop NI current monitoring")
         
         # Auto test tooltips (check if elements exist)
         if hasattr(self.ui, 'testScenario_CB') and self.ui.testScenario_CB:
@@ -358,42 +361,44 @@ class MainWindow(QtWidgets.QMainWindow):
     # ---------- NI DAQ ----------
     def refresh_ni_devices(self):
         """Refresh NI DAQ devices"""
-        if hasattr(self.ui, 'niDevice_CB') and self.ui.niDevice_CB:
-            self.ui.niDevice_CB.clear()
+        if hasattr(self.ui, 'daqDevice_CB') and self.ui.daqDevice_CB:
+            self.ui.daqDevice_CB.clear()
             devices = self.ni_service.get_available_devices()
             
             if devices:
-                self.ui.niDevice_CB.addItems(devices)
+                self.ui.daqDevice_CB.addItems(devices)
                 self._log(f"📡 Found {len(devices)} NI devices", "info")
             else:
-                self.ui.niDevice_CB.addItem("No devices found")
+                self.ui.daqDevice_CB.addItem("No devices found")
                 self._log("⚠️ No NI DAQ devices found", "warn")
     
     def toggle_ni_connection(self):
         """Toggle NI DAQ connection"""
-        if not hasattr(self.ui, 'niConnect_PB') or not self.ui.niConnect_PB:
+        if not hasattr(self.ui, 'daqConnect_PB') or not self.ui.daqConnect_PB:
             return
             
         if self.ni_service.is_connected():
             # Disconnect
             self.ni_service.disconnect_device()
-            self.ui.niConnect_PB.setText("Connect")
+            self.ui.daqConnect_PB.setText("📡 DAQ")
             self._log("📡 NI DAQ disconnected", "info")
         else:
             # Connect
-            if not hasattr(self.ui, 'niDevice_CB') or not hasattr(self.ui, 'niChannel_CB'):
+            if not hasattr(self.ui, 'daqDevice_CB') or not hasattr(self.ui, 'daqChannel_CB'):
                 return
                 
-            device = self.ui.niDevice_CB.currentText()
-            channel = self.ui.niChannel_CB.currentText()
+            device = self.ui.daqDevice_CB.currentText()
+            channel = self.ui.daqChannel_CB.currentText()
             
             if device and device != "No devices found":
                 success = self.ni_service.connect_device(device, channel)
                 if success:
-                    self.ui.niConnect_PB.setText("Disconnect")
+                    self.ui.daqConnect_PB.setText("🔌 Connected")
                     self._log(f"📡 NI DAQ connected: {device}/{channel}", "success")
                 else:
                     self._log(f"❌ Failed to connect to {device}/{channel}", "error")
+        
+        self._update_ni_status()
     
     def toggle_monitoring(self):
         """Toggle HVPM monitoring"""
@@ -420,10 +425,47 @@ class MainWindow(QtWidgets.QMainWindow):
         if hasattr(self.ui, 'niCurrent_LB') and self.ui.niCurrent_LB:
             self.ui.niCurrent_LB.setText(f"{current:.3f} A")
     
+    def toggle_ni_monitoring(self):
+        """Toggle NI DAQ monitoring"""
+        if not hasattr(self.ui, 'niMonitor_PB') or not self.ui.niMonitor_PB:
+            return
+            
+        if self.ni_service.is_monitoring():
+            # Stop monitoring
+            self.ni_service.stop_monitoring()
+            self.ui.niMonitor_PB.setText("▶️ Start Monitor")
+            self._log("⏹️ NI monitoring stopped", "info")
+        else:
+            # Start monitoring
+            if self.ni_service.is_connected():
+                success = self.ni_service.start_monitoring(1000)  # 1 second interval
+                if success:
+                    self.ui.niMonitor_PB.setText("⏹️ Stop Monitor")
+                    self._log("▶️ NI monitoring started", "info")
+            else:
+                self._log("❌ NI DAQ not connected", "error")
+        
+        self._update_ni_status()
+    
+    def _update_ni_status(self):
+        """Update NI DAQ status display"""
+        if hasattr(self.ui, 'niStatus_LB') and self.ui.niStatus_LB:
+            if self.ni_service.is_connected():
+                if self.ni_service.is_monitoring():
+                    self.ui.niStatus_LB.setText("🟢 Monitoring Active")
+                    self.ui.niStatus_LB.setStyleSheet("font-weight: bold; font-size: 10pt; color: #4CAF50;")
+                else:
+                    self.ui.niStatus_LB.setText("🟡 Connected")
+                    self.ui.niStatus_LB.setStyleSheet("font-weight: bold; font-size: 10pt; color: #FF9800;")
+            else:
+                self.ui.niStatus_LB.setText("📡 Disconnected")
+                self.ui.niStatus_LB.setStyleSheet("font-weight: bold; font-size: 10pt; color: #ff6b6b;")
+    
     def _on_ni_connection_changed(self, connected: bool):
         """Handle NI DAQ connection status change"""
-        if hasattr(self.ui, 'niConnect_PB') and self.ui.niConnect_PB:
-            self.ui.niConnect_PB.setText("Disconnect" if connected else "Connect")
+        if hasattr(self.ui, 'daqConnect_PB') and self.ui.daqConnect_PB:
+            self.ui.daqConnect_PB.setText("🔌 Connected" if connected else "📡 DAQ")
+        self._update_ni_status()
     
     def _on_ni_error(self, error_msg: str):
         """Handle NI DAQ errors"""
