@@ -83,10 +83,10 @@ except Exception as e:
     print("This may indicate NI-DAQmx runtime is not properly installed")
 
 class NIDAQService(QObject):
-    """Service for NI USB-6289 DAQ current monitoring"""
+    """Service for NI DAQ multi-channel voltage/current monitoring"""
     
     # Signals
-    current_updated = pyqtSignal(float)  # current value
+    channel_data_updated = pyqtSignal(dict)  # {channel: {'voltage': V, 'current': A}}
     connection_changed = pyqtSignal(bool)  # connected status
     error_occurred = pyqtSignal(str)  # error message
     
@@ -96,22 +96,148 @@ class NIDAQService(QObject):
         # Connection state
         self.connected = False
         self.device_name = None
-        self.channel = "ai0"
         self.task = None
+        
+        # Multi-channel configuration
+        self.active_channels = {}  # {channel: config}
+        self.channel_configs = {}  # {channel: {'name': str, 'target_v': float, 'shunt_r': float, 'enabled': bool}}
         
         # Monitoring state
         self.monitoring = False
         self.monitor_timer = QTimer()
-        self.monitor_timer.timeout.connect(self._read_current)
-        self.monitor_interval = 1000  # 1 second
+        self.monitor_timer.timeout.connect(self._read_all_channels)
+        self.monitor_interval = 500  # 0.5 second default
         
-        # Current reading
-        self.last_current = 0.0
+        # Last readings
+        self.last_readings = {}  # {channel: {'voltage': V, 'current': A}}
         
-        # Configuration
-        self.voltage_range = 10.0  # ±10V
-        self.current_scale = 1.0   # A/V scaling factor
-        self.current_offset = 0.0  # A offset
+        # Default configuration for 12 channels
+        self._init_default_channels()
+    
+    def _init_default_channels(self):
+        """Initialize default channel configurations"""
+        default_rails = [
+            {'name': '3V3_MAIN', 'target_v': 3.30, 'shunt_r': 0.010},
+            {'name': '1V8_IO', 'target_v': 1.80, 'shunt_r': 0.020},
+            {'name': '1V2_CORE', 'target_v': 1.20, 'shunt_r': 0.010},
+            {'name': '5V0_USB', 'target_v': 5.00, 'shunt_r': 0.050},
+            {'name': '2V5_ADC', 'target_v': 2.50, 'shunt_r': 0.020},
+            {'name': '3V3_AUX', 'target_v': 3.30, 'shunt_r': 0.010},
+            {'name': '1V0_DDR', 'target_v': 1.00, 'shunt_r': 0.005},
+            {'name': '1V5_PLL', 'target_v': 1.50, 'shunt_r': 0.020},
+            {'name': '2V8_RF', 'target_v': 2.80, 'shunt_r': 0.010},
+            {'name': '3V0_SENSOR', 'target_v': 3.00, 'shunt_r': 0.015},
+            {'name': '1V35_CPU', 'target_v': 1.35, 'shunt_r': 0.005},
+            {'name': '2V1_MEM', 'target_v': 2.10, 'shunt_r': 0.010}
+        ]
+        
+        for i, rail in enumerate(default_rails):
+            channel = f"ai{i}"
+            self.channel_configs[channel] = {
+                'name': rail['name'],
+                'target_v': rail['target_v'],
+                'shunt_r': rail['shunt_r'],
+                'enabled': False,  # Default disabled
+                'voltage_range': 10.0  # ±10V
+            }
+            self.last_readings[channel] = {'voltage': 0.0, 'current': 0.0}
+    
+    def set_channel_config(self, channel: str, name: str, target_v: float, shunt_r: float, enabled: bool):
+        """Set configuration for a specific channel"""
+        if channel not in self.channel_configs:
+            self.channel_configs[channel] = {}
+            self.last_readings[channel] = {'voltage': 0.0, 'current': 0.0}
+        
+        self.channel_configs[channel].update({
+            'name': name,
+            'target_v': target_v,
+            'shunt_r': shunt_r,
+            'enabled': enabled
+        })
+        
+        print(f"Channel {channel} configured: {name} ({target_v}V, {shunt_r}Ω, {'enabled' if enabled else 'disabled'})")
+    
+    def get_channel_config(self, channel: str) -> dict:
+        """Get configuration for a specific channel"""
+        return self.channel_configs.get(channel, {})
+    
+    def get_all_channel_configs(self) -> dict:
+        """Get all channel configurations"""
+        return self.channel_configs.copy()
+    
+    def set_monitoring_interval(self, interval_ms: int):
+        """Set monitoring interval (500ms for normal, 1000ms for auto test)"""
+        self.monitor_interval = interval_ms
+        if self.monitoring:
+            self.monitor_timer.setInterval(interval_ms)
+        print(f"Monitoring interval set to {interval_ms}ms")
+    
+    def _read_all_channels(self):
+        """Read all enabled channels"""
+        if not self.connected or not self.task:
+            return
+        
+        try:
+            enabled_channels = [ch for ch, config in self.channel_configs.items() if config.get('enabled', False)]
+            
+            if not enabled_channels:
+                return
+            
+            # Read all enabled channels at once
+            readings = {}
+            
+            for channel in enabled_channels:
+                try:
+                    # Create temporary task for single channel read
+                    with nidaqmx.Task() as temp_task:
+                        channel_name = f"{self.device_name}/{channel}"
+                        config = self.channel_configs[channel]
+                        voltage_range = config.get('voltage_range', 10.0)
+                        
+                        temp_task.ai_channels.add_ai_voltage_chan(
+                            channel_name,
+                            min_val=-voltage_range,
+                            max_val=voltage_range
+                        )
+                        
+                        voltage = temp_task.read()
+                        
+                        # Calculate current using shunt resistor
+                        shunt_r = config.get('shunt_r', 0.010)
+                        current = voltage / shunt_r if shunt_r > 0 else 0.0
+                        
+                        readings[channel] = {
+                            'voltage': voltage,
+                            'current': current,
+                            'name': config.get('name', channel),
+                            'target_v': config.get('target_v', 0.0)
+                        }
+                        
+                        self.last_readings[channel] = {'voltage': voltage, 'current': current}
+                        
+                except Exception as e:
+                    print(f"Error reading channel {channel}: {e}")
+                    readings[channel] = {
+                        'voltage': 0.0,
+                        'current': 0.0,
+                        'name': self.channel_configs[channel].get('name', channel),
+                        'target_v': self.channel_configs[channel].get('target_v', 0.0),
+                        'error': str(e)
+                    }
+            
+            if readings:
+                self.channel_data_updated.emit(readings)
+                
+        except Exception as e:
+            self.error_occurred.emit(f"Multi-channel read error: {e}")
+    
+    def read_single_shot(self) -> dict:
+        """Read all enabled channels once"""
+        if not self.connected:
+            return {}
+        
+        self._read_all_channels()
+        return self.last_readings.copy()
         
     def get_available_devices(self) -> List[str]:
         """Get list of available NI DAQ devices - ALWAYS return devices"""
