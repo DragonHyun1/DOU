@@ -1,17 +1,6 @@
-Found NI path: C:\Program Files (x86)\National Instruments\Shared\ExternalCompilerSupport\C\lib64\msvc
-Found NI path: C:\Windows\System32
-Added 2 NI paths to environment
-NI-DAQmx imported successfully, version: 1.2.0
-d:\PCT\Tool\DOU_0926\main.py:16: DeprecationWarning: sipPyTypeDict() is deprecated, the extension module should use sipPyTypeDictRef() instead
-  super().__init__()
-Traceback (most recent call last):
-  File "d:\PCT\Tool\DOU_0926\main.py", line 1294, in <module>
-    main()
-  File "d:\PCT\Tool\DOU_0926\main.py", line 1288, in main
-    w = MainWindow()
-  File "d:\PCT\Tool\DOU_0926\main.py", line 38, in __init__
-    self._setup_nidaq_environment()
-AttributeError: 'MainWindow' object has no attribute '_setup_nidaq_environment'
+[10:30:57] Error updating start button: setEnabled(self, a0: bool): argument 1 has unexpected type 'NoneType'
+[10:30:57] [HVPM] Connected, serial=27766
+[10:30:57] Error updating start button: setEnabled(self, a0: bool): argument 1 has unexpected type 'NoneType'
 
 
 
