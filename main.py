@@ -448,6 +448,12 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.ui.daqChannel_CB.addItems(standard_channels)
                 self.ui.daqChannel_CB.setCurrentText("ai0")  # Default to ai0
             
+            # IMMEDIATE FALLBACK: Always add common device names first
+            self._log("Adding fallback devices (Dev1, Dev2, Dev3)...", "info")
+            fallback_devices = ["Dev1", "Dev2", "Dev3"]
+            self.ui.daqDevice_CB.addItems(fallback_devices)
+            self._log(f"Added {len(fallback_devices)} fallback devices", "info")
+            
             self._log("Scanning for NI DAQ devices...", "info")
             
             try:
@@ -465,8 +471,12 @@ class MainWindow(QtWidgets.QMainWindow):
                     error_devices = [d for d in devices if "Error:" in d or "not installed" in d]
                     
                     if real_devices:
-                        self.ui.daqDevice_CB.addItems(real_devices)
-                        self._log(f"Found {len(real_devices)} NI DAQ device(s):", "success")
+                        # Add detected real devices (avoid duplicates with fallback)
+                        for device in real_devices:
+                            device_name = device.split(' (')[0]
+                            if device_name not in fallback_devices:
+                                self.ui.daqDevice_CB.addItem(device)
+                        self._log(f"Found {len(real_devices)} additional NI DAQ device(s):", "success")
                         for device in real_devices:
                             self._log(f"   Device: {device}", "info")
                         
@@ -481,14 +491,12 @@ class MainWindow(QtWidgets.QMainWindow):
                         for error in error_devices:
                             self._log(f"   {error}", "error")
                     else:
-                        self.ui.daqDevice_CB.addItem("No devices found")
-                        self._log("WARNING: No NI DAQ devices available", "warn")
-                        self._log("   Check hardware connections and NI-DAQmx installation", "warn")
+                        self._log("WARNING: No additional NI DAQ devices detected", "warn")
+                        self._log("   Using fallback devices (Dev1, Dev2, Dev3)", "warn")
                 else:
                     self._log("DEBUG: devices list is None or empty", "error")
-                    self.ui.daqDevice_CB.addItem("No devices found")
-                    self._log("ERROR: No NI DAQ devices detected", "error")
-                    self._log("   Verify NI-DAQmx drivers and device connections", "error")
+                    self._log("ERROR: No NI DAQ devices detected from service", "error")
+                    self._log("   Using fallback devices only", "warn")
                     
             except Exception as e:
                 self._log(f"EXCEPTION in refresh_ni_devices: {e}", "error")

@@ -234,7 +234,7 @@ class NIDAQService(QObject):
                 print(f"  - {device}")
             
             if not unique_devices:
-                print("WARNING: No devices found!")
+                print("WARNING: No devices found by detection methods!")
                 print("This may indicate:")
                 print("  1. No hardware connected")
                 print("  2. NI-DAQmx driver version mismatch")
@@ -242,8 +242,14 @@ class NIDAQService(QObject):
                 print("  4. Python nidaqmx package version incompatibility")
                 print("  5. Device access restrictions")
                 
-                # Return a diagnostic message instead of empty list
-                return ["No NI DAQ devices found - check NI MAX and drivers"]
+                # Return common device names for manual testing
+                print("Returning common device names for manual testing...")
+                fallback_devices = [
+                    "Dev1 (Manual Entry)",
+                    "Dev2 (Manual Entry)", 
+                    "Dev3 (Manual Entry)"
+                ]
+                return fallback_devices
             
             print(f"Returning {len(unique_devices)} devices to application")
             return unique_devices
@@ -257,10 +263,14 @@ class NIDAQService(QObject):
             print("Full traceback:")
             traceback.print_exc()
             
-            # Return error information for debugging
-            error_msg = f"Error: {str(e)[:100]}"
-            print(f"Returning error message: {error_msg}")
-            return [error_msg]
+            # Return fallback devices even on error
+            print("Returning fallback devices due to detection error...")
+            fallback_devices = [
+                f"Dev1 (Error: {str(e)[:30]})",
+                "Dev2 (Fallback)",
+                "Dev3 (Fallback)"
+            ]
+            return fallback_devices
     
     def _process_device(self, system, device_name: str) -> str:
         """Process individual device and return formatted info"""
@@ -504,11 +514,18 @@ class MockNIDAQService(NIDAQService):
         
     def get_available_devices(self) -> List[str]:
         # NI-DAQmx 없을 때 테스트용 Mock 장비 표시
-        print("Using Mock NI DAQ Service - no real hardware")
-        return [
+        print("=== Using Mock NI DAQ Service ===")
+        print("No real NI-DAQmx hardware/software available")
+        print("Returning mock devices for testing...")
+        
+        mock_devices = [
             "Dev1 (USB-6289, S/N: Mock001)",
-            "Dev2 (USB-6008, S/N: Mock002)"
+            "Dev2 (USB-6008, S/N: Mock002)",
+            "Dev3 (USB-6001, S/N: Mock003)"
         ]
+        
+        print(f"Mock devices: {mock_devices}")
+        return mock_devices
     
     def connect_device(self, device_name: str, channel: str = "ai0") -> bool:
         # Extract clean device name from formatted string
