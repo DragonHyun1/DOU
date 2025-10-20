@@ -148,10 +148,10 @@ class MainWindow(QtWidgets.QMainWindow):
 
         if found_paths:
             print(f"Added {len(found_paths)} NI paths to environment")
-            self._log(f"📡 NI-DAQmx environment setup: {len(found_paths)} paths added", "info")
+            self._log(f"NI-DAQmx environment setup: {len(found_paths)} paths added", "info")
         else:
             print("No NI-DAQmx paths found")
-            self._log("⚠️ No NI-DAQmx runtime paths found", "warn")
+            self._log("WARNING: No NI-DAQmx runtime paths found", "warn")
 
     def setup_graphs(self):
         """Setup enhanced graph widgets"""
@@ -304,7 +304,7 @@ class MainWindow(QtWidgets.QMainWindow):
         """Setup auto test UI components"""
         # Check if auto test UI elements exist
         if not hasattr(self.ui, 'testScenario_CB') or not self.ui.testScenario_CB:
-            self._log("⚠️ Auto test UI elements not found - auto test features disabled", "warn")
+            self._log("WARNING: Auto test UI elements not found - auto test features disabled", "warn")
             return
             
         # Test scenarios are now pre-populated in the UI file, but we can verify they have data
@@ -326,7 +326,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def refresh_connections(self):
         """Enhanced connection refresh with better feedback"""
         self.ui.port_PB.setEnabled(False)
-        self.ui.port_PB.setText("🔄 Refreshing...")
+        self.ui.port_PB.setText("Refreshing...")
         
         # Refresh ADB
         self.refresh_adb_ports()
@@ -334,11 +334,14 @@ class MainWindow(QtWidgets.QMainWindow):
         # Refresh HVPM
         self.hvpm_service.refresh_ports(log_callback=self._log)
         
+        # Refresh NI DAQ devices
+        self.refresh_ni_devices()
+        
         # Update status
         self.update_connection_status()
         
         self.ui.port_PB.setEnabled(True)
-        self.ui.port_PB.setText("🔄 Refresh")
+        self.ui.port_PB.setText("Refresh")
         
         # Read initial voltage if configured
         if self._cfg_refresh_reads_voltage and self.hvpm_service.is_connected():
@@ -437,7 +440,7 @@ class MainWindow(QtWidgets.QMainWindow):
         if hasattr(self.ui, 'daqDevice_CB') and self.ui.daqDevice_CB:
             self.ui.daqDevice_CB.clear()
             
-            self._log("🔄 Scanning for NI DAQ devices...", "info")
+            self._log("Scanning for NI DAQ devices...", "info")
             
             try:
                 print("Calling ni_service.get_available_devices()...")
@@ -452,9 +455,9 @@ class MainWindow(QtWidgets.QMainWindow):
                     
                     if real_devices:
                         self.ui.daqDevice_CB.addItems(real_devices)
-                        self._log(f"✅ Found {len(real_devices)} NI DAQ device(s):", "success")
+                        self._log(f"Found {len(real_devices)} NI DAQ device(s):", "success")
                         for device in real_devices:
-                            self._log(f"   📟 {device}", "info")
+                            self._log(f"   Device: {device}", "info")
                         
                         # Add mock devices if available (for testing)
                         if mock_devices:
@@ -463,21 +466,21 @@ class MainWindow(QtWidgets.QMainWindow):
                             
                     elif error_devices:
                         self.ui.daqDevice_CB.addItems(error_devices)
-                        self._log("❌ NI DAQ system error detected", "error")
+                        self._log("ERROR: NI DAQ system error detected", "error")
                         for error in error_devices:
                             self._log(f"   {error}", "error")
                     else:
                         self.ui.daqDevice_CB.addItem("No devices found")
-                        self._log("⚠️ No NI DAQ devices available", "warn")
+                        self._log("WARNING: No NI DAQ devices available", "warn")
                         self._log("   Check hardware connections and NI-DAQmx installation", "warn")
                 else:
                     self.ui.daqDevice_CB.addItem("No devices found")
-                    self._log("❌ No NI DAQ devices detected", "error")
+                    self._log("ERROR: No NI DAQ devices detected", "error")
                     self._log("   Verify NI-DAQmx drivers and device connections", "error")
                     
             except Exception as e:
                 self.ui.daqDevice_CB.addItem("Error detecting devices")
-                self._log(f"❌ NI DAQ detection error: {e}", "error")
+                self._log(f"ERROR: NI DAQ detection error: {e}", "error")
                 self._log("   Check NI-DAQmx installation and system configuration", "error")
     
     def toggle_ni_connection(self):
@@ -489,17 +492,17 @@ class MainWindow(QtWidgets.QMainWindow):
             # Disconnect
             self.ni_service.disconnect_device()
             self.ui.daqConnect_PB.setText("Connect")
-            self._log("📡 NI DAQ disconnected", "info")
+            self._log("NI DAQ disconnected", "info")
         else:
             # Connect
             if not hasattr(self.ui, 'daqDevice_CB') or not hasattr(self.ui, 'daqChannel_CB'):
-                self._log("❌ NI DAQ UI elements not found", "error")
+                self._log("ERROR: NI DAQ UI elements not found", "error")
                 return
                 
             device = self.ui.daqDevice_CB.currentText()
             channel = self.ui.daqChannel_CB.currentText()
             
-            self._log(f"🔄 Attempting NI DAQ connection...", "info")
+            self._log(f"Attempting NI DAQ connection...", "info")
             self._log(f"   Device: {device}", "info")
             self._log(f"   Channel: {channel}", "info")
             
@@ -512,21 +515,21 @@ class MainWindow(QtWidgets.QMainWindow):
                     device_info = self.ni_service.get_device_info()
                     clean_device = device_info.get('device_name', device.split(' (')[0])
                     
-                    self._log(f"✅ NI DAQ connected successfully!", "success")
+                    self._log(f"NI DAQ connected successfully!", "success")
                     self._log(f"   Device: {clean_device}", "success")
                     self._log(f"   Channel: {channel}", "success")
                     self._log(f"   Voltage Range: ±{self.ni_service.voltage_range}V", "info")
                 else:
-                    self._log(f"❌ Failed to connect to {device}/{channel}", "error")
+                    self._log(f"ERROR: Failed to connect to {device}/{channel}", "error")
                     self._log("   Check device connections and drivers", "error")
             else:
                 if "No devices found" in device:
-                    self._log("❌ No NI DAQ devices available", "error")
+                    self._log("ERROR: No NI DAQ devices available", "error")
                     self._log("   Check hardware connections and NI-DAQmx drivers", "error")
                 elif "Error:" in device:
-                    self._log("❌ NI DAQ system error detected", "error")
+                    self._log("ERROR: NI DAQ system error detected", "error")
                 else:
-                    self._log("❌ Invalid device selection", "error")
+                    self._log("ERROR: Invalid device selection", "error")
         
         self._update_ni_status()
     
@@ -538,17 +541,17 @@ class MainWindow(QtWidgets.QMainWindow):
         if self.ni_service.is_monitoring():
             # Stop monitoring
             self.ni_service.stop_monitoring()
-            self.ui.startMonitoring_PB.setText("▶️ Monitor")
-            self._log("⏹️ Monitoring stopped", "info")
+            self.ui.startMonitoring_PB.setText("Monitor")
+            self._log("Monitoring stopped", "info")
         else:
             # Start monitoring
             if self.ni_service.is_connected():
                 success = self.ni_service.start_monitoring(1000)  # 1 second interval
                 if success:
-                    self.ui.startMonitoring_PB.setText("⏹️ Stop")
-                    self._log("▶️ Monitoring started", "info")
+                    self.ui.startMonitoring_PB.setText("Stop")
+                    self._log("Monitoring started", "info")
             else:
-                self._log("❌ NI DAQ not connected", "error")
+                self._log("ERROR: NI DAQ not connected", "error")
     
     def _on_ni_current_updated(self, current: float):
         """Handle NI current reading update"""
@@ -564,15 +567,15 @@ class MainWindow(QtWidgets.QMainWindow):
             # Stop monitoring
             self.ni_service.stop_monitoring()
             self.ui.niMonitor_PB.setText("Start Monitor")
-            self._log("⏹️ NI monitoring stopped", "info")
+            self._log("NI monitoring stopped", "info")
             self._measurement_mode = "hvpm" if self._graphActive else "none"
         else:
             # Start monitoring
             if self.ni_service.is_connected():
                 # 충돌 경고 표시
                 if self._graphActive and self._show_conflict_warning:
-                    self._log("⚠️ WARNING: HVPM and NI DAQ monitoring simultaneously", "warn")
-                    self._log("⚠️ This may cause measurement interference", "warn")
+                    self._log("WARNING: HVPM and NI DAQ monitoring simultaneously", "warn")
+                    self._log("WARNING: This may cause measurement interference", "warn")
                     self._measurement_mode = "both"
                 else:
                     self._measurement_mode = "ni_daq"
@@ -580,9 +583,9 @@ class MainWindow(QtWidgets.QMainWindow):
                 success = self.ni_service.start_monitoring(1000)  # 1 second interval
                 if success:
                     self.ui.niMonitor_PB.setText("Stop Monitor")
-                    self._log("▶️ NI monitoring started", "info")
+                    self._log("NI monitoring started", "info")
             else:
-                self._log("❌ NI DAQ not connected", "error")
+                self._log("ERROR: NI DAQ not connected", "error")
         
         self._update_ni_status()
         self._update_measurement_mode_status()
@@ -597,24 +600,24 @@ class MainWindow(QtWidgets.QMainWindow):
                 channel = device_info.get('channel', 'ai0')
                 
                 if self.ni_service.is_monitoring():
-                    self.ui.niStatus_LB.setText(f"🟢 Monitoring: {device_name}/{channel}")
+                    self.ui.niStatus_LB.setText(f"Monitoring: {device_name}/{channel}")
                     self.ui.niStatus_LB.setStyleSheet("font-weight: bold; font-size: 10pt; color: #4CAF50;")
                 else:
-                    self.ui.niStatus_LB.setText(f"🟡 Connected: {device_name}/{channel}")
+                    self.ui.niStatus_LB.setText(f"Connected: {device_name}/{channel}")
                     self.ui.niStatus_LB.setStyleSheet("font-weight: bold; font-size: 10pt; color: #FF9800;")
             else:
-                self.ui.niStatus_LB.setText("📡 Disconnected")
+                self.ui.niStatus_LB.setText("Disconnected")
                 self.ui.niStatus_LB.setStyleSheet("font-weight: bold; font-size: 10pt; color: #ff6b6b;")
     
     def _on_ni_connection_changed(self, connected: bool):
         """Handle NI DAQ connection status change"""
         if hasattr(self.ui, 'daqConnect_PB') and self.ui.daqConnect_PB:
-            self.ui.daqConnect_PB.setText("🔌 Connected" if connected else "📡 DAQ")
+            self.ui.daqConnect_PB.setText("Connected" if connected else "Connect")
         self._update_ni_status()
     
     def _on_ni_error(self, error_msg: str):
         """Handle NI DAQ errors"""
-        self._log(f"❌ NI DAQ Error: {error_msg}", "error")
+        self._log(f"ERROR: NI DAQ Error: {error_msg}", "error")
     
     def _update_measurement_mode_status(self):
         """Update status bar with current measurement mode"""
@@ -622,7 +625,7 @@ class MainWindow(QtWidgets.QMainWindow):
             "none": "No active monitoring",
             "hvpm": "HVPM monitoring active",
             "ni_daq": "NI DAQ monitoring active", 
-            "both": "⚠️ DUAL monitoring - potential interference"
+            "both": "WARNING: DUAL monitoring - potential interference"
         }
         
         message = mode_messages.get(self._measurement_mode, "Unknown mode")
@@ -682,7 +685,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self._graphActive = True
         self._graphTimer.start()
         
-        self._log("📊 Real-time monitoring started (10 Hz)", "info")
+        self._log("Real-time monitoring started (10 Hz)", "info")
         self.ui.statusbar.showMessage("Monitoring active - Collecting data...", 0)
 
     def stop_graph(self):
@@ -705,7 +708,7 @@ class MainWindow(QtWidgets.QMainWindow):
         if hasattr(self.ui, 'stopGraph_PB') and self.ui.stopGraph_PB:
             self.ui.stopGraph_PB.setEnabled(False)
         
-        self._log("⏹️ Real-time monitoring stopped", "info")
+        self._log("Real-time monitoring stopped", "info")
         self.ui.statusbar.showMessage("Monitoring stopped", 3000)
 
     def _on_graph_tick(self):
@@ -714,7 +717,7 @@ class MainWindow(QtWidgets.QMainWindow):
             # Check connection
             svc = self.hvpm_service
             if not (getattr(svc, "pm", None) and getattr(svc, "engine", None)):
-                self._log("⚠️ Connection lost during monitoring", "warn")
+                self._log("WARNING: Connection lost during monitoring", "warn")
                 self.stop_graph()
                 return
 
@@ -732,7 +735,7 @@ class MainWindow(QtWidgets.QMainWindow):
             if not math.isfinite(v) and not math.isfinite(i):
                 if not hasattr(self, "_graphWarnedNaN") or not self._graphWarnedNaN:
                     self._graphWarnedNaN = True
-                    self._log("⚠️ Invalid data received - skipping update", "warn")
+                    self._log("WARNING: Invalid data received - skipping update", "warn")
                 return
 
             # Update buffers
@@ -748,7 +751,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.update_plot_data()
 
         except Exception as e:
-            self._log(f"❌ Graph update failed: {e}", "error")
+            self._log(f"ERROR: Graph update failed: {e}", "error")
 
     def update_plot_data(self):
         """Update plot data with enhanced visualization"""
@@ -799,20 +802,20 @@ class MainWindow(QtWidgets.QMainWindow):
             devices = adb.list_devices()
         except Exception as e:
             devices = []
-            self._log(f"❌ ADB Error: {e}", "error")
+            self._log(f"ERROR: ADB Error: {e}", "error")
 
         if devices:
             self.ui.comport_CB.addItems(devices)
             self.ui.comport_CB.setCurrentIndex(0)
             self.selected_device = devices[0]
-            self._log(f"📱 ADB device selected: {self.selected_device}", "info")
+            self._log(f"ADB device selected: {self.selected_device}", "info")
             
             # Update auto test service
             self.auto_test_service.set_device(self.selected_device)
         else:
             self.ui.comport_CB.addItem("No devices found")
             self.selected_device = None
-            self._log("⚠️ No ADB devices found", "warn")
+            self._log("WARNING: No ADB devices found", "warn")
             
         self._refreshing_adb = False
         self._update_auto_test_buttons()
@@ -825,11 +828,11 @@ class MainWindow(QtWidgets.QMainWindow):
         device = self.ui.comport_CB.currentText().strip()
         if device and device != "No devices found":
             self.selected_device = device
-            self._log(f"📱 ADB device changed: {device}", "info")
+            self._log(f"ADB device changed: {device}", "info")
             self.auto_test_service.set_device(device)
         else:
             self.selected_device = None
-            self._log("⚠️ No ADB device selected", "warn")
+            self._log("WARNING: No ADB device selected", "warn")
         
         self._update_auto_test_buttons()
 
@@ -838,7 +841,7 @@ class MainWindow(QtWidgets.QMainWindow):
         """Read both voltage and current"""
         if hasattr(self.ui, 'readVoltCurrent_PB') and self.ui.readVoltCurrent_PB:
             self.ui.readVoltCurrent_PB.setEnabled(False)
-            self.ui.readVoltCurrent_PB.setText("📊 Reading...")
+            self.ui.readVoltCurrent_PB.setText("Reading...")
         
         try:
             # Read HVPM voltage and current
@@ -867,16 +870,16 @@ class MainWindow(QtWidgets.QMainWindow):
                 self._log(f"HVPM - Voltage: {v:.3f}V, Current: {i:.3f}A", "info")
                 self.ui.statusbar.showMessage(f"HVPM - V: {v:.3f}V, I: {i:.3f}A", 3000)
             else:
-                self._log("❌ Failed to read HVPM values", "error")
+                self._log("ERROR: Failed to read HVPM values", "error")
             
             # Also read NI current if connected
             if self.ni_service.is_connected():
                 ni_current = self.ni_service.read_current_once()
                 if ni_current is not None:
-                    self._log(f"📊 NI Current: {ni_current:.3f}A", "info")
+                    self._log(f"NI Current: {ni_current:.3f}A", "info")
                 
         except Exception as e:
-            self._log(f"❌ Read error: {e}", "error")
+            self._log(f"ERROR: Read error: {e}", "error")
         finally:
             if hasattr(self.ui, 'readVoltCurrent_PB') and self.ui.readVoltCurrent_PB:
                 self.ui.readVoltCurrent_PB.setEnabled(True)
@@ -974,7 +977,7 @@ class MainWindow(QtWidgets.QMainWindow):
         # Start monitoring during auto test
         if self.ni_service.is_connected() and not self.ni_service.is_monitoring():
             self.ni_service.start_monitoring(1000)  # 1 second interval
-            self._log("📊 Started NI current monitoring for test", "info")
+            self._log("Started NI current monitoring for test", "info")
         
         # Get custom script if needed
         custom_script = None
@@ -997,7 +1000,7 @@ class MainWindow(QtWidgets.QMainWindow):
         if success:
             self._update_auto_test_buttons()
             self.ui.testProgress_PB.setValue(0)
-            self.ui.testStatus_LB.setText("🚀 Initializing test...")
+            self.ui.testStatus_LB.setText("Initializing test...")
             self.ui.testStatus_LB.setStyleSheet("font-size: 11pt; color: #4CAF50; font-weight: bold;")
             
             # Update Auto Test group box title to show running status
@@ -1008,10 +1011,10 @@ class MainWindow(QtWidgets.QMainWindow):
             self.ui.statusbar.showMessage(f"Running Auto Test: {scenario_name}", 0)
             
             # Log with enhanced formatting
-            self._log(f"🚀 Starting automated test: {scenario_name}", "info")
+            self._log(f"Starting automated test: {scenario_name}", "info")
             if hasattr(self.ui, 'testResults_TE') and self.ui.testResults_TE:
                 timestamp = time.strftime("%H:%M:%S")
-                self.ui.testResults_TE.append(f"[{timestamp}] 🚀 Test Started: {scenario_name}")
+                self.ui.testResults_TE.append(f"[{timestamp}] Test Started: {scenario_name}")
         else:
             QtWidgets.QMessageBox.warning(self, "Test Start Failed", "Failed to start automated test. Check connections and try again.")
 
@@ -1032,7 +1035,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self._update_auto_test_buttons()
             self.ui.testProgress_PB.setValue(0)
             if hasattr(self.ui, 'testStatus_LB') and self.ui.testStatus_LB:
-                self.ui.testStatus_LB.setText("⏹️ Test stopped by user")
+                self.ui.testStatus_LB.setText("Test stopped by user")
                 self.ui.testStatus_LB.setStyleSheet("font-size: 11pt; color: #FF9800; font-weight: bold;")
             
             # Update Auto Test group box title
@@ -1045,7 +1048,7 @@ class MainWindow(QtWidgets.QMainWindow):
             # Add to test results
             if hasattr(self.ui, 'testResults_TE') and self.ui.testResults_TE:
                 timestamp = time.strftime("%H:%M:%S")
-                self.ui.testResults_TE.append(f"[{timestamp}] ⏹️ Test stopped by user")
+                self.ui.testResults_TE.append(f"[{timestamp}] Test stopped by user")
 
     def _on_auto_test_progress(self, progress: int, status: str):
         """Handle auto test progress updates"""
@@ -1056,15 +1059,12 @@ class MainWindow(QtWidgets.QMainWindow):
             # Add progress indicator and color coding
             if progress < 30:
                 color = "#FF9800"  # Orange for initialization
-                icon = "🔄"
             elif progress < 70:
                 color = "#2196F3"  # Blue for in progress
-                icon = "⚡"
             else:
                 color = "#4CAF50"  # Green for near completion
-                icon = "🎯"
             
-            formatted_status = f"{icon} {status} ({progress}%)"
+            formatted_status = f"{status} ({progress}%)"
             self.ui.testStatus_LB.setText(formatted_status)
             self.ui.testStatus_LB.setStyleSheet(f"font-size: 11pt; color: {color}; font-weight: bold;")
         
@@ -1096,7 +1096,7 @@ class MainWindow(QtWidgets.QMainWindow):
             if hasattr(self.ui, 'testProgress_PB') and self.ui.testProgress_PB:
                 self.ui.testProgress_PB.setValue(100)
             if hasattr(self.ui, 'testStatus_LB') and self.ui.testStatus_LB:
-                self.ui.testStatus_LB.setText("✅ Test completed successfully")
+                self.ui.testStatus_LB.setText("Test completed successfully")
                 self.ui.testStatus_LB.setStyleSheet("font-size: 11pt; color: #4CAF50; font-weight: bold;")
             
             # Update Auto Test group box title
@@ -1116,7 +1116,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 self._export_test_results()
         else:
             if hasattr(self.ui, 'testStatus_LB') and self.ui.testStatus_LB:
-                self.ui.testStatus_LB.setText("❌ Test failed")
+                self.ui.testStatus_LB.setText("Test failed")
                 self.ui.testStatus_LB.setStyleSheet("font-size: 11pt; color: #f44336; font-weight: bold;")
             
             # Update Auto Test group box title
@@ -1158,10 +1158,10 @@ class MainWindow(QtWidgets.QMainWindow):
                 if hasattr(self.ui, 'testResults_TE') and self.ui.testResults_TE:
                     f.write(self.ui.testResults_TE.toPlainText())
             
-            self._log(f"📁 Test results saved to {filename}", "info")
+            self._log(f"Test results saved to {filename}", "info")
             
         except Exception as e:
-            self._log(f"❌ Failed to save test results: {e}", "error")
+            self._log(f"ERROR: Failed to save test results: {e}", "error")
     
     def _export_test_results(self):
         """Export detailed test results with measurement data"""
@@ -1197,21 +1197,21 @@ class MainWindow(QtWidgets.QMainWindow):
                             f.write("=== Test Log ===\n")
                             f.write(self.ui.testResults_TE.toPlainText())
                 
-                self._log(f"📁 Detailed results exported to {filename}", "success")
+                self._log(f"Detailed results exported to {filename}", "success")
                 QtWidgets.QMessageBox.information(self, "Export Complete", f"Test results exported to:\n{filename}")
                 
             except Exception as e:
-                self._log(f"❌ Export failed: {e}", "error")
+                self._log(f"ERROR: Export failed: {e}", "error")
                 QtWidgets.QMessageBox.warning(self, "Export Error", f"Failed to export results:\n{e}")
 
     def _on_voltage_stabilized(self, voltage: float):
         """Handle voltage stabilization notification"""
-        self._log(f"✅ Voltage stabilized at {voltage:.2f}V", "success")
+        self._log(f"Voltage stabilized at {voltage:.2f}V", "success")
         
         # Start data collection from test voltage point (skip stabilization data if configured)
         if self.test_config.get('skip_stabilization_data', True):
             self.test_data_collection_active = True
-            self._log(f"📊 Data collection started from test voltage point", "info")
+            self._log(f"Data collection started from test voltage point", "info")
     
     def _on_test_params_changed(self):
         """Handle test parameter changes"""
@@ -1219,7 +1219,7 @@ class MainWindow(QtWidgets.QMainWindow):
         cycles = self.test_config.get('test_cycles', 5)
         duration = self.test_config.get('test_duration', 10)
         
-        self._log(f"⚙️ Test parameters: Cycles={cycles}, Duration={duration}s", "info")
+        self._log(f"Test parameters: Cycles={cycles}, Duration={duration}s", "info")
     
     def _on_scenario_changed(self):
         """Handle test scenario selection change"""
@@ -1232,7 +1232,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.ui.customScriptFrame.setVisible(is_custom)
         
         if scenario_data:
-            self._log(f"📋 Test scenario selected: {scenario_name}", "info")
+            self._log(f"Test scenario selected: {scenario_name}", "info")
             
             # Update test parameters based on scenario (stored in settings)
             if "screen_onoff" in scenario_data:
@@ -1248,7 +1248,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.test_config['test_cycles'] = 1
                 self.test_config['test_duration'] = 30
         else:
-            self._log("⚠️ No scenario data found", "warn")
+            self._log("WARNING: No scenario data found", "warn")
 
     def _check_ui_elements(self):
         """Debug function to check UI elements"""
@@ -1266,19 +1266,19 @@ class MainWindow(QtWidgets.QMainWindow):
                 existing_elements.append(element)
         
         if missing_elements:
-            self._log(f"⚠️ Missing UI elements: {', '.join(missing_elements)}", "warn")
+            self._log(f"WARNING: Missing UI elements: {', '.join(missing_elements)}", "warn")
             self._log("Some auto test features may be limited", "warn")
         
         if existing_elements:
-            self._log(f"✅ Found UI elements: {', '.join(existing_elements)}", "info")
+            self._log(f"Found UI elements: {', '.join(existing_elements)}", "info")
         
         # Check test scenario combo box items
         if hasattr(self.ui, 'testScenario_CB') and self.ui.testScenario_CB:
             count = self.ui.testScenario_CB.count()
-            self._log(f"📋 Test scenario combo box has {count} items", "info")
+            self._log(f"Test scenario combo box has {count} items", "info")
         
         # Log current test settings
-        self._log(f"⚙️ Test settings loaded: {self.test_config}", "info")
+        self._log(f"Test settings loaded: {self.test_config}", "info")
 
     # ---------- Menu Actions ----------
     def export_data(self):
@@ -1306,20 +1306,20 @@ class MainWindow(QtWidgets.QMainWindow):
                         curr = ib[i] if i < len(ib) else ""
                         f.write(f"{t},{v},{curr}\n")
                         
-                self._log(f"📁 Data exported to {filename}", "success")
+                self._log(f"Data exported to {filename}", "success")
                 QtWidgets.QMessageBox.information(self, "Export Complete", f"Data exported to:\n{filename}")
             except Exception as e:
-                self._log(f"❌ Export failed: {e}", "error")
+                self._log(f"ERROR: Export failed: {e}", "error")
                 QtWidgets.QMessageBox.warning(self, "Export Error", f"Failed to export data:\n{e}")
 
     def toggle_theme(self):
         """Toggle between themes (placeholder)"""
-        self._log("🎨 Theme toggle not implemented yet", "info")
+        self._log("Theme toggle not implemented yet", "info")
 
     def reset_layout(self):
         """Reset window layout"""
         self.resize(1400, 900)
-        self._log("🔄 Layout reset", "info")
+        self._log("Layout reset", "info")
 
     def quick_test(self):
         """Quick test shortcut"""
@@ -1348,10 +1348,10 @@ class MainWindow(QtWidgets.QMainWindow):
                 )
                 self.auto_test_service.stabilization_time = self.test_config['stabilization_time']
                 
-                self._log("⚙️ Test settings updated", "info")
+                self._log("Test settings updated", "info")
                 
         except Exception as e:
-            self._log(f"❌ Error opening test settings: {e}", "error")
+            self._log(f"ERROR: Error opening test settings: {e}", "error")
             QtWidgets.QMessageBox.warning(self, "Settings Error", f"Failed to open test settings:\n{e}")
     
     def show_about(self):
