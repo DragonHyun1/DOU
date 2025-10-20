@@ -1,6 +1,15 @@
-[10:30:57] Error updating start button: setEnabled(self, a0: bool): argument 1 has unexpected type 'NoneType'
-[10:30:57] [HVPM] Connected, serial=27766
-[10:30:57] Error updating start button: setEnabled(self, a0: bool): argument 1 has unexpected type 'NoneType'
+Found NI path: C:\Program Files (x86)\National Instruments\Shared\ExternalCompilerSupport\C\lib64\msvc
+Found NI path: C:\Windows\System32
+Added 2 NI paths to environment
+NI-DAQmx Python package imported successfully
+  - Package version: 1.2.0
+  - Runtime version: DriverVersion(major_version=16, minor_version=1, update_version=0)
+  - Python package and runtime loaded successfully
+d:\PCT\Tool\DOU_0926\main.py:16: DeprecationWarning: sipPyTypeDict() is deprecated, the extension module should use sipPyTypeDictRef() instead
+  super().__init__()
+Found NI path: C:\Program Files (x86)\National Instruments\Shared\ExternalCompilerSupport\C\lib64\msvc
+Found NI path: C:\Windows\System32
+Added 2 NI paths to environment
 
 
 
