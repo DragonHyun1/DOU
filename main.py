@@ -436,9 +436,17 @@ class MainWindow(QtWidgets.QMainWindow):
     
     # ---------- NI DAQ ----------
     def refresh_ni_devices(self):
-        """Refresh NI DAQ devices"""
+        """Refresh NI DAQ devices and channels"""
         if hasattr(self.ui, 'daqDevice_CB') and self.ui.daqDevice_CB:
             self.ui.daqDevice_CB.clear()
+            
+            # Also clear and populate channel combo box with standard AI channels
+            if hasattr(self.ui, 'daqChannel_CB') and self.ui.daqChannel_CB:
+                self.ui.daqChannel_CB.clear()
+                # Add standard AI channels (ai0 to ai7 for most devices)
+                standard_channels = [f"ai{i}" for i in range(8)]
+                self.ui.daqChannel_CB.addItems(standard_channels)
+                self.ui.daqChannel_CB.setCurrentText("ai0")  # Default to ai0
             
             self._log("Scanning for NI DAQ devices...", "info")
             
@@ -449,9 +457,9 @@ class MainWindow(QtWidgets.QMainWindow):
                 
                 if devices:
                     # Filter out mock devices for cleaner display
-                    real_devices = [d for d in devices if "(Mock)" not in d and "Error:" not in d]
+                    real_devices = [d for d in devices if "(Mock)" not in d and "Error:" not in d and "not installed" not in d]
                     mock_devices = [d for d in devices if "(Mock)" in d]
-                    error_devices = [d for d in devices if "Error:" in d]
+                    error_devices = [d for d in devices if "Error:" in d or "not installed" in d]
                     
                     if real_devices:
                         self.ui.daqDevice_CB.addItems(real_devices)
@@ -462,7 +470,7 @@ class MainWindow(QtWidgets.QMainWindow):
                         # Add mock devices if available (for testing)
                         if mock_devices:
                             self.ui.daqDevice_CB.addItems(mock_devices)
-                            self._log(f"   📝 {len(mock_devices)} simulated device(s) available", "info")
+                            self._log(f"   {len(mock_devices)} simulated device(s) available", "info")
                             
                     elif error_devices:
                         self.ui.daqDevice_CB.addItems(error_devices)
@@ -499,14 +507,31 @@ class MainWindow(QtWidgets.QMainWindow):
                 self._log("ERROR: NI DAQ UI elements not found", "error")
                 return
                 
-            device = self.ui.daqDevice_CB.currentText()
-            channel = self.ui.daqChannel_CB.currentText()
+            device = self.ui.daqDevice_CB.currentText().strip()
+            channel = self.ui.daqChannel_CB.currentText().strip()
             
             self._log(f"Attempting NI DAQ connection...", "info")
-            self._log(f"   Device: {device}", "info")
-            self._log(f"   Channel: {channel}", "info")
+            self._log(f"   Device: '{device}'", "info")
+            self._log(f"   Channel: '{channel}'", "info")
             
-            if device and device != "No devices found" and "Error:" not in device:
+            # Validate inputs
+            if not device:
+                self._log("ERROR: No device selected", "error")
+                return
+            if not channel:
+                self._log("ERROR: No channel selected", "error")
+                return
+            if device in ["No devices found", "Error detecting devices"]:
+                self._log("ERROR: Invalid device selection", "error")
+                return
+            if "Error:" in device or "not installed" in device:
+                self._log("ERROR: Device has error status", "error")
+                return
+            if not channel.startswith('ai'):
+                self._log(f"ERROR: Invalid channel format '{channel}' - should be 'ai0', 'ai1', etc.", "error")
+                return
+            
+            if device and channel:
                 success = self.ni_service.connect_device(device, channel)
                 if success:
                     self.ui.daqConnect_PB.setText("Disconnect")
