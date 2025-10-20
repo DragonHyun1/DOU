@@ -57,13 +57,30 @@ try:
     import nidaqmx
     from nidaqmx.constants import AcquisitionType
     NI_AVAILABLE = True
-    print(f"NI-DAQmx imported successfully, version: {getattr(nidaqmx, '__version__', 'unknown')}")
+    
+    # Get version info
+    ni_version = getattr(nidaqmx, '__version__', 'unknown')
+    print(f"NI-DAQmx Python package imported successfully")
+    print(f"  - Package version: {ni_version}")
+    
+    # Try to get system info early to verify runtime
+    try:
+        system = nidaqmx.system.System.local()
+        runtime_version = system.driver_version
+        print(f"  - Runtime version: {runtime_version}")
+        print(f"  - Python package and runtime loaded successfully")
+    except Exception as e:
+        print(f"  - WARNING: Runtime access failed: {e}")
+        print(f"  - This may indicate driver version mismatch")
+        
 except ImportError as e:
     NI_AVAILABLE = False
     print(f"NI-DAQmx import failed: {e}")
+    print("Install with: pip install nidaqmx")
 except Exception as e:
     NI_AVAILABLE = False
     print(f"NI-DAQmx import error: {e}")
+    print("This may indicate NI-DAQmx runtime is not properly installed")
 
 class NIDAQService(QObject):
     """Service for NI USB-6289 DAQ current monitoring"""
@@ -97,91 +114,150 @@ class NIDAQService(QObject):
         self.current_offset = 0.0  # A offset
         
     def get_available_devices(self) -> List[str]:
-        """Get list of available NI DAQ devices using proper NI-DAQmx API"""
+        """Get list of available NI DAQ devices with comprehensive diagnostics"""
         if not NI_AVAILABLE:
             print("NI-DAQmx not available")
             return ["NI-DAQmx not installed"]
         
         try:
-            print("=== NI-DAQmx Device Detection ===")
+            print("=== NI-DAQmx Comprehensive Device Detection ===")
             
-            # Check environment
+            # Check environment paths
             ni_paths = [p for p in os.environ.get('PATH', '').split(os.pathsep) if 'National Instruments' in p or 'NIDAQ' in p]
             print(f"NI paths in environment: {len(ni_paths)}")
             for path in ni_paths:
-                print(f"  - {path}")
+                exists = os.path.exists(path)
+                print(f"  - {path} ({'EXISTS' if exists else 'NOT FOUND'})")
             
-            # Get system instance
+            # Get system instance with detailed info
             system = nidaqmx.system.System.local()
             print(f"NI-DAQmx System version: {system.driver_version}")
             
-            # Get device names first (more reliable)
-            device_names = system.devices.device_names
-            print(f"Device names from system: {device_names}")
-            
+            # Try multiple methods to detect devices
             devices = []
             
-            if not device_names:
-                print("No device names returned from NI-DAQmx system")
-                return ["No NI DAQ devices found - check connections"]
+            # Method 1: system.devices.device_names
+            print("\n--- Method 1: system.devices.device_names ---")
+            try:
+                device_names = system.devices.device_names
+                print(f"Device names: {list(device_names)}")
+                
+                for device_name in device_names:
+                    devices.append(self._process_device(system, device_name))
+                    
+            except Exception as e:
+                print(f"Method 1 failed: {e}")
             
-            for device_name in device_names:
+            # Method 2: Direct system.devices iteration
+            print("\n--- Method 2: Direct system.devices iteration ---")
+            try:
+                device_list = list(system.devices)
+                print(f"Direct device list length: {len(device_list)}")
+                
+                for i, device in enumerate(device_list):
+                    print(f"Device {i}: {device}")
+                    try:
+                        device_name = device.name
+                        if device_name not in [d.split(' (')[0] for d in devices]:
+                            devices.append(self._process_device(system, device_name))
+                    except Exception as e:
+                        print(f"Error processing device {i}: {e}")
+                        
+            except Exception as e:
+                print(f"Method 2 failed: {e}")
+            
+            # Method 3: Try common device names
+            print("\n--- Method 3: Testing common device names ---")
+            common_names = ['Dev1', 'Dev2', 'Dev3', 'PXI1Slot2', 'PXI1Slot3']
+            for test_name in common_names:
                 try:
-                    print(f"\n--- Processing device: {device_name} ---")
-                    
-                    # Get device object
-                    device = system.devices[device_name]
-                    
-                    # Get basic info
-                    product_type = device.product_type
-                    print(f"Product Type: {product_type}")
-                    
-                    # Get serial number (different methods for different devices)
-                    serial_number = "Unknown"
-                    try:
-                        serial_number = device.dev_serial_num
-                        print(f"Serial Number: {serial_number}")
-                    except Exception as e:
-                        print(f"Serial number not available: {e}")
-                    
-                    # Get channel information
-                    ai_channels = []
-                    ao_channels = []
-                    
-                    try:
-                        ai_channel_names = device.ai_physical_chans.channel_names
-                        ai_channels = list(ai_channel_names)
-                        print(f"AI Channels ({len(ai_channels)}): {ai_channels[:5]}{'...' if len(ai_channels) > 5 else ''}")
-                    except Exception as e:
-                        print(f"AI channels not available: {e}")
-                    
-                    try:
-                        ao_channel_names = device.ao_physical_chans.channel_names
-                        ao_channels = list(ao_channel_names)
-                        print(f"AO Channels ({len(ao_channels)}): {ao_channels[:3]}{'...' if len(ao_channels) > 3 else ''}")
-                    except Exception as e:
-                        print(f"AO channels not available: {e}")
-                    
-                    # Format device info for display
-                    if serial_number != "Unknown":
-                        device_info = f"{device_name} ({product_type}, S/N: {serial_number})"
-                    else:
-                        device_info = f"{device_name} ({product_type})"
-                    
-                    devices.append(device_info)
-                    print(f"Added device: {device_info}")
-                    
+                    test_device = system.devices[test_name]
+                    print(f"Found device by name: {test_name}")
+                    if test_name not in [d.split(' (')[0] for d in devices]:
+                        devices.append(self._process_device(system, test_name))
+                except Exception:
+                    pass  # Device doesn't exist, which is normal
+            
+            # Remove duplicates while preserving order
+            unique_devices = []
+            seen_names = set()
+            for device in devices:
+                device_name = device.split(' (')[0]
+                if device_name not in seen_names:
+                    unique_devices.append(device)
+                    seen_names.add(device_name)
+            
+            print(f"\n=== Final Results ===")
+            print(f"Found {len(unique_devices)} unique devices:")
+            for device in unique_devices:
+                print(f"  - {device}")
+            
+            if not unique_devices:
+                print("No devices found - this may indicate:")
+                print("  1. No hardware connected")
+                print("  2. NI-DAQmx driver version mismatch")
+                print("  3. Permission issues")
+                print("  4. Python nidaqmx package version incompatibility")
+                return ["No NI DAQ devices found - check NI MAX and drivers"]
+            
+            return unique_devices
+            
+        except Exception as e:
+            print(f"Critical error in device detection: {e}")
+            print(f"Exception type: {type(e)}")
+            import traceback
+            traceback.print_exc()
+            return [f"Error: {str(e)[:100]}"]
+    
+    def _process_device(self, system, device_name: str) -> str:
+        """Process individual device and return formatted info"""
+        try:
+            print(f"\n--- Processing device: {device_name} ---")
+            
+            # Get device object
+            device = system.devices[device_name]
+            
+            # Get basic info
+            product_type = getattr(device, 'product_type', 'Unknown')
+            print(f"Product Type: {product_type}")
+            
+            # Get serial number with multiple attempts
+            serial_number = "Unknown"
+            serial_attrs = ['dev_serial_num', 'serial_num', 'device_serial_num']
+            for attr in serial_attrs:
+                try:
+                    if hasattr(device, attr):
+                        serial_number = getattr(device, attr)
+                        print(f"Serial Number ({attr}): {serial_number}")
+                        break
                 except Exception as e:
-                    print(f"ERROR processing device {device_name}: {e}")
-                    # Add device with minimal info
-                    devices.append(f"{device_name} (Error: {str(e)[:50]})")
+                    print(f"Serial number via {attr} failed: {e}")
             
-            if not devices:
-                print("No valid devices processed")
-                return ["No NI DAQ devices found - check connections"]
+            # Get channel information
+            try:
+                ai_channels = list(device.ai_physical_chans.channel_names)
+                print(f"AI Channels ({len(ai_channels)}): {ai_channels[:3]}{'...' if len(ai_channels) > 3 else ''}")
+            except Exception as e:
+                print(f"AI channels not available: {e}")
             
-            print(f"Returning {len(devices)} devices: {devices}")
-            return devices
+            try:
+                ao_channels = list(device.ao_physical_chans.channel_names)
+                print(f"AO Channels ({len(ao_channels)}): {ao_channels[:2]}{'...' if len(ao_channels) > 2 else ''}")
+            except Exception as e:
+                print(f"AO channels not available: {e}")
+            
+            # Format device info for display
+            if serial_number != "Unknown":
+                device_info = f"{device_name} ({product_type}, S/N: {serial_number})"
+            else:
+                device_info = f"{device_name} ({product_type})"
+            
+            print(f"Processed: {device_info}")
+            return device_info
+            
+        except Exception as e:
+            print(f"ERROR processing device {device_name}: {e}")
+            return f"{device_name} (Error: {str(e)[:50]})"
         except Exception as e:
             print(f"Exception in get_available_devices: {e}")
             print(f"Exception type: {type(e)}")
@@ -203,20 +279,47 @@ class NIDAQService(QObject):
             return False
         
         try:
+            print("=== NI DAQ Connection Attempt ===")
+            
             # Disconnect if already connected
             self.disconnect_device()
             
             # Extract device name from formatted string (remove parentheses info)
             clean_device_name = device_name.split(' (')[0] if ' (' in device_name else device_name
             
-            print(f"Attempting to connect to device: {clean_device_name}")
-            print(f"Channel: {channel}")
+            print(f"Original device string: '{device_name}'")
+            print(f"Clean device name: '{clean_device_name}'")
+            print(f"Channel: '{channel}'")
+            
+            # Verify device exists in system before creating task
+            try:
+                system = nidaqmx.system.System.local()
+                device_names = list(system.devices.device_names)
+                print(f"Available devices in system: {device_names}")
+                
+                if clean_device_name not in device_names:
+                    print(f"ERROR: Device '{clean_device_name}' not found in system")
+                    print(f"Available devices: {device_names}")
+                    self.error_occurred.emit(f"Device '{clean_device_name}' not found in NI-DAQmx system")
+                    return False
+                
+                # Get device object to verify it's accessible
+                device_obj = system.devices[clean_device_name]
+                print(f"Device object created successfully: {device_obj}")
+                print(f"Device product type: {device_obj.product_type}")
+                
+            except Exception as e:
+                print(f"ERROR: Cannot access device '{clean_device_name}': {e}")
+                self.error_occurred.emit(f"Cannot access device: {e}")
+                return False
             
             # Create task
+            print("Creating NI-DAQmx task...")
             self.task = nidaqmx.Task()
             channel_name = f"{clean_device_name}/{channel}"
             
-            print(f"Creating channel: {channel_name}")
+            print(f"Creating analog input channel: {channel_name}")
+            print(f"Voltage range: ±{self.voltage_range}V")
             
             # Add analog input channel
             self.task.ai_channels.add_ai_voltage_chan(
@@ -224,6 +327,8 @@ class NIDAQService(QObject):
                 min_val=-self.voltage_range,
                 max_val=self.voltage_range
             )
+            
+            print("Channel created successfully, performing test read...")
             
             # Test connection by reading once
             test_value = self.task.read()
@@ -234,7 +339,7 @@ class NIDAQService(QObject):
             self.connected = True
             self.connection_changed.emit(True)
             
-            print(f"✅ NI DAQ connected successfully: {clean_device_name}/{channel}")
+            print(f"SUCCESS: NI DAQ connected: {clean_device_name}/{channel}")
             return True
             
         except Exception as e:
