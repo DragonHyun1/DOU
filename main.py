@@ -8,6 +8,7 @@ from services.auto_test import AutoTestService
 from services.ni_daq import create_ni_service
 from services import theme, adb
 from ui.test_settings_dialog import TestSettingsDialog
+from ui.multi_channel_monitor import MultiChannelMonitorDialog
 from collections import deque
 import pyqtgraph as pg
 
@@ -37,9 +38,11 @@ class MainWindow(QtWidgets.QMainWindow):
         # NI DAQ 서비스
         self._setup_nidaq_environment()
         self.ni_service = create_ni_service()
-        self.ni_service.current_updated.connect(self._on_ni_current_updated)
         self.ni_service.connection_changed.connect(self._on_ni_connection_changed)
         self.ni_service.error_occurred.connect(self._on_ni_error)
+        
+        # Multi-channel monitoring
+        self.multi_channel_dialog = None
         
         # 동시 제어 충돌 방지
         self._measurement_mode = "none"  # "hvpm", "ni_daq", "both", "none"
@@ -296,6 +299,10 @@ class MainWindow(QtWidgets.QMainWindow):
         # Test menu actions
         self.ui.actionQuick_Test.triggered.connect(self.quick_test)
         self.ui.actionTest_Settings.triggered.connect(self.test_settings)
+        
+        # Tools menu actions (if exists)
+        if hasattr(self.ui, 'actionMulti_Channel_Monitor'):
+            self.ui.actionMulti_Channel_Monitor.triggered.connect(self.open_multi_channel_monitor)
         
         # Help menu actions
         self.ui.actionAbout.triggered.connect(self.show_about)
@@ -1397,19 +1404,87 @@ class MainWindow(QtWidgets.QMainWindow):
             self._log(f"ERROR: Error opening test settings: {e}", "error")
             QtWidgets.QMessageBox.warning(self, "Settings Error", f"Failed to open test settings:\n{e}")
     
+    def open_multi_channel_monitor(self):
+        """Open multi-channel power rail monitor"""
+        try:
+            if self.multi_channel_dialog is None:
+                self.multi_channel_dialog = MultiChannelMonitorDialog(self)
+                
+                # Connect signals
+                self.multi_channel_dialog.channel_config_changed.connect(self._on_channel_config_changed)
+                self.multi_channel_dialog.monitoring_requested.connect(self._on_multi_channel_monitoring)
+                
+                # Connect NI service signals if available
+                if hasattr(self.ni_service, 'channel_data_updated'):
+                    self.ni_service.channel_data_updated.connect(self._on_channel_data_updated)
+            
+            self.multi_channel_dialog.show()
+            self.multi_channel_dialog.raise_()
+            self.multi_channel_dialog.activateWindow()
+            
+        except Exception as e:
+            self._log(f"ERROR: Failed to open multi-channel monitor: {e}", "error")
+            QtWidgets.QMessageBox.warning(self, "Error", f"Failed to open multi-channel monitor:\n{e}")
+    
+    def _on_channel_config_changed(self, config_dict):
+        """Handle channel configuration changes"""
+        for channel, config in config_dict.items():
+            if hasattr(self.ni_service, 'set_channel_config'):
+                self.ni_service.set_channel_config(
+                    channel, 
+                    config['name'], 
+                    config['target_v'], 
+                    config['shunt_r'], 
+                    config['enabled']
+                )
+                self._log(f"Updated {channel}: {config['name']} ({config['target_v']}V)", "info")
+    
+    def _on_multi_channel_monitoring(self, start_monitoring):
+        """Handle multi-channel monitoring request"""
+        if not hasattr(self.ni_service, 'start_monitoring'):
+            self._log("ERROR: Multi-channel monitoring not supported by current NI service", "error")
+            return
+        
+        if start_monitoring:
+            if self.ni_service.is_connected():
+                # Set monitoring interval based on auto test state
+                interval = 1000 if self.auto_test_service.is_running else 500
+                self.ni_service.set_monitoring_interval(interval)
+                
+                success = self.ni_service.start_monitoring(interval)
+                if success:
+                    self._log("Multi-channel monitoring started", "success")
+                else:
+                    self._log("ERROR: Failed to start multi-channel monitoring", "error")
+            else:
+                self._log("ERROR: NI DAQ not connected", "error")
+                QtWidgets.QMessageBox.warning(self, "Connection Required", "Please connect to NI DAQ device first.")
+        else:
+            self.ni_service.stop_monitoring()
+            self._log("Multi-channel monitoring stopped", "info")
+    
+    def _on_channel_data_updated(self, readings):
+        """Handle channel data updates"""
+        if self.multi_channel_dialog:
+            for channel, data in readings.items():
+                voltage = data.get('voltage', 0.0)
+                current = data.get('current', 0.0)
+                self.multi_channel_dialog.update_channel_display(channel, voltage, current)
+
     def show_about(self):
         """Show about dialog"""
         QtWidgets.QMessageBox.about(
             self, 
-            "About HVPM Monitor with Auto Test", 
-            "HVPM Monitor v3.1 with Auto Test\n\n"
+            "About HVPM Monitor with Multi-Channel DAQ", 
+            "HVPM Monitor v3.2 with Multi-Channel DAQ\n\n"
             "Enhanced power measurement tool with automated testing capabilities.\n"
-            "Features real-time monitoring, voltage control, and ADB-based device testing.\n\n"
+            "Features real-time monitoring, voltage control, and multi-channel DAQ monitoring.\n\n"
             "New Features:\n"
+            "• 12-channel voltage/current monitoring\n"
+            "• Excel copy-paste rail configuration\n"
+            "• Real-time and single-shot measurements\n"
+            "• Power rail management\n"
             "• Automated test scenarios\n"
-            "• Configurable test parameters\n"
-            "• Optimized data collection\n"
-            "• Custom script support\n"
             "• Enhanced UI and logging\n\n"
             "Built with PyQt6 and PyQtGraph"
         )
