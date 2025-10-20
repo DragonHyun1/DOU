@@ -1,3 +1,20 @@
+Found NI path: C:\Program Files (x86)\National Instruments\Shared\ExternalCompilerSupport\C\lib64\msvc
+Found NI path: C:\Windows\System32
+Added 2 NI paths to environment
+NI-DAQmx imported successfully, version: 1.2.0
+d:\PCT\Tool\DOU_0926\main.py:16: DeprecationWarning: sipPyTypeDict() is deprecated, the extension module should use sipPyTypeDictRef() instead
+  super().__init__()
+Traceback (most recent call last):
+  File "d:\PCT\Tool\DOU_0926\main.py", line 1294, in <module>
+    main()
+  File "d:\PCT\Tool\DOU_0926\main.py", line 1288, in main
+    w = MainWindow()
+  File "d:\PCT\Tool\DOU_0926\main.py", line 38, in __init__
+    self._setup_nidaq_environment()
+AttributeError: 'MainWindow' object has no attribute '_setup_nidaq_environment'
+
+
+
 # HVPM Monitor Auto Test 기능 가이드
 
 ## 🚀 개요
@@ -216,17 +233,3 @@ AutoTestService
 
 이 가이드를 통해 HVPM Monitor의 자동 테스트 기능을 효과적으로 활용하시기 바랍니다!
 
-
-
-d:\PCT\Tool\DOU_0926\main.py:16: DeprecationWarning: sipPyTypeDict() is deprecated, the extension module should use sipPyTypeDictRef() instead
-  super().__init__()
-Traceback (most recent call last):
-  File "d:\PCT\Tool\DOU_0926\main.py", line 1175, in <module>
-    main()
-  File "d:\PCT\Tool\DOU_0926\main.py", line 1169, in main
-    w = MainWindow()
-  File "d:\PCT\Tool\DOU_0926\main.py", line 75, in __init__
-    self.setup_status_indicators()
-  File "d:\PCT\Tool\DOU_0926\main.py", line 184, in setup_status_indicators
-    self.ui.readVolt_PB.setToolTip("Read current voltage from device")
-AttributeError: 'Ui_MainWindow' object has no attribute 'readVolt_PB'. Did you mean: 'setVolt_PB'?
