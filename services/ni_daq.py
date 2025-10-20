@@ -121,6 +121,7 @@ class NIDAQService(QObject):
         
         try:
             print("=== NI-DAQmx Comprehensive Device Detection ===")
+            print("Step 1: Checking environment paths...")
             
             # Check environment paths
             ni_paths = [p for p in os.environ.get('PATH', '').split(os.pathsep) if 'National Instruments' in p or 'NIDAQ' in p]
@@ -129,54 +130,91 @@ class NIDAQService(QObject):
                 exists = os.path.exists(path)
                 print(f"  - {path} ({'EXISTS' if exists else 'NOT FOUND'})")
             
+            print("Step 2: Creating NI-DAQmx system instance...")
             # Get system instance with detailed info
             system = nidaqmx.system.System.local()
+            print(f"SUCCESS: System instance created")
             print(f"NI-DAQmx System version: {system.driver_version}")
+            print(f"System object: {system}")
             
             # Try multiple methods to detect devices
             devices = []
             
+            print("Step 3: Attempting device detection methods...")
+            
             # Method 1: system.devices.device_names
             print("\n--- Method 1: system.devices.device_names ---")
             try:
-                device_names = system.devices.device_names
-                print(f"Device names: {list(device_names)}")
+                print("Accessing system.devices...")
+                devices_collection = system.devices
+                print(f"Devices collection: {devices_collection}")
                 
-                for device_name in device_names:
-                    devices.append(self._process_device(system, device_name))
+                print("Getting device_names...")
+                device_names = devices_collection.device_names
+                print(f"Device names type: {type(device_names)}")
+                device_names_list = list(device_names)
+                print(f"Device names: {device_names_list}")
+                
+                if device_names_list:
+                    for device_name in device_names_list:
+                        print(f"Processing device from Method 1: {device_name}")
+                        processed = self._process_device(system, device_name)
+                        devices.append(processed)
+                        print(f"Added device: {processed}")
+                else:
+                    print("No device names returned from Method 1")
                     
             except Exception as e:
-                print(f"Method 1 failed: {e}")
+                print(f"Method 1 failed with exception: {e}")
+                import traceback
+                traceback.print_exc()
             
             # Method 2: Direct system.devices iteration
             print("\n--- Method 2: Direct system.devices iteration ---")
             try:
+                print("Converting system.devices to list...")
                 device_list = list(system.devices)
                 print(f"Direct device list length: {len(device_list)}")
                 
-                for i, device in enumerate(device_list):
-                    print(f"Device {i}: {device}")
-                    try:
-                        device_name = device.name
-                        if device_name not in [d.split(' (')[0] for d in devices]:
-                            devices.append(self._process_device(system, device_name))
-                    except Exception as e:
-                        print(f"Error processing device {i}: {e}")
+                if device_list:
+                    for i, device in enumerate(device_list):
+                        print(f"Device {i}: {device}")
+                        try:
+                            device_name = device.name
+                            print(f"Device {i} name: {device_name}")
+                            existing_names = [d.split(' (')[0] for d in devices]
+                            if device_name not in existing_names:
+                                processed = self._process_device(system, device_name)
+                                devices.append(processed)
+                                print(f"Added device from Method 2: {processed}")
+                        except Exception as e:
+                            print(f"Error processing device {i}: {e}")
+                else:
+                    print("No devices in direct iteration")
                         
             except Exception as e:
-                print(f"Method 2 failed: {e}")
+                print(f"Method 2 failed with exception: {e}")
+                import traceback
+                traceback.print_exc()
             
             # Method 3: Try common device names
             print("\n--- Method 3: Testing common device names ---")
             common_names = ['Dev1', 'Dev2', 'Dev3', 'PXI1Slot2', 'PXI1Slot3']
             for test_name in common_names:
                 try:
+                    print(f"Testing device name: {test_name}")
                     test_device = system.devices[test_name]
-                    print(f"Found device by name: {test_name}")
-                    if test_name not in [d.split(' (')[0] for d in devices]:
-                        devices.append(self._process_device(system, test_name))
-                except Exception:
-                    pass  # Device doesn't exist, which is normal
+                    print(f"SUCCESS: Found device by name: {test_name}")
+                    existing_names = [d.split(' (')[0] for d in devices]
+                    if test_name not in existing_names:
+                        processed = self._process_device(system, test_name)
+                        devices.append(processed)
+                        print(f"Added device from Method 3: {processed}")
+                except Exception as e:
+                    print(f"Device {test_name} not found: {e}")  # More detailed logging
+            
+            print("Step 4: Processing final results...")
+            print(f"Raw devices list: {devices}")
             
             # Remove duplicates while preserving order
             unique_devices = []
@@ -186,6 +224,9 @@ class NIDAQService(QObject):
                 if device_name not in seen_names:
                     unique_devices.append(device)
                     seen_names.add(device_name)
+                    print(f"Added unique device: {device}")
+                else:
+                    print(f"Skipped duplicate device: {device}")
             
             print(f"\n=== Final Results ===")
             print(f"Found {len(unique_devices)} unique devices:")
@@ -193,21 +234,33 @@ class NIDAQService(QObject):
                 print(f"  - {device}")
             
             if not unique_devices:
-                print("No devices found - this may indicate:")
+                print("WARNING: No devices found!")
+                print("This may indicate:")
                 print("  1. No hardware connected")
                 print("  2. NI-DAQmx driver version mismatch")
                 print("  3. Permission issues")
                 print("  4. Python nidaqmx package version incompatibility")
+                print("  5. Device access restrictions")
+                
+                # Return a diagnostic message instead of empty list
                 return ["No NI DAQ devices found - check NI MAX and drivers"]
             
+            print(f"Returning {len(unique_devices)} devices to application")
             return unique_devices
             
         except Exception as e:
-            print(f"Critical error in device detection: {e}")
+            print(f"CRITICAL ERROR in device detection!")
+            print(f"Exception: {e}")
             print(f"Exception type: {type(e)}")
+            print(f"Exception args: {e.args}")
             import traceback
+            print("Full traceback:")
             traceback.print_exc()
-            return [f"Error: {str(e)[:100]}"]
+            
+            # Return error information for debugging
+            error_msg = f"Error: {str(e)[:100]}"
+            print(f"Returning error message: {error_msg}")
+            return [error_msg]
     
     def _process_device(self, system, device_name: str) -> str:
         """Process individual device and return formatted info"""

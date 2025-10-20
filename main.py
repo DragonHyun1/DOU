@@ -451,11 +451,14 @@ class MainWindow(QtWidgets.QMainWindow):
             self._log("Scanning for NI DAQ devices...", "info")
             
             try:
+                self._log("DEBUG: Calling ni_service.get_available_devices()...", "info")
                 print("Calling ni_service.get_available_devices()...")
                 devices = self.ni_service.get_available_devices()
                 print(f"Received devices: {devices}")
+                self._log(f"DEBUG: Received {len(devices) if devices else 0} devices from service", "info")
                 
                 if devices:
+                    self._log(f"DEBUG: Device list: {devices}", "info")
                     # Filter out mock devices for cleaner display
                     real_devices = [d for d in devices if "(Mock)" not in d and "Error:" not in d and "not installed" not in d]
                     mock_devices = [d for d in devices if "(Mock)" in d]
@@ -482,14 +485,26 @@ class MainWindow(QtWidgets.QMainWindow):
                         self._log("WARNING: No NI DAQ devices available", "warn")
                         self._log("   Check hardware connections and NI-DAQmx installation", "warn")
                 else:
+                    self._log("DEBUG: devices list is None or empty", "error")
                     self.ui.daqDevice_CB.addItem("No devices found")
                     self._log("ERROR: No NI DAQ devices detected", "error")
                     self._log("   Verify NI-DAQmx drivers and device connections", "error")
                     
             except Exception as e:
+                self._log(f"EXCEPTION in refresh_ni_devices: {e}", "error")
+                import traceback
+                tb_str = traceback.format_exc()
+                self._log(f"Traceback: {tb_str}", "error")
                 self.ui.daqDevice_CB.addItem("Error detecting devices")
                 self._log(f"ERROR: NI DAQ detection error: {e}", "error")
                 self._log("   Check NI-DAQmx installation and system configuration", "error")
+            
+            # Final debug info
+            combo_count = self.ui.daqDevice_CB.count()
+            self._log(f"DEBUG: daqDevice_CB now has {combo_count} items", "info")
+            for i in range(combo_count):
+                item_text = self.ui.daqDevice_CB.itemText(i)
+                self._log(f"DEBUG: Item {i}: '{item_text}'", "info")
     
     def toggle_ni_connection(self):
         """Toggle NI DAQ connection"""
