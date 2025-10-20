@@ -114,136 +114,83 @@ class NIDAQService(QObject):
         self.current_offset = 0.0  # A offset
         
     def get_available_devices(self) -> List[str]:
-        """Get list of available NI DAQ devices with comprehensive diagnostics"""
+        """Get list of available NI DAQ devices using the proven method"""
         if not NI_AVAILABLE:
             print("NI-DAQmx not available")
             return ["NI-DAQmx not installed"]
         
         try:
-            print("=== NI-DAQmx Comprehensive Device Detection ===")
-            print("Step 1: Checking environment paths...")
+            print("=== NI-DAQmx Device Detection (Simplified Method) ===")
             
-            # Check environment paths
-            ni_paths = [p for p in os.environ.get('PATH', '').split(os.pathsep) if 'National Instruments' in p or 'NIDAQ' in p]
-            print(f"NI paths in environment: {len(ni_paths)}")
-            for path in ni_paths:
-                exists = os.path.exists(path)
-                print(f"  - {path} ({'EXISTS' if exists else 'NOT FOUND'})")
+            # Use the proven method from working code
+            from nidaqmx.system import System
+            sysobj = System.local()
+            print(f"NI-DAQmx System version: {sysobj.driver_version}")
             
-            print("Step 2: Creating NI-DAQmx system instance...")
-            # Get system instance with detailed info
-            system = nidaqmx.system.System.local()
-            print(f"SUCCESS: System instance created")
-            print(f"NI-DAQmx System version: {system.driver_version}")
-            print(f"System object: {system}")
-            
-            # Try multiple methods to detect devices
             devices = []
             
-            print("Step 3: Attempting device detection methods...")
+            print("Checking for devices...")
+            if not sysobj.devices:
+                print("No NI DAQ devices detected by system")
+                # Return fallback devices for manual testing
+                fallback_devices = [
+                    "Dev1 (Manual Entry)",
+                    "Dev2 (Manual Entry)", 
+                    "Dev3 (Manual Entry)"
+                ]
+                print(f"Returning fallback devices: {fallback_devices}")
+                return fallback_devices
             
-            # Method 1: system.devices.device_names
-            print("\n--- Method 1: system.devices.device_names ---")
-            try:
-                print("Accessing system.devices...")
-                devices_collection = system.devices
-                print(f"Devices collection: {devices_collection}")
-                
-                print("Getting device_names...")
-                device_names = devices_collection.device_names
-                print(f"Device names type: {type(device_names)}")
-                device_names_list = list(device_names)
-                print(f"Device names: {device_names_list}")
-                
-                if device_names_list:
-                    for device_name in device_names_list:
-                        print(f"Processing device from Method 1: {device_name}")
-                        processed = self._process_device(system, device_name)
-                        devices.append(processed)
-                        print(f"Added device: {processed}")
-                else:
-                    print("No device names returned from Method 1")
-                    
-            except Exception as e:
-                print(f"Method 1 failed with exception: {e}")
-                import traceback
-                traceback.print_exc()
+            print(f"Found {len(list(sysobj.devices))} device(s)")
             
-            # Method 2: Direct system.devices iteration
-            print("\n--- Method 2: Direct system.devices iteration ---")
-            try:
-                print("Converting system.devices to list...")
-                device_list = list(system.devices)
-                print(f"Direct device list length: {len(device_list)}")
-                
-                if device_list:
-                    for i, device in enumerate(device_list):
-                        print(f"Device {i}: {device}")
-                        try:
-                            device_name = device.name
-                            print(f"Device {i} name: {device_name}")
-                            existing_names = [d.split(' (')[0] for d in devices]
-                            if device_name not in existing_names:
-                                processed = self._process_device(system, device_name)
-                                devices.append(processed)
-                                print(f"Added device from Method 2: {processed}")
-                        except Exception as e:
-                            print(f"Error processing device {i}: {e}")
-                else:
-                    print("No devices in direct iteration")
-                        
-            except Exception as e:
-                print(f"Method 2 failed with exception: {e}")
-                import traceback
-                traceback.print_exc()
-            
-            # Method 3: Try common device names
-            print("\n--- Method 3: Testing common device names ---")
-            common_names = ['Dev1', 'Dev2', 'Dev3', 'PXI1Slot2', 'PXI1Slot3']
-            for test_name in common_names:
+            # Direct iteration like the working code
+            for dev in sysobj.devices:
                 try:
-                    print(f"Testing device name: {test_name}")
-                    test_device = system.devices[test_name]
-                    print(f"SUCCESS: Found device by name: {test_name}")
-                    existing_names = [d.split(' (')[0] for d in devices]
-                    if test_name not in existing_names:
-                        processed = self._process_device(system, test_name)
-                        devices.append(processed)
-                        print(f"Added device from Method 3: {processed}")
+                    device_name = dev.name
+                    product_type = dev.product_type
+                    print(f"Found device: {device_name} - {product_type}")
+                    
+                    # Get serial number if available
+                    serial_number = "Unknown"
+                    try:
+                        serial_number = dev.dev_serial_num
+                    except Exception:
+                        pass
+                    
+                    # Get channel info
+                    try:
+                        ai_channels = [c.name for c in dev.ai_physical_chans]
+                        ao_channels = [c.name for c in dev.ao_physical_chans] if hasattr(dev, 'ao_physical_chans') else []
+                        print(f"  AI channels: {len(ai_channels)}, AO channels: {len(ao_channels)}")
+                    except Exception as e:
+                        print(f"  Channel info unavailable: {e}")
+                    
+                    # Format device info
+                    if serial_number != "Unknown":
+                        device_info = f"{device_name} ({product_type}, S/N: {serial_number})"
+                    else:
+                        device_info = f"{device_name} ({product_type})"
+                    
+                    devices.append(device_info)
+                    print(f"Added: {device_info}")
+                    
                 except Exception as e:
-                    print(f"Device {test_name} not found: {e}")  # More detailed logging
+                    print(f"Error processing device: {e}")
+                    # Add with minimal info
+                    try:
+                        device_name = dev.name if hasattr(dev, 'name') else 'Unknown'
+                        devices.append(f"{device_name} (Error)")
+                    except:
+                        devices.append("Unknown Device (Error)")
             
-            print("Step 4: Processing final results...")
-            print(f"Raw devices list: {devices}")
-            
-            # Remove duplicates while preserving order
-            unique_devices = []
-            seen_names = set()
+            print(f"\n=== Results ===")
+            print(f"Detected {len(devices)} devices:")
             for device in devices:
-                device_name = device.split(' (')[0]
-                if device_name not in seen_names:
-                    unique_devices.append(device)
-                    seen_names.add(device_name)
-                    print(f"Added unique device: {device}")
-                else:
-                    print(f"Skipped duplicate device: {device}")
-            
-            print(f"\n=== Final Results ===")
-            print(f"Found {len(unique_devices)} unique devices:")
-            for device in unique_devices:
                 print(f"  - {device}")
             
-            if not unique_devices:
-                print("WARNING: No devices found by detection methods!")
-                print("This may indicate:")
-                print("  1. No hardware connected")
-                print("  2. NI-DAQmx driver version mismatch")
-                print("  3. Permission issues")
-                print("  4. Python nidaqmx package version incompatibility")
-                print("  5. Device access restrictions")
-                
-                # Return common device names for manual testing
-                print("Returning common device names for manual testing...")
+            if not devices:
+                print("No devices processed successfully")
+                # Return fallback devices
                 fallback_devices = [
                     "Dev1 (Manual Entry)",
                     "Dev2 (Manual Entry)", 
@@ -251,8 +198,7 @@ class NIDAQService(QObject):
                 ]
                 return fallback_devices
             
-            print(f"Returning {len(unique_devices)} devices to application")
-            return unique_devices
+            return devices
             
         except Exception as e:
             print(f"CRITICAL ERROR in device detection!")
@@ -272,55 +218,6 @@ class NIDAQService(QObject):
             ]
             return fallback_devices
     
-    def _process_device(self, system, device_name: str) -> str:
-        """Process individual device and return formatted info"""
-        try:
-            print(f"\n--- Processing device: {device_name} ---")
-            
-            # Get device object
-            device = system.devices[device_name]
-            
-            # Get basic info
-            product_type = getattr(device, 'product_type', 'Unknown')
-            print(f"Product Type: {product_type}")
-            
-            # Get serial number with multiple attempts
-            serial_number = "Unknown"
-            serial_attrs = ['dev_serial_num', 'serial_num', 'device_serial_num']
-            for attr in serial_attrs:
-                try:
-                    if hasattr(device, attr):
-                        serial_number = getattr(device, attr)
-                        print(f"Serial Number ({attr}): {serial_number}")
-                        break
-                except Exception as e:
-                    print(f"Serial number via {attr} failed: {e}")
-            
-            # Get channel information
-            try:
-                ai_channels = list(device.ai_physical_chans.channel_names)
-                print(f"AI Channels ({len(ai_channels)}): {ai_channels[:3]}{'...' if len(ai_channels) > 3 else ''}")
-            except Exception as e:
-                print(f"AI channels not available: {e}")
-            
-            try:
-                ao_channels = list(device.ao_physical_chans.channel_names)
-                print(f"AO Channels ({len(ao_channels)}): {ao_channels[:2]}{'...' if len(ao_channels) > 2 else ''}")
-            except Exception as e:
-                print(f"AO channels not available: {e}")
-            
-            # Format device info for display
-            if serial_number != "Unknown":
-                device_info = f"{device_name} ({product_type}, S/N: {serial_number})"
-            else:
-                device_info = f"{device_name} ({product_type})"
-            
-            print(f"Processed: {device_info}")
-            return device_info
-            
-        except Exception as e:
-            print(f"ERROR processing device {device_name}: {e}")
-            return f"{device_name} (Error: {str(e)[:50]})"
         except Exception as e:
             print(f"Exception in get_available_devices: {e}")
             print(f"Exception type: {type(e)}")
