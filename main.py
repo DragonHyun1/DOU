@@ -372,9 +372,21 @@ class MainWindow(QtWidgets.QMainWindow):
             if start_button is None or stop_button is None:
                 return
                 
-            hvpm_connected = self.hvpm_service.is_connected()
-            adb_connected = self.selected_device and self.selected_device != "No devices found"
-            test_running = self.auto_test_service.is_running
+            # Safely get connection states with proper None handling
+            try:
+                hvpm_connected = bool(self.hvpm_service.is_connected())
+            except Exception:
+                hvpm_connected = False
+                
+            try:
+                adb_connected = bool(self.selected_device and self.selected_device != "No devices found")
+            except Exception:
+                adb_connected = False
+                
+            try:
+                test_running = bool(self.auto_test_service.is_running)
+            except Exception:
+                test_running = False
             
             can_start = hvpm_connected and adb_connected and not test_running
             
@@ -390,25 +402,28 @@ class MainWindow(QtWidgets.QMainWindow):
             
             # Safely update button states
             try:
-                start_button.setEnabled(can_start)
+                if start_button is not None and hasattr(start_button, 'setEnabled'):
+                    start_button.setEnabled(bool(can_start))
             except Exception as e:
                 self._log(f"Error updating start button: {e}", "error")
                 
             try:
-                stop_button.setEnabled(test_running)
+                if stop_button is not None and hasattr(stop_button, 'setEnabled'):
+                    stop_button.setEnabled(bool(test_running))
             except Exception as e:
                 self._log(f"Error updating stop button: {e}", "error")
             
             # Update tooltips based on status
             try:
-                if not hvpm_connected:
-                    start_button.setToolTip("HVPM device must be connected")
-                elif not adb_connected:
-                    start_button.setToolTip("ADB device must be connected")
-                elif test_running:
-                    start_button.setToolTip("Test is currently running")
-                else:
-                    start_button.setToolTip("Start automated test with voltage control")
+                if start_button is not None and hasattr(start_button, 'setToolTip'):
+                    if not hvpm_connected:
+                        start_button.setToolTip("HVPM device must be connected")
+                    elif not adb_connected:
+                        start_button.setToolTip("ADB device must be connected")
+                    elif test_running:
+                        start_button.setToolTip("Test is currently running")
+                    else:
+                        start_button.setToolTip("Start automated test with voltage control")
             except Exception as e:
                 self._log(f"Error updating tooltip: {e}", "error")
                 
