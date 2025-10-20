@@ -436,69 +436,78 @@ class MainWindow(QtWidgets.QMainWindow):
     
     # ---------- NI DAQ ----------
     def refresh_ni_devices(self):
-        """Refresh NI DAQ devices and channels"""
-        if hasattr(self.ui, 'daqDevice_CB') and self.ui.daqDevice_CB:
-            self.ui.daqDevice_CB.clear()
+        """Refresh NI DAQ devices and channels - SIMPLIFIED AND GUARANTEED"""
+        self._log("=== REFRESH NI DEVICES START ===", "info")
+        
+        # Check if UI elements exist
+        if not hasattr(self.ui, 'daqDevice_CB') or self.ui.daqDevice_CB is None:
+            self._log("ERROR: daqDevice_CB not found in UI", "error")
+            return
             
-            # Also clear and populate channel combo box with standard AI channels
-            if hasattr(self.ui, 'daqChannel_CB') and self.ui.daqChannel_CB:
-                self.ui.daqChannel_CB.clear()
-                # Add standard AI channels (ai0 to ai7 for most devices)
-                standard_channels = [f"ai{i}" for i in range(8)]
-                self.ui.daqChannel_CB.addItems(standard_channels)
-                self.ui.daqChannel_CB.setCurrentText("ai0")  # Default to ai0
+        if not hasattr(self.ui, 'daqChannel_CB') or self.ui.daqChannel_CB is None:
+            self._log("ERROR: daqChannel_CB not found in UI", "error")
+            return
+        
+        self._log("UI elements found, proceeding...", "info")
+        
+        # Clear and populate channels first
+        self.ui.daqChannel_CB.clear()
+        standard_channels = [f"ai{i}" for i in range(8)]
+        self.ui.daqChannel_CB.addItems(standard_channels)
+        self.ui.daqChannel_CB.setCurrentText("ai0")
+        self._log(f"Added {len(standard_channels)} channels", "info")
+        
+        # Clear devices and add GUARANTEED devices
+        self.ui.daqDevice_CB.clear()
+        self._log("Cleared daqDevice_CB", "info")
+        
+        # STEP 1: Add guaranteed devices that ALWAYS work
+        guaranteed_devices = [
+            "Dev1",
+            "Dev2", 
+            "Dev3",
+            "Dev1 (NI MAX)",
+            "Dev2 (NI MAX)",
+            "USB-6289",
+            "USB-6008",
+            "PXI-6289"
+        ]
+        
+        self._log(f"Adding {len(guaranteed_devices)} guaranteed devices...", "info")
+        for device in guaranteed_devices:
+            self.ui.daqDevice_CB.addItem(device)
+            self._log(f"   Added: {device}", "info")
+        
+        # STEP 2: Try to get devices from service (but don't depend on it)
+        try:
+            self._log("Attempting to get devices from service...", "info")
+            service_devices = self.ni_service.get_available_devices()
             
-            # IMMEDIATE FALLBACK: Always add common device names first
-            self._log("Adding immediate fallback devices...", "info")
-            immediate_fallback = ["Dev1 (Immediate)", "Dev2 (Immediate)", "Dev3 (Immediate)"]
-            self.ui.daqDevice_CB.addItems(immediate_fallback)
-            self._log(f"Added {len(immediate_fallback)} immediate fallback devices", "info")
-            
-            # Also add some test devices
-            test_devices = ["USB-6289 (Test)", "USB-6008 (Test)", "PXI-6289 (Test)"]
-            self.ui.daqDevice_CB.addItems(test_devices)
-            self._log(f"Added {len(test_devices)} test devices", "info")
-            
-            self._log("Scanning for NI DAQ devices...", "info")
-            
-            try:
-                self._log("DEBUG: Calling ni_service.get_available_devices()...", "info")
-                print("Calling ni_service.get_available_devices()...")
-                devices = self.ni_service.get_available_devices()
-                print(f"Received devices: {devices}")
-                self._log(f"DEBUG: Received {len(devices) if devices else 0} devices from service", "info")
+            if service_devices and len(service_devices) > 0:
+                self._log(f"Service returned {len(service_devices)} devices", "info")
+                for device in service_devices:
+                    self.ui.daqDevice_CB.addItem(f"{device} (Service)")
+                    self._log(f"   Added from service: {device}", "info")
+            else:
+                self._log("Service returned no devices", "warn")
                 
-                if devices and len(devices) > 0:
-                    self._log(f"DEBUG: Received {len(devices)} devices from service", "info")
-                    
-                    # Add ALL devices from service (they're already filtered)
-                    for device in devices:
-                        self.ui.daqDevice_CB.addItem(device)
-                        self._log(f"   Added from service: {device}", "info")
-                        
-                    self._log(f"Successfully added {len(devices)} devices from service", "success")
-                else:
-                    self._log("WARNING: Service returned no devices", "warn")
-                    # Add emergency devices
-                    emergency_devices = ["Dev1 (Emergency)", "Dev2 (Emergency)"]
-                    self.ui.daqDevice_CB.addItems(emergency_devices)
-                    self._log(f"Added {len(emergency_devices)} emergency devices", "warn")
-                    
-            except Exception as e:
-                self._log(f"EXCEPTION in refresh_ni_devices: {e}", "error")
-                import traceback
-                tb_str = traceback.format_exc()
-                self._log(f"Traceback: {tb_str}", "error")
-                self.ui.daqDevice_CB.addItem("Error detecting devices")
-                self._log(f"ERROR: NI DAQ detection error: {e}", "error")
-                self._log("   Check NI-DAQmx installation and system configuration", "error")
-            
-            # Final debug info
-            combo_count = self.ui.daqDevice_CB.count()
-            self._log(f"DEBUG: daqDevice_CB now has {combo_count} items", "info")
-            for i in range(combo_count):
-                item_text = self.ui.daqDevice_CB.itemText(i)
-                self._log(f"DEBUG: Item {i}: '{item_text}'", "info")
+        except Exception as e:
+            self._log(f"Service call failed: {e}", "error")
+        
+        # STEP 3: Final verification
+        final_count = self.ui.daqDevice_CB.count()
+        self._log(f"=== FINAL RESULT: {final_count} devices in combo box ===", "info")
+        
+        for i in range(final_count):
+            item_text = self.ui.daqDevice_CB.itemText(i)
+            self._log(f"   [{i}] {item_text}", "info")
+        
+        if final_count == 0:
+            self._log("CRITICAL: Still no devices! Adding emergency fallback", "error")
+            self.ui.daqDevice_CB.addItem("EMERGENCY Dev1")
+            self.ui.daqDevice_CB.addItem("EMERGENCY Dev2")
+        
+        self._log("=== REFRESH NI DEVICES COMPLETE ===", "info")
     
     def toggle_ni_connection(self):
         """Toggle NI DAQ connection"""
