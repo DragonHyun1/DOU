@@ -100,6 +100,59 @@ class MainWindow(QtWidgets.QMainWindow):
         # Status bar 메시지
         self.ui.statusbar.showMessage("Ready - Connect devices to start monitoring and testing", 5000)
 
+    def _setup_nidaq_environment(self):
+        """Setup NI-DAQmx environment paths"""
+        import os
+        
+        # NI-DAQmx 런타임 경로 추가 시도
+        possible_paths = [
+            # Windows 표준 경로
+            r"C:\Program Files (x86)\National Instruments\Shared\ExternalCompilerSupport\C\lib64\msvc",
+            r"C:\Program Files\National Instruments\Shared\ExternalCompilerSupport\C\lib64\msvc", 
+            r"C:\Windows\System32",
+            r"C:\Program Files (x86)\National Instruments\RT\NIDAQmx\bin",
+            r"C:\Program Files\National Instruments\RT\NIDAQmx\bin",
+            r"C:\Program Files (x86)\National Instruments\Shared\CVI\Bin",
+            r"C:\Program Files\National Instruments\Shared\CVI\Bin",
+            
+            # 로컬 NIDAQ 런타임 폴더들
+            "./NIDAQ1610Runtime",
+            "../NIDAQ1610Runtime", 
+            "../../NIDAQ1610Runtime",
+            "./NIDAQ1610Runtime/bin",
+            "../NIDAQ1610Runtime/bin",
+            "../../NIDAQ1610Runtime/bin",
+            
+            # 상대 경로들
+            os.path.join(os.getcwd(), "NIDAQ1610Runtime"),
+            os.path.join(os.path.dirname(os.getcwd()), "NIDAQ1610Runtime"),
+            os.path.join(os.getcwd(), "NIDAQ1610Runtime", "bin"),
+            os.path.join(os.path.dirname(os.getcwd()), "NIDAQ1610Runtime", "bin"),
+        ]
+
+        # 사용자 정의 NIDAQ 경로 확인
+        custom_nidaq_path = os.environ.get('NIDAQ_RUNTIME_PATH')
+        if custom_nidaq_path:
+            possible_paths.insert(0, custom_nidaq_path)
+            possible_paths.insert(0, os.path.join(custom_nidaq_path, 'bin'))
+            print(f"Using custom NIDAQ path: {custom_nidaq_path}")
+
+        # 환경 변수에 경로 추가
+        found_paths = []
+        for path in possible_paths:
+            if os.path.exists(path):
+                print(f"Found NI path: {path}")
+                found_paths.append(path)
+                if path not in os.environ.get('PATH', ''):
+                    os.environ['PATH'] = path + os.pathsep + os.environ.get('PATH', '')
+
+        if found_paths:
+            print(f"Added {len(found_paths)} NI paths to environment")
+            self._log(f"📡 NI-DAQmx environment setup: {len(found_paths)} paths added", "info")
+        else:
+            print("No NI-DAQmx paths found")
+            self._log("⚠️ No NI-DAQmx runtime paths found", "warn")
+
     def setup_graphs(self):
         """Setup enhanced graph widgets"""
         # Voltage plot with enhanced styling
