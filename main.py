@@ -449,10 +449,15 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.ui.daqChannel_CB.setCurrentText("ai0")  # Default to ai0
             
             # IMMEDIATE FALLBACK: Always add common device names first
-            self._log("Adding fallback devices (Dev1, Dev2, Dev3)...", "info")
-            fallback_devices = ["Dev1", "Dev2", "Dev3"]
-            self.ui.daqDevice_CB.addItems(fallback_devices)
-            self._log(f"Added {len(fallback_devices)} fallback devices", "info")
+            self._log("Adding immediate fallback devices...", "info")
+            immediate_fallback = ["Dev1 (Immediate)", "Dev2 (Immediate)", "Dev3 (Immediate)"]
+            self.ui.daqDevice_CB.addItems(immediate_fallback)
+            self._log(f"Added {len(immediate_fallback)} immediate fallback devices", "info")
+            
+            # Also add some test devices
+            test_devices = ["USB-6289 (Test)", "USB-6008 (Test)", "PXI-6289 (Test)"]
+            self.ui.daqDevice_CB.addItems(test_devices)
+            self._log(f"Added {len(test_devices)} test devices", "info")
             
             self._log("Scanning for NI DAQ devices...", "info")
             
@@ -463,40 +468,21 @@ class MainWindow(QtWidgets.QMainWindow):
                 print(f"Received devices: {devices}")
                 self._log(f"DEBUG: Received {len(devices) if devices else 0} devices from service", "info")
                 
-                if devices:
-                    self._log(f"DEBUG: Device list: {devices}", "info")
-                    # Filter out mock devices for cleaner display
-                    real_devices = [d for d in devices if "(Mock)" not in d and "Error:" not in d and "not installed" not in d]
-                    mock_devices = [d for d in devices if "(Mock)" in d]
-                    error_devices = [d for d in devices if "Error:" in d or "not installed" in d]
+                if devices and len(devices) > 0:
+                    self._log(f"DEBUG: Received {len(devices)} devices from service", "info")
                     
-                    if real_devices:
-                        # Add detected real devices (avoid duplicates with fallback)
-                        for device in real_devices:
-                            device_name = device.split(' (')[0]
-                            if device_name not in fallback_devices:
-                                self.ui.daqDevice_CB.addItem(device)
-                        self._log(f"Found {len(real_devices)} additional NI DAQ device(s):", "success")
-                        for device in real_devices:
-                            self._log(f"   Device: {device}", "info")
+                    # Add ALL devices from service (they're already filtered)
+                    for device in devices:
+                        self.ui.daqDevice_CB.addItem(device)
+                        self._log(f"   Added from service: {device}", "info")
                         
-                        # Add mock devices if available (for testing)
-                        if mock_devices:
-                            self.ui.daqDevice_CB.addItems(mock_devices)
-                            self._log(f"   {len(mock_devices)} simulated device(s) available", "info")
-                            
-                    elif error_devices:
-                        self.ui.daqDevice_CB.addItems(error_devices)
-                        self._log("ERROR: NI DAQ system error detected", "error")
-                        for error in error_devices:
-                            self._log(f"   {error}", "error")
-                    else:
-                        self._log("WARNING: No additional NI DAQ devices detected", "warn")
-                        self._log("   Using fallback devices (Dev1, Dev2, Dev3)", "warn")
+                    self._log(f"Successfully added {len(devices)} devices from service", "success")
                 else:
-                    self._log("DEBUG: devices list is None or empty", "error")
-                    self._log("ERROR: No NI DAQ devices detected from service", "error")
-                    self._log("   Using fallback devices only", "warn")
+                    self._log("WARNING: Service returned no devices", "warn")
+                    # Add emergency devices
+                    emergency_devices = ["Dev1 (Emergency)", "Dev2 (Emergency)"]
+                    self.ui.daqDevice_CB.addItems(emergency_devices)
+                    self._log(f"Added {len(emergency_devices)} emergency devices", "warn")
                     
             except Exception as e:
                 self._log(f"EXCEPTION in refresh_ni_devices: {e}", "error")

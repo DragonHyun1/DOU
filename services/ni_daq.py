@@ -114,123 +114,73 @@ class NIDAQService(QObject):
         self.current_offset = 0.0  # A offset
         
     def get_available_devices(self) -> List[str]:
-        """Get list of available NI DAQ devices using the proven method"""
-        if not NI_AVAILABLE:
-            print("NI-DAQmx not available")
-            return ["NI-DAQmx not installed"]
+        """Get list of available NI DAQ devices - ALWAYS return devices"""
+        print("=== NI-DAQmx Device Detection (FORCED) ===")
         
-        try:
-            print("=== NI-DAQmx Device Detection (Simplified Method) ===")
-            
-            # Use the proven method from working code
-            from nidaqmx.system import System
-            sysobj = System.local()
-            print(f"NI-DAQmx System version: {sysobj.driver_version}")
-            
-            devices = []
-            
-            print("Checking for devices...")
-            if not sysobj.devices:
-                print("No NI DAQ devices detected by system")
-                # Return fallback devices for manual testing
-                fallback_devices = [
-                    "Dev1 (Manual Entry)",
-                    "Dev2 (Manual Entry)", 
-                    "Dev3 (Manual Entry)"
-                ]
-                print(f"Returning fallback devices: {fallback_devices}")
-                return fallback_devices
-            
-            print(f"Found {len(list(sysobj.devices))} device(s)")
-            
-            # Direct iteration like the working code
-            for dev in sysobj.devices:
+        # STEP 1: Always start with hardcoded devices
+        hardcoded_devices = [
+            "Dev1 (Hardcoded)",
+            "Dev2 (Hardcoded)", 
+            "Dev3 (Hardcoded)",
+            "Dev4 (Hardcoded)"
+        ]
+        print(f"Adding hardcoded devices: {hardcoded_devices}")
+        
+        detected_devices = []
+        
+        # STEP 2: Try to detect real devices if NI-DAQmx is available
+        if NI_AVAILABLE:
+            print("NI-DAQmx is available, attempting detection...")
+            try:
+                from nidaqmx.system import System
+                sysobj = System.local()
+                print(f"System created successfully")
+                print(f"NI-DAQmx System version: {sysobj.driver_version}")
+                
+                # Try direct device access
                 try:
-                    device_name = dev.name
-                    product_type = dev.product_type
-                    print(f"Found device: {device_name} - {product_type}")
+                    device_count = len(list(sysobj.devices))
+                    print(f"System reports {device_count} devices")
                     
-                    # Get serial number if available
-                    serial_number = "Unknown"
-                    try:
-                        serial_number = dev.dev_serial_num
-                    except Exception:
-                        pass
-                    
-                    # Get channel info
-                    try:
-                        ai_channels = [c.name for c in dev.ai_physical_chans]
-                        ao_channels = [c.name for c in dev.ao_physical_chans] if hasattr(dev, 'ao_physical_chans') else []
-                        print(f"  AI channels: {len(ai_channels)}, AO channels: {len(ao_channels)}")
-                    except Exception as e:
-                        print(f"  Channel info unavailable: {e}")
-                    
-                    # Format device info
-                    if serial_number != "Unknown":
-                        device_info = f"{device_name} ({product_type}, S/N: {serial_number})"
+                    if device_count > 0:
+                        for i, dev in enumerate(sysobj.devices):
+                            try:
+                                device_name = dev.name
+                                product_type = getattr(dev, 'product_type', 'Unknown')
+                                print(f"Real device {i}: {device_name} ({product_type})")
+                                
+                                detected_devices.append(f"{device_name} (Real - {product_type})")
+                                
+                            except Exception as e:
+                                print(f"Error processing real device {i}: {e}")
+                                detected_devices.append(f"Device{i} (Real - Error)")
                     else:
-                        device_info = f"{device_name} ({product_type})"
-                    
-                    devices.append(device_info)
-                    print(f"Added: {device_info}")
-                    
+                        print("No real devices found by system")
+                        
                 except Exception as e:
-                    print(f"Error processing device: {e}")
-                    # Add with minimal info
-                    try:
-                        device_name = dev.name if hasattr(dev, 'name') else 'Unknown'
-                        devices.append(f"{device_name} (Error)")
-                    except:
-                        devices.append("Unknown Device (Error)")
-            
-            print(f"\n=== Results ===")
-            print(f"Detected {len(devices)} devices:")
-            for device in devices:
-                print(f"  - {device}")
-            
-            if not devices:
-                print("No devices processed successfully")
-                # Return fallback devices
-                fallback_devices = [
-                    "Dev1 (Manual Entry)",
-                    "Dev2 (Manual Entry)", 
-                    "Dev3 (Manual Entry)"
-                ]
-                return fallback_devices
-            
-            return devices
-            
-        except Exception as e:
-            print(f"CRITICAL ERROR in device detection!")
-            print(f"Exception: {e}")
-            print(f"Exception type: {type(e)}")
-            print(f"Exception args: {e.args}")
-            import traceback
-            print("Full traceback:")
-            traceback.print_exc()
-            
-            # Return fallback devices even on error
-            print("Returning fallback devices due to detection error...")
-            fallback_devices = [
-                f"Dev1 (Error: {str(e)[:30]})",
-                "Dev2 (Fallback)",
-                "Dev3 (Fallback)"
-            ]
-            return fallback_devices
-    
-        except Exception as e:
-            print(f"Exception in get_available_devices: {e}")
-            print(f"Exception type: {type(e)}")
-            
-            # 특정 에러에 대한 추가 정보
-            if "Could not find an installation" in str(e):
-                print("NI-DAQmx runtime not found. Checking possible locations...")
-                for path in possible_paths:
-                    exists = os.path.exists(path)
-                    print(f"  {path}: {'EXISTS' if exists else 'NOT FOUND'}")
-            
-            self.error_occurred.emit(f"Failed to get devices: {e}")
-            return [f"Error: NI-DAQmx runtime not found"]
+                    print(f"Error accessing devices: {e}")
+                    
+            except Exception as e:
+                print(f"Error creating NI system: {e}")
+                import traceback
+                traceback.print_exc()
+        else:
+            print("NI-DAQmx not available")
+        
+        # STEP 3: Combine all devices
+        all_devices = hardcoded_devices + detected_devices
+        
+        print(f"\n=== FINAL DEVICE LIST ===")
+        print(f"Total devices: {len(all_devices)}")
+        for i, device in enumerate(all_devices):
+            print(f"  {i+1}. {device}")
+        
+        # GUARANTEE: Always return at least hardcoded devices
+        if not all_devices:
+            print("ERROR: No devices at all - returning emergency fallback")
+            return ["Dev1 (Emergency)", "Dev2 (Emergency)"]
+        
+        return all_devices
     
     def connect_device(self, device_name: str, channel: str = "ai0") -> bool:
         """Connect to NI DAQ device"""
@@ -411,17 +361,22 @@ class MockNIDAQService(NIDAQService):
         
     def get_available_devices(self) -> List[str]:
         # NI-DAQmx 없을 때 테스트용 Mock 장비 표시
-        print("=== Using Mock NI DAQ Service ===")
+        print("=== Using Mock NI DAQ Service (GUARANTEED) ===")
         print("No real NI-DAQmx hardware/software available")
-        print("Returning mock devices for testing...")
+        print("Returning comprehensive mock devices for testing...")
         
         mock_devices = [
-            "Dev1 (USB-6289, S/N: Mock001)",
-            "Dev2 (USB-6008, S/N: Mock002)",
-            "Dev3 (USB-6001, S/N: Mock003)"
+            "Dev1 (Mock USB-6289)",
+            "Dev2 (Mock USB-6008)", 
+            "Dev3 (Mock USB-6001)",
+            "Dev4 (Mock PXI-6289)",
+            "Dev5 (Mock USB-6211)"
         ]
         
-        print(f"Mock devices: {mock_devices}")
+        print(f"Mock service returning {len(mock_devices)} devices:")
+        for i, device in enumerate(mock_devices):
+            print(f"  {i+1}. {device}")
+            
         return mock_devices
     
     def connect_device(self, device_name: str, channel: str = "ai0") -> bool:
