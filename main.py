@@ -437,6 +437,8 @@ class MainWindow(QtWidgets.QMainWindow):
         if hasattr(self.ui, 'daqDevice_CB') and self.ui.daqDevice_CB:
             self.ui.daqDevice_CB.clear()
             
+            self._log("🔄 Scanning for NI DAQ devices...", "info")
+            
             try:
                 print("Calling ni_service.get_available_devices()...")
                 devices = self.ni_service.get_available_devices()
@@ -444,22 +446,39 @@ class MainWindow(QtWidgets.QMainWindow):
                 
                 if devices:
                     # Filter out mock devices for cleaner display
-                    real_devices = [d for d in devices if "(Mock)" not in d]
+                    real_devices = [d for d in devices if "(Mock)" not in d and "Error:" not in d]
                     mock_devices = [d for d in devices if "(Mock)" in d]
+                    error_devices = [d for d in devices if "Error:" in d]
                     
                     if real_devices:
                         self.ui.daqDevice_CB.addItems(real_devices)
-                        self._log(f"Found {len(real_devices)} NI DAQ devices", "success")
+                        self._log(f"✅ Found {len(real_devices)} NI DAQ device(s):", "success")
+                        for device in real_devices:
+                            self._log(f"   📟 {device}", "info")
+                        
+                        # Add mock devices if available (for testing)
+                        if mock_devices:
+                            self.ui.daqDevice_CB.addItems(mock_devices)
+                            self._log(f"   📝 {len(mock_devices)} simulated device(s) available", "info")
+                            
+                    elif error_devices:
+                        self.ui.daqDevice_CB.addItems(error_devices)
+                        self._log("❌ NI DAQ system error detected", "error")
+                        for error in error_devices:
+                            self._log(f"   {error}", "error")
                     else:
                         self.ui.daqDevice_CB.addItem("No devices found")
-                        self._log("No NI DAQ devices available - check NI-DAQmx installation", "warn")
+                        self._log("⚠️ No NI DAQ devices available", "warn")
+                        self._log("   Check hardware connections and NI-DAQmx installation", "warn")
                 else:
                     self.ui.daqDevice_CB.addItem("No devices found")
-                    self._log("❌ No NI DAQ devices found - check drivers", "error")
+                    self._log("❌ No NI DAQ devices detected", "error")
+                    self._log("   Verify NI-DAQmx drivers and device connections", "error")
                     
             except Exception as e:
                 self.ui.daqDevice_CB.addItem("Error detecting devices")
                 self._log(f"❌ NI DAQ detection error: {e}", "error")
+                self._log("   Check NI-DAQmx installation and system configuration", "error")
     
     def toggle_ni_connection(self):
         """Toggle NI DAQ connection"""
@@ -474,18 +493,40 @@ class MainWindow(QtWidgets.QMainWindow):
         else:
             # Connect
             if not hasattr(self.ui, 'daqDevice_CB') or not hasattr(self.ui, 'daqChannel_CB'):
+                self._log("❌ NI DAQ UI elements not found", "error")
                 return
                 
             device = self.ui.daqDevice_CB.currentText()
             channel = self.ui.daqChannel_CB.currentText()
             
-            if device and device != "No devices found":
+            self._log(f"🔄 Attempting NI DAQ connection...", "info")
+            self._log(f"   Device: {device}", "info")
+            self._log(f"   Channel: {channel}", "info")
+            
+            if device and device != "No devices found" and "Error:" not in device:
                 success = self.ni_service.connect_device(device, channel)
                 if success:
                     self.ui.daqConnect_PB.setText("Disconnect")
-                    self._log(f"📡 NI DAQ connected: {device}/{channel}", "success")
+                    
+                    # Get detailed device info
+                    device_info = self.ni_service.get_device_info()
+                    clean_device = device_info.get('device_name', device.split(' (')[0])
+                    
+                    self._log(f"✅ NI DAQ connected successfully!", "success")
+                    self._log(f"   Device: {clean_device}", "success")
+                    self._log(f"   Channel: {channel}", "success")
+                    self._log(f"   Voltage Range: ±{self.ni_service.voltage_range}V", "info")
                 else:
                     self._log(f"❌ Failed to connect to {device}/{channel}", "error")
+                    self._log("   Check device connections and drivers", "error")
+            else:
+                if "No devices found" in device:
+                    self._log("❌ No NI DAQ devices available", "error")
+                    self._log("   Check hardware connections and NI-DAQmx drivers", "error")
+                elif "Error:" in device:
+                    self._log("❌ NI DAQ system error detected", "error")
+                else:
+                    self._log("❌ Invalid device selection", "error")
         
         self._update_ni_status()
     
@@ -550,11 +591,16 @@ class MainWindow(QtWidgets.QMainWindow):
         """Update NI DAQ status display"""
         if hasattr(self.ui, 'niStatus_LB') and self.ui.niStatus_LB:
             if self.ni_service.is_connected():
+                # Get device info for display
+                device_info = self.ni_service.get_device_info()
+                device_name = device_info.get('device_name', 'Unknown')
+                channel = device_info.get('channel', 'ai0')
+                
                 if self.ni_service.is_monitoring():
-                    self.ui.niStatus_LB.setText("🟢 Monitoring Active")
+                    self.ui.niStatus_LB.setText(f"🟢 Monitoring: {device_name}/{channel}")
                     self.ui.niStatus_LB.setStyleSheet("font-weight: bold; font-size: 10pt; color: #4CAF50;")
                 else:
-                    self.ui.niStatus_LB.setText("🟡 Connected")
+                    self.ui.niStatus_LB.setText(f"🟡 Connected: {device_name}/{channel}")
                     self.ui.niStatus_LB.setStyleSheet("font-weight: bold; font-size: 10pt; color: #FF9800;")
             else:
                 self.ui.niStatus_LB.setText("📡 Disconnected")

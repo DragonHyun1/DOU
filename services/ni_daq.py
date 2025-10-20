@@ -116,9 +116,33 @@ class NIDAQService(QObject):
             print(f"Available devices count: {len(device_list)}")
             
             for device in device_list:
-                print(f"Found device: {device.name}, Type: {device.product_type}")
-                device_info = f"{device.name} ({device.product_type})"
-                devices.append(device_info)
+                try:
+                    # Get detailed device information
+                    device_name = device.name
+                    product_type = device.product_type
+                    serial_number = getattr(device, 'dev_serial_num', 'Unknown')
+                    
+                    print(f"Found device: {device_name}")
+                    print(f"  - Product Type: {product_type}")
+                    print(f"  - Serial Number: {serial_number}")
+                    
+                    # Try to get additional info
+                    try:
+                        ai_channels = len(device.ai_physical_chans)
+                        ao_channels = len(device.ao_physical_chans) if hasattr(device, 'ao_physical_chans') else 0
+                        print(f"  - AI Channels: {ai_channels}, AO Channels: {ao_channels}")
+                    except Exception as e:
+                        print(f"  - Channel info unavailable: {e}")
+                    
+                    # Format device info for display
+                    device_info = f"{device_name} ({product_type}, S/N: {serial_number})"
+                    devices.append(device_info)
+                    
+                except Exception as e:
+                    print(f"Error getting device info for {device}: {e}")
+                    # Fallback to basic info
+                    device_info = f"{device.name} ({getattr(device, 'product_type', 'Unknown')})"
+                    devices.append(device_info)
             
             if not devices:
                 print("No devices found by nidaqmx")
@@ -150,9 +174,17 @@ class NIDAQService(QObject):
             # Disconnect if already connected
             self.disconnect_device()
             
+            # Extract device name from formatted string (remove parentheses info)
+            clean_device_name = device_name.split(' (')[0] if ' (' in device_name else device_name
+            
+            print(f"Attempting to connect to device: {clean_device_name}")
+            print(f"Channel: {channel}")
+            
             # Create task
             self.task = nidaqmx.Task()
-            channel_name = f"{device_name}/{channel}"
+            channel_name = f"{clean_device_name}/{channel}"
+            
+            print(f"Creating channel: {channel_name}")
             
             # Add analog input channel
             self.task.ai_channels.add_ai_voltage_chan(
@@ -163,12 +195,14 @@ class NIDAQService(QObject):
             
             # Test connection by reading once
             test_value = self.task.read()
+            print(f"Test read successful: {test_value}V")
             
-            self.device_name = device_name
+            self.device_name = clean_device_name
             self.channel = channel
             self.connected = True
             self.connection_changed.emit(True)
             
+            print(f"✅ NI DAQ connected successfully: {clean_device_name}/{channel}")
             return True
             
         except Exception as e:
