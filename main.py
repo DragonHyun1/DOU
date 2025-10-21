@@ -1695,18 +1695,12 @@ class MainWindow(QtWidgets.QMainWindow):
         event.accept()
 
 def main():
-    # Enable high DPI scaling
-    QtWidgets.QApplication.setHighDpiScaleFactorRoundingPolicy(
-        QtCore.Qt.HighDpiScaleFactorRoundingPolicy.PassThrough
-    )
-    
     app = QtWidgets.QApplication(sys.argv)
     app.setApplicationName("HVPM Monitor")
     app.setApplicationVersion("3.2")
     
-    # Enable high DPI support
-    app.setAttribute(QtCore.Qt.ApplicationAttribute.AA_EnableHighDpiScaling, True)
-    app.setAttribute(QtCore.Qt.ApplicationAttribute.AA_UseHighDpiPixmaps, True)
+    # PyQt6: High DPI scaling is enabled by default
+    # No need to manually set AA_EnableHighDpiScaling as it's deprecated in PyQt6
     
     # Print screen information for debugging
     screen = app.primaryScreen()

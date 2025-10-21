@@ -38,7 +38,13 @@ class AdaptiveUI:
                 dpi = root.winfo_fpixels('1i')
                 root.destroy()
             except:
-                dpi = self.base_dpi  # Default DPI
+                # Windows default DPI detection
+                try:
+                    import ctypes
+                    user32 = ctypes.windll.user32
+                    dpi = user32.GetDpiForSystem()
+                except:
+                    dpi = self.base_dpi  # Default DPI
                 
             scale = dpi / self.base_dpi
             scale = max(0.8, min(scale, 2.5))
@@ -49,8 +55,15 @@ class AdaptiveUI:
         if not screen:
             return 1.0
             
-        # Get physical DPI
-        dpi = screen.physicalDotsPerInch()
+        # Get physical DPI - more robust method for PyQt6
+        try:
+            dpi = screen.physicalDotsPerInch()
+        except:
+            # Fallback to logical DPI
+            try:
+                dpi = screen.logicalDotsPerInch()
+            except:
+                dpi = self.base_dpi
         
         # Calculate scale factor
         scale = dpi / self.base_dpi
