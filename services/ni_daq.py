@@ -244,15 +244,7 @@ class NIDAQService(QObject):
         """Get list of available NI DAQ devices - ALWAYS return devices"""
         print("=== NI-DAQmx Device Detection (FORCED) ===")
         
-        # STEP 1: Always start with hardcoded devices
-        hardcoded_devices = [
-            "Dev1 (Hardcoded)",
-            "Dev2 (Hardcoded)", 
-            "Dev3 (Hardcoded)",
-            "Dev4 (Hardcoded)"
-        ]
-        print(f"Adding hardcoded devices: {hardcoded_devices}")
-        
+        # Only use detected devices - no hardcoded entries
         detected_devices = []
         
         # STEP 2: Try to detect real devices if NI-DAQmx is available
@@ -295,19 +287,13 @@ class NIDAQService(QObject):
             print("NI-DAQmx not available")
         
         # STEP 3: Combine all devices
-        all_devices = hardcoded_devices + detected_devices
-        
         print(f"\n=== FINAL DEVICE LIST ===")
-        print(f"Total devices: {len(all_devices)}")
-        for i, device in enumerate(all_devices):
+        print(f"Total devices: {len(detected_devices)}")
+        for i, device in enumerate(detected_devices):
             print(f"  {i+1}. {device}")
         
-        # GUARANTEE: Always return at least hardcoded devices
-        if not all_devices:
-            print("ERROR: No devices at all - returning emergency fallback")
-            return ["Dev1 (Emergency)", "Dev2 (Emergency)"]
-        
-        return all_devices
+        # Return only detected devices (empty list if none found)
+        return detected_devices
     
     def connect_device(self, device_name: str, channel: str = "ai0") -> bool:
         """Connect to NI DAQ device"""
