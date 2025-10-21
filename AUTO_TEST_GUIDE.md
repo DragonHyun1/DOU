@@ -1,17 +1,17 @@
-Found NI path: C:\Windows\System32
-Added 2 NI paths to environment
-NI-DAQmx Python package imported successfully
-  - Package version: 1.2.0
-  - Runtime version: DriverVersion(major_version=16, minor_version=1, update_version=0)
-  - Python package and runtime loaded successfully
+  super().__init__()
+[AdaptiveUI] Screen DPI: 95.60270547243287, Scale Factor: 1.00
 Traceback (most recent call last):
-  File "d:\PCT\Tool\DOU_0926\main.py", line 1724, in <module>
+  File "d:\PCT\Tool\DOU_0926\main.py", line 1718, in <module>
     main()
-  File "d:\PCT\Tool\DOU_0926\main.py", line 1708, in main
-    app.setAttribute(QtCore.Qt.ApplicationAttribute.AA_EnableHighDpiScaling, True)
-  File "C:\Users\yh003.kim\AppData\Local\aipforge\lib\enum.py", line 437, in __getattr__
-    raise AttributeError(name) from None
-AttributeError: AA_EnableHighDpiScaling
+  File "d:\PCT\Tool\DOU_0926\main.py", line 1712, in main
+    w = MainWindow()
+  File "d:\PCT\Tool\DOU_0926\main.py", line 27, in __init__
+    self.ui.setupUi(self)
+  File "d:\PCT\Tool\DOU_0926\generated\main_ui.py", line 478, in setupUi
+    self.retranslateUi(MainWindow)
+  File "d:\PCT\Tool\DOU_0926\generated\main_ui.py", line 486, in retranslateUi
+    self.hvpmStatus_LB.setStyleSheet(_translate("MainWindow", "color: #ff6b6b; font-weight: bold;"))
+AttributeError: 'Ui_MainWindow' object has no attribute 'hvpmStatus_LB'. Did you mean: 'testStatus_LB'?
 
 
 
