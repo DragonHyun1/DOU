@@ -77,16 +77,6 @@
         </widget>
        </item>
        <item>
-        <widget class="QLabel" name="hvpmStatus_LB">
-         <property name="styleSheet">
-          <string>color: #ff6b6b; font-weight: bold;</string>
-         </property>
-         <property name="text">
-          <string>Disconnected</string>
-         </property>
-        </widget>
-       </item>
-       <item>
         <widget class="QComboBox" name="hvpm_CB">
          <property name="minimumSize">
           <size>
