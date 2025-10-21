@@ -97,6 +97,7 @@ class NIDAQService(QObject):
         self.connected = False
         self.device_name = None
         self.task = None
+        self.voltage_range = 10.0  # Default ±10V range
         
         # Multi-channel configuration
         self.active_channels = {}  # {channel: config}

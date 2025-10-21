@@ -218,6 +218,7 @@ class Ui_MainWindow(object):
         sizePolicy.setVerticalStretch(0)
         self.controlGroupBox.setSizePolicy(sizePolicy)
         self.controlGroupBox.setMinimumSize(QtCore.QSize(450, 0))
+        self.controlGroupBox.setMaximumSize(QtCore.QSize(16777215, 300))  # Limit height to 300px
         self.controlGroupBox.setObjectName("controlGroupBox")
         
         self.controlVerticalLayout = QtWidgets.QVBoxLayout(self.controlGroupBox)
@@ -874,8 +875,8 @@ class Ui_MainWindow(object):
         # Log Group Box
         self.logGroupBox = QtWidgets.QGroupBox(parent=self.centralwidget)
         self.logGroupBox.setTitle("System Log")
-        self.logGroupBox.setMinimumSize(QtCore.QSize(0, 150))
-        self.logGroupBox.setMaximumSize(QtCore.QSize(16777215, 200))
+        self.logGroupBox.setMinimumSize(QtCore.QSize(0, 250))
+        self.logGroupBox.setMaximumSize(QtCore.QSize(16777215, 400))
         self.logGroupBox.setObjectName("logGroupBox")
         
         self.logLayout = QtWidgets.QVBoxLayout(self.logGroupBox)
