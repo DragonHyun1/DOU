@@ -213,6 +213,10 @@ class MainWindow(QtWidgets.QMainWindow):
         if hasattr(self.ui, 'daqConnect_PB') and self.ui.daqConnect_PB:
             self.ui.daqConnect_PB.clicked.connect(self.toggle_ni_connection)
         
+        # Multi-Channel Monitor button
+        if hasattr(self.ui, 'multiChannelMonitor_PB') and self.ui.multiChannelMonitor_PB:
+            self.ui.multiChannelMonitor_PB.clicked.connect(self.open_multi_channel_monitor)
+        
         # NI DAQ monitoring connections
         if hasattr(self.ui, 'niMonitor_PB') and self.ui.niMonitor_PB:
             self.ui.niMonitor_PB.clicked.connect(self.toggle_ni_monitoring)

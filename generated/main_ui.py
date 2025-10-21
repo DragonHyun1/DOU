@@ -13,7 +13,7 @@ class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
         MainWindow.resize(1400, 900)
-        MainWindow.setMinimumSize(QtCore.QSize(1200, 700))
+        MainWindow.setMinimumSize(QtCore.QSize(1000, 600))
         MainWindow.setWindowTitle("HVPM Monitor - Power Measurement Tool with Auto Test")
         
         self.centralwidget = QtWidgets.QWidget(parent=MainWindow)
@@ -28,7 +28,7 @@ class Ui_MainWindow(object):
         # Connection Group Box
         self.connectionGroupBox = QtWidgets.QGroupBox(parent=self.centralwidget)
         self.connectionGroupBox.setTitle("Connection Settings")
-        self.connectionGroupBox.setMinimumSize(QtCore.QSize(0, 80))
+        self.connectionGroupBox.setMinimumSize(QtCore.QSize(0, 60))
         self.connectionGroupBox.setObjectName("connectionGroupBox")
         
         self.connectionLayout = QtWidgets.QHBoxLayout(self.connectionGroupBox)
@@ -37,7 +37,7 @@ class Ui_MainWindow(object):
         
         self.PM_LB = QtWidgets.QLabel(parent=self.connectionGroupBox)
         self.PM_LB.setText("Power Monitor:")
-        self.PM_LB.setMinimumSize(QtCore.QSize(100, 0))
+        self.PM_LB.setMinimumSize(QtCore.QSize(80, 0))
         self.PM_LB.setObjectName("PM_LB")
         self.connectionLayout.addWidget(self.PM_LB)
         
@@ -48,7 +48,7 @@ class Ui_MainWindow(object):
         self.connectionLayout.addWidget(self.hvpmStatus_LB)
         
         self.hvpm_CB = QtWidgets.QComboBox(parent=self.connectionGroupBox)
-        self.hvpm_CB.setMinimumSize(QtCore.QSize(150, 0))
+        self.hvpm_CB.setMinimumSize(QtCore.QSize(120, 0))
         self.hvpm_CB.setObjectName("hvpm_CB")
         self.connectionLayout.addWidget(self.hvpm_CB)
         
@@ -60,12 +60,12 @@ class Ui_MainWindow(object):
         
         self.comport_LB = QtWidgets.QLabel(parent=self.connectionGroupBox)
         self.comport_LB.setText("ADB Device:")
-        self.comport_LB.setMinimumSize(QtCore.QSize(80, 0))
+        self.comport_LB.setMinimumSize(QtCore.QSize(60, 0))
         self.comport_LB.setObjectName("comport_LB")
         self.connectionLayout.addWidget(self.comport_LB)
         
         self.comport_CB = QtWidgets.QComboBox(parent=self.connectionGroupBox)
-        self.comport_CB.setMinimumSize(QtCore.QSize(200, 0))
+        self.comport_CB.setMinimumSize(QtCore.QSize(150, 0))
         self.comport_CB.setObjectName("comport_CB")
         self.connectionLayout.addWidget(self.comport_CB)
         
@@ -79,19 +79,19 @@ class Ui_MainWindow(object):
         # DAQ Label
         self.daqLabel = QtWidgets.QLabel(parent=self.connectionGroupBox)
         self.daqLabel.setText("NI DAQ:")
-        self.daqLabel.setMinimumSize(QtCore.QSize(60, 0))
+        self.daqLabel.setMinimumSize(QtCore.QSize(40, 0))
         self.daqLabel.setObjectName("daqLabel")
         self.connectionLayout.addWidget(self.daqLabel)
         
         # DAQ Device ComboBox
         self.daqDevice_CB = QtWidgets.QComboBox(parent=self.connectionGroupBox)
-        self.daqDevice_CB.setMinimumSize(QtCore.QSize(120, 0))
+        self.daqDevice_CB.setMinimumSize(QtCore.QSize(100, 0))
         self.daqDevice_CB.setObjectName("daqDevice_CB")
         self.connectionLayout.addWidget(self.daqDevice_CB)
         
         # DAQ Channel ComboBox
         self.daqChannel_CB = QtWidgets.QComboBox(parent=self.connectionGroupBox)
-        self.daqChannel_CB.setMinimumSize(QtCore.QSize(50, 0))
+        self.daqChannel_CB.setMinimumSize(QtCore.QSize(40, 0))
         self.daqChannel_CB.addItem("ai0")
         self.daqChannel_CB.addItem("ai1")
         self.daqChannel_CB.addItem("ai2")
@@ -102,7 +102,7 @@ class Ui_MainWindow(object):
         # DAQ Connect Button
         self.daqConnect_PB = QtWidgets.QPushButton(parent=self.connectionGroupBox)
         self.daqConnect_PB.setText("Connect")
-        self.daqConnect_PB.setMinimumSize(QtCore.QSize(60, 28))
+        self.daqConnect_PB.setMinimumSize(QtCore.QSize(50, 25))
         self.daqConnect_PB.setStyleSheet("""
             QPushButton { 
                 background-color: #2196F3; 
@@ -488,81 +488,25 @@ class Ui_MainWindow(object):
         self.niConnectionLayout.setSpacing(6)
         self.niConnectionLayout.setObjectName("niConnectionLayout")
         
-        # Device layout
-        self.niDeviceLayout = QtWidgets.QHBoxLayout()
-        self.niDeviceLayout.setObjectName("niDeviceLayout")
-        
-        self.niDeviceLabel = QtWidgets.QLabel(parent=self.niConnectionFrame)
-        self.niDeviceLabel.setText("Device:")
-        self.niDeviceLabel.setStyleSheet("font-weight: bold; font-size: 9pt; color: #dcdcdc;")
-        self.niDeviceLabel.setObjectName("niDeviceLabel")
-        self.niDeviceLayout.addWidget(self.niDeviceLabel)
-        
-        self.niDevice_CB = QtWidgets.QComboBox(parent=self.niConnectionFrame)
-        self.niDevice_CB.setMinimumSize(QtCore.QSize(0, 25))
-        self.niDevice_CB.setStyleSheet("QComboBox { font-size: 9pt; padding: 4px; }")
-        self.niDevice_CB.setObjectName("niDevice_CB")
-        self.niDeviceLayout.addWidget(self.niDevice_CB)
-        
-        self.niRefresh_PB = QtWidgets.QPushButton(parent=self.niConnectionFrame)
-        self.niRefresh_PB.setText("🔄")
-        self.niRefresh_PB.setMinimumSize(QtCore.QSize(25, 25))
-        self.niRefresh_PB.setMaximumSize(QtCore.QSize(25, 25))
-        self.niRefresh_PB.setStyleSheet("""
+        # Multi-Channel Monitor button (replaces individual device/channel controls)
+        self.multiChannelMonitor_PB = QtWidgets.QPushButton(parent=self.niConnectionFrame)
+        self.multiChannelMonitor_PB.setText("Multi-Channel Monitor")
+        self.multiChannelMonitor_PB.setMinimumSize(QtCore.QSize(150, 30))
+        self.multiChannelMonitor_PB.setStyleSheet("""
             QPushButton { 
-                background-color: #555; 
+                background-color: #4CAF50; 
                 color: white; 
-                border-radius: 4px; 
+                border-radius: 6px; 
                 font-size: 10pt;
-            }
-            QPushButton:hover { 
-                background-color: #666; 
-            }
-        """)
-        self.niRefresh_PB.setObjectName("niRefresh_PB")
-        self.niDeviceLayout.addWidget(self.niRefresh_PB)
-        
-        self.niConnectionLayout.addLayout(self.niDeviceLayout)
-        
-        # Channel layout
-        self.niChannelLayout = QtWidgets.QHBoxLayout()
-        self.niChannelLayout.setObjectName("niChannelLayout")
-        
-        self.niChannelLabel = QtWidgets.QLabel(parent=self.niConnectionFrame)
-        self.niChannelLabel.setText("Channel:")
-        self.niChannelLabel.setStyleSheet("font-weight: bold; font-size: 9pt; color: #dcdcdc;")
-        self.niChannelLabel.setObjectName("niChannelLabel")
-        self.niChannelLayout.addWidget(self.niChannelLabel)
-        
-        self.niChannel_CB = QtWidgets.QComboBox(parent=self.niConnectionFrame)
-        self.niChannel_CB.setMinimumSize(QtCore.QSize(0, 25))
-        self.niChannel_CB.setStyleSheet("QComboBox { font-size: 9pt; padding: 4px; }")
-        self.niChannel_CB.addItem("ai0")
-        self.niChannel_CB.addItem("ai1")
-        self.niChannel_CB.addItem("ai2")
-        self.niChannel_CB.addItem("ai3")
-        self.niChannel_CB.setObjectName("niChannel_CB")
-        self.niChannelLayout.addWidget(self.niChannel_CB)
-        
-        self.niConnect_PB = QtWidgets.QPushButton(parent=self.niConnectionFrame)
-        self.niConnect_PB.setText("Connect")
-        self.niConnect_PB.setMinimumSize(QtCore.QSize(60, 25))
-        self.niConnect_PB.setStyleSheet("""
-            QPushButton { 
-                background-color: #2196F3; 
-                color: white; 
-                border-radius: 4px; 
-                font-size: 9pt;
                 font-weight: bold;
+                padding: 5px;
             }
             QPushButton:hover { 
-                background-color: #1976D2; 
+                background-color: #45a049; 
             }
         """)
-        self.niConnect_PB.setObjectName("niConnect_PB")
-        self.niChannelLayout.addWidget(self.niConnect_PB)
-        
-        self.niConnectionLayout.addLayout(self.niChannelLayout)
+        self.multiChannelMonitor_PB.setObjectName("multiChannelMonitor_PB")
+        self.niConnectionLayout.addWidget(self.multiChannelMonitor_PB)
         
         self.niCurrentLayout.addWidget(self.niConnectionFrame)
         
