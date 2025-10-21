@@ -1,15 +1,17 @@
-Found NI path: C:\Program Files (x86)\National Instruments\Shared\ExternalCompilerSupport\C\lib64\msvc
-Found NI path: C:\Windows\System32
-Added 2 NI paths to environment
-NI-DAQmx Python package imported successfully
-  - Package version: 1.2.0
-  - Runtime version: DriverVersion(major_version=16, minor_version=1, update_version=0)
-  - Python package and runtime loaded successfully
-d:\PCT\Tool\DOU_0926\main.py:16: DeprecationWarning: sipPyTypeDict() is deprecated, the extension module should use sipPyTypeDictRef() instead
+d:\PCT\Tool\DOU_0926\main.py:17: DeprecationWarning: sipPyTypeDict() is deprecated, the extension module should use sipPyTypeDictRef() instead
   super().__init__()
-Found NI path: C:\Program Files (x86)\National Instruments\Shared\ExternalCompilerSupport\C\lib64\msvc
-Found NI path: C:\Windows\System32
-Added 2 NI paths to environment
+Traceback (most recent call last):
+  File "d:\PCT\Tool\DOU_0926\main.py", line 1544, in <module>
+    main()
+  File "d:\PCT\Tool\DOU_0926\main.py", line 1538, in main
+    w = MainWindow()
+  File "d:\PCT\Tool\DOU_0926\main.py", line 19, in __init__
+    self.ui.setupUi(self)
+  File "d:\PCT\Tool\DOU_0926\generated\main_ui.py", line 478, in setupUi
+    self.retranslateUi(MainWindow)
+  File "d:\PCT\Tool\DOU_0926\generated\main_ui.py", line 486, in retranslateUi
+    self.hvpmStatus_LB.setStyleSheet(_translate("MainWindow", "color: #ff6b6b; font-weight: bold;"))
+AttributeError: 'Ui_MainWindow' object has no attribute 'hvpmStatus_LB'. Did you mean: 'testStatus_LB'?
 
 
 
