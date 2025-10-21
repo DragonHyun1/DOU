@@ -823,47 +823,7 @@ class Ui_MainWindow(object):
         
         self.autoTestLayout.addLayout(self.testControlLayout)
         
-        # Test Results frame
-        self.testResultsFrame = QtWidgets.QFrame(parent=self.autoTestGroupBox)
-        self.testResultsFrame.setFrameShape(QtWidgets.QFrame.Shape.StyledPanel)
-        self.testResultsFrame.setFrameShadow(QtWidgets.QFrame.Shadow.Raised)
-        self.testResultsFrame.setStyleSheet("""
-            QFrame { 
-                background-color: #3a3a3a; 
-                border-radius: 8px; 
-                padding: 10px;
-            }
-        """)
-        self.testResultsFrame.setObjectName("testResultsFrame")
-        
-        self.testResultsLayout = QtWidgets.QVBoxLayout(self.testResultsFrame)
-        self.testResultsLayout.setObjectName("testResultsLayout")
-        
-        self.testResultsLabel = QtWidgets.QLabel(parent=self.testResultsFrame)
-        self.testResultsLabel.setText("Test Results")
-        self.testResultsLabel.setStyleSheet("font-weight: bold; font-size: 12pt; color: #dcdcdc;")
-        self.testResultsLabel.setObjectName("testResultsLabel")
-        self.testResultsLayout.addWidget(self.testResultsLabel)
-        
-        self.testResults_TE = QtWidgets.QTextEdit(parent=self.testResultsFrame)
-        self.testResults_TE.setMinimumSize(QtCore.QSize(0, 60))
-        self.testResults_TE.setMaximumSize(QtCore.QSize(16777215, 80))
-        self.testResults_TE.setStyleSheet("""
-            QTextEdit { 
-                background-color: #2a2a2a; 
-                border: 1px solid #555; 
-                border-radius: 5px; 
-                font-family: 'Consolas', 'Courier New', monospace;
-                font-size: 10pt;
-                color: #dcdcdc;
-            }
-        """)
-        self.testResults_TE.setReadOnly(True)
-        self.testResults_TE.setPlaceholderText("Test results will appear here...")
-        self.testResults_TE.setObjectName("testResults_TE")
-        self.testResultsLayout.addWidget(self.testResults_TE)
-        
-        self.autoTestLayout.addWidget(self.testResultsFrame)
+        # Test Results frame removed from autoTestGroupBox - will be moved to bottom layout
         
         autoTestSpacer = QtWidgets.QSpacerItem(20, 10, QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Expanding)
         self.autoTestLayout.addItem(autoTestSpacer)
@@ -872,12 +832,22 @@ class Ui_MainWindow(object):
         
         self.mainVerticalLayout.addLayout(self.mainContentLayout)
         
-        # Log Group Box
+        # Bottom layout (horizontal) - Log and Test Results side by side
+        self.bottomLayout = QtWidgets.QHBoxLayout()
+        self.bottomLayout.setSpacing(15)
+        self.bottomLayout.setObjectName("bottomLayout")
+        
+        # Log Group Box (left side) - matches width of HVPM+NI controls above
         self.logGroupBox = QtWidgets.QGroupBox(parent=self.centralwidget)
         self.logGroupBox.setTitle("System Log")
         self.logGroupBox.setMinimumSize(QtCore.QSize(0, 250))
         self.logGroupBox.setMaximumSize(QtCore.QSize(16777215, 400))
         self.logGroupBox.setObjectName("logGroupBox")
+        
+        # Set size policy to match control sections above
+        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Expanding)
+        sizePolicy.setHorizontalStretch(2)  # Same as controlGroupBox
+        self.logGroupBox.setSizePolicy(sizePolicy)
         
         self.logLayout = QtWidgets.QVBoxLayout(self.logGroupBox)
         self.logLayout.setObjectName("logLayout")
@@ -895,7 +865,42 @@ class Ui_MainWindow(object):
         self.log_LW.setObjectName("log_LW")
         self.logLayout.addWidget(self.log_LW)
         
-        self.mainVerticalLayout.addWidget(self.logGroupBox)
+        self.bottomLayout.addWidget(self.logGroupBox)
+        
+        # Test Results Group Box (right side) - matches width of autoTest above
+        self.testResultsGroupBox = QtWidgets.QGroupBox(parent=self.centralwidget)
+        self.testResultsGroupBox.setTitle("Test Results")
+        self.testResultsGroupBox.setMinimumSize(QtCore.QSize(0, 250))
+        self.testResultsGroupBox.setMaximumSize(QtCore.QSize(16777215, 400))
+        self.testResultsGroupBox.setObjectName("testResultsGroupBox")
+        
+        # Set size policy to match autoTest section above
+        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Expanding)
+        sizePolicy.setHorizontalStretch(1)  # Same as autoTestGroupBox
+        self.testResultsGroupBox.setSizePolicy(sizePolicy)
+        
+        self.testResultsLayout = QtWidgets.QVBoxLayout(self.testResultsGroupBox)
+        self.testResultsLayout.setObjectName("testResultsLayout")
+        
+        self.testResults_TE = QtWidgets.QTextEdit(parent=self.testResultsGroupBox)
+        self.testResults_TE.setStyleSheet("""
+            QTextEdit { 
+                background-color: #2a2a2a; 
+                border: 1px solid #555; 
+                border-radius: 5px; 
+                font-family: 'Consolas', 'Courier New', monospace;
+                font-size: 10pt;
+                color: #dcdcdc;
+            }
+        """)
+        self.testResults_TE.setReadOnly(True)
+        self.testResults_TE.setPlaceholderText("Test results will appear here...")
+        self.testResults_TE.setObjectName("testResults_TE")
+        self.testResultsLayout.addWidget(self.testResults_TE)
+        
+        self.bottomLayout.addWidget(self.testResultsGroupBox)
+        
+        self.mainVerticalLayout.addLayout(self.bottomLayout)
         
         MainWindow.setCentralWidget(self.centralwidget)
         
