@@ -468,28 +468,11 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui.daqChannel_CB.setCurrentText("ai0")
         self._log(f"Added {len(standard_channels)} channels", "info")
         
-        # Clear devices and add GUARANTEED devices
+        # Clear devices and detect actual devices
         self.ui.daqDevice_CB.clear()
         self._log("Cleared daqDevice_CB", "info")
         
-        # STEP 1: Add guaranteed devices that ALWAYS work
-        guaranteed_devices = [
-            "Dev1",
-            "Dev2", 
-            "Dev3",
-            "Dev1 (NI MAX)",
-            "Dev2 (NI MAX)",
-            "USB-6289",
-            "USB-6008",
-            "PXI-6289"
-        ]
-        
-        self._log(f"Adding {len(guaranteed_devices)} guaranteed devices...", "info")
-        for device in guaranteed_devices:
-            self.ui.daqDevice_CB.addItem(device)
-            self._log(f"   Added: {device}", "info")
-        
-        # STEP 2: Try to get devices from service (but don't depend on it)
+        # Try to get actual devices from service
         try:
             self._log("Attempting to get devices from service...", "info")
             service_devices = self.ni_service.get_available_devices()
@@ -514,9 +497,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self._log(f"   [{i}] {item_text}", "info")
         
         if final_count == 0:
-            self._log("CRITICAL: Still no devices! Adding emergency fallback", "error")
-            self.ui.daqDevice_CB.addItem("EMERGENCY Dev1")
-            self.ui.daqDevice_CB.addItem("EMERGENCY Dev2")
+            self._log("WARNING: No NI DAQ devices detected. Check hardware connections and drivers.", "warning")
         
         self._log("=== REFRESH NI DEVICES COMPLETE ===", "info")
     

@@ -83,8 +83,8 @@ class Ui_MainWindow(object):
         self.daqDevice_CB.setObjectName("daqDevice_CB")
         self.connectionLayout.addWidget(self.daqDevice_CB)
         self.daqChannel_CB = QtWidgets.QComboBox(parent=self.connectionGroupBox)
-        self.daqChannel_CB.setMinimumSize(QtCore.QSize(45, 0))
-        self.daqChannel_CB.setMaximumSize(QtCore.QSize(45, 30))
+        self.daqChannel_CB.setMinimumSize(QtCore.QSize(35, 0))
+        self.daqChannel_CB.setMaximumSize(QtCore.QSize(35, 30))
         self.daqChannel_CB.setStyleSheet("font-size: 8pt;")
         self.daqChannel_CB.setObjectName("daqChannel_CB")
         self.daqChannel_CB.addItem("")
@@ -517,34 +517,34 @@ class Ui_MainWindow(object):
 "                border-radius: 8px; \n"
 "                padding: 10px;\n"
 "              }"))
-        self.currentVoltageTitle.setStyleSheet(_translate("MainWindow", "font-weight: bold; font-size: 11pt; color: #dcdcdc;"))
+        self.currentVoltageTitle.setStyleSheet(_translate("MainWindow", "font-weight: bold; font-size: 9pt; color: #dcdcdc;"))
         self.currentVoltageTitle.setText(_translate("MainWindow", "Voltage"))
-        self.hvpmVolt_LB.setStyleSheet(_translate("MainWindow", "font-size: 16pt; font-weight: bold; color: #4CAF50; background-color: #2a2a2a; border-radius: 5px; padding: 8px;"))
+        self.hvpmVolt_LB.setStyleSheet(_translate("MainWindow", "font-size: 12pt; font-weight: bold; color: #4CAF50; background-color: #2a2a2a; border-radius: 5px; padding: 6px;"))
         self.hvpmVolt_LB.setText(_translate("MainWindow", "__.__ V"))
         self.currentCurrentFrame.setStyleSheet(_translate("MainWindow", "QFrame { \n"
 "                background-color: #3a3a3a; \n"
 "                border-radius: 8px; \n"
 "                padding: 10px;\n"
 "              }"))
-        self.currentCurrentTitle.setStyleSheet(_translate("MainWindow", "font-weight: bold; font-size: 11pt; color: #dcdcdc;"))
+        self.currentCurrentTitle.setStyleSheet(_translate("MainWindow", "font-weight: bold; font-size: 9pt; color: #dcdcdc;"))
         self.currentCurrentTitle.setText(_translate("MainWindow", "Current"))
-        self.hvpmCurrent_LB.setStyleSheet(_translate("MainWindow", "font-size: 16pt; font-weight: bold; color: #FF9800; background-color: #2a2a2a; border-radius: 5px; padding: 8px;"))
+        self.hvpmCurrent_LB.setStyleSheet(_translate("MainWindow", "font-size: 12pt; font-weight: bold; color: #FF9800; background-color: #2a2a2a; border-radius: 5px; padding: 6px;"))
         self.hvpmCurrent_LB.setText(_translate("MainWindow", "__.__ A"))
         self.powerFrame.setStyleSheet(_translate("MainWindow", "QFrame { \n"
 "                background-color: #3a3a3a; \n"
 "                border-radius: 8px; \n"
 "                padding: 10px;\n"
 "              }"))
-        self.powerTitle.setStyleSheet(_translate("MainWindow", "font-weight: bold; font-size: 11pt; color: #dcdcdc;"))
+        self.powerTitle.setStyleSheet(_translate("MainWindow", "font-weight: bold; font-size: 9pt; color: #dcdcdc;"))
         self.powerTitle.setText(_translate("MainWindow", "Power"))
-        self.hvpmPower_LB.setStyleSheet(_translate("MainWindow", "font-size: 16pt; font-weight: bold; color: #E91E63; background-color: #2a2a2a; border-radius: 5px; padding: 8px;"))
+        self.hvpmPower_LB.setStyleSheet(_translate("MainWindow", "font-size: 12pt; font-weight: bold; color: #E91E63; background-color: #2a2a2a; border-radius: 5px; padding: 6px;"))
         self.hvpmPower_LB.setText(_translate("MainWindow", "__.__ W"))
         self.voltageInputFrame.setStyleSheet(_translate("MainWindow", "QFrame { \n"
 "              background-color: #3a3a3a; \n"
 "              border-radius: 8px; \n"
 "              padding: 10px;\n"
 "            }"))
-        self.setVoltageTitle.setStyleSheet(_translate("MainWindow", "font-weight: bold; font-size: 12pt; color: #dcdcdc;"))
+        self.setVoltageTitle.setStyleSheet(_translate("MainWindow", "font-weight: bold; font-size: 9pt; color: #dcdcdc;"))
         self.setVoltageTitle.setText(_translate("MainWindow", "Set Target Voltage"))
         self.hvpmVolt_LE.setStyleSheet(_translate("MainWindow", "QLineEdit { \n"
 "                 font-size: 14pt; \n"
