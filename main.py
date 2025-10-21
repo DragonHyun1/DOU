@@ -334,6 +334,34 @@ class MainWindow(QtWidgets.QMainWindow):
         if hasattr(self.ui, 'testScenario_CB') and self.ui.testScenario_CB:
             self.ui.testScenario_CB.currentIndexChanged.connect(self._on_scenario_changed)
 
+    def _update_groupbox_colors(self, hvpm_connected: bool, ni_connected: bool):
+        """Update GroupBox title colors based on connection status"""
+        try:
+            # HVPM Control color
+            if hasattr(self.ui, 'controlGroupBox') and self.ui.controlGroupBox:
+                hvpm_color = "#4CAF50" if hvpm_connected else "#ff6b6b"  # Green if connected, red if not
+                self.ui.controlGroupBox.setStyleSheet(f"""
+                    QGroupBox::title {{
+                        color: {hvpm_color};
+                        font-weight: bold;
+                        font-size: 9pt;
+                    }}
+                """)
+            
+            # NI DAQ Control color  
+            if hasattr(self.ui, 'niCurrentGroupBox') and self.ui.niCurrentGroupBox:
+                ni_color = "#4CAF50" if ni_connected else "#ff6b6b"  # Green if connected, red if not
+                self.ui.niCurrentGroupBox.setStyleSheet(f"""
+                    QGroupBox::title {{
+                        color: {ni_color};
+                        font-weight: bold;
+                        font-size: 9pt;
+                    }}
+                """)
+                
+        except Exception as e:
+            self._log(f"Error updating groupbox colors: {e}", "error")
+
     def refresh_connections(self):
         """Enhanced connection refresh with better feedback"""
         self.ui.port_PB.setEnabled(False)
@@ -403,6 +431,9 @@ class MainWindow(QtWidgets.QMainWindow):
                 test_running = False
             
             can_start = hvpm_connected and adb_connected and not test_running
+            
+            # Update GroupBox title colors based on connection status
+            self._update_groupbox_colors(hvpm_connected, self.ni_service.is_connected() if self.ni_service else False)
             
             # Reset Auto Test group box title when test is not running
             if not test_running and hasattr(self.ui, 'autoTestGroupBox') and self.ui.autoTestGroupBox:
@@ -480,8 +511,10 @@ class MainWindow(QtWidgets.QMainWindow):
             if service_devices and len(service_devices) > 0:
                 self._log(f"Service returned {len(service_devices)} devices", "info")
                 for device in service_devices:
-                    self.ui.daqDevice_CB.addItem(f"{device} (Service)")
-                    self._log(f"   Added from service: {device}", "info")
+                    # Clean device name - remove any parenthetical info
+                    clean_device = device.split(' (')[0].split(' [')[0].strip()
+                    self.ui.daqDevice_CB.addItem(clean_device)
+                    self._log(f"   Added: {clean_device}", "info")
             else:
                 self._log("Service returned no devices", "warn")
                 
