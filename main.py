@@ -7,6 +7,8 @@ from services.hvpm import HvpmService
 from services.auto_test import AutoTestService
 from services.ni_daq import create_ni_service
 from services import theme, adb
+from services.adaptive_ui import get_adaptive_ui
+from services.responsive_layout import get_responsive_manager
 from ui.test_settings_dialog import TestSettingsDialog
 from ui.multi_channel_monitor import MultiChannelMonitorDialog
 from collections import deque
@@ -15,10 +17,19 @@ import pyqtgraph as pg
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self):
         super().__init__()
+        
+        # Initialize adaptive UI system
+        self.adaptive_ui = get_adaptive_ui()
+        self.responsive_manager = get_responsive_manager()
+        
+        # Setup UI
         self.ui = main_ui.Ui_MainWindow()
         self.ui.setupUi(self)
+        
+        # Apply adaptive window sizing
+        self._apply_adaptive_window_sizing()
 
-        # Apply modern theme
+        # Apply modern theme with adaptive sizing
         theme.apply_theme(self)
 
         # HVPM 서비스
@@ -100,8 +111,161 @@ class MainWindow(QtWidgets.QMainWindow):
         # Initialize voltage configuration from settings
         self._on_voltage_config_changed()
         
+        # Apply adaptive sizing to UI elements
+        self._apply_adaptive_ui_sizing()
+        
+        # Apply responsive layout management
+        self._apply_responsive_layout()
+        
         # Status bar 메시지
         self.ui.statusbar.showMessage("Ready - Connect devices to start monitoring and testing", 5000)
+
+    def _apply_adaptive_window_sizing(self):
+        """Apply adaptive window sizing based on screen resolution and DPI"""
+        # Get responsive window size
+        responsive_width = self.adaptive_ui.get_responsive_width(0.85)  # 85% of screen width
+        responsive_height = self.adaptive_ui.get_responsive_height(0.85)  # 85% of screen height
+        
+        # Set initial window size
+        self.resize(responsive_width, responsive_height)
+        
+        # Set minimum size that works on all screens
+        min_size = self.adaptive_ui.get_minimum_window_size()
+        self.setMinimumSize(min_size)
+        
+        # Center window on screen
+        screen = QtWidgets.QApplication.primaryScreen()
+        if screen:
+            screen_geometry = screen.availableGeometry()
+            x = (screen_geometry.width() - responsive_width) // 2
+            y = (screen_geometry.height() - responsive_height) // 2
+            self.move(max(0, x), max(0, y))
+        
+        print(f"[AdaptiveUI] Window sized to {responsive_width}x{responsive_height}, min: {min_size.width()}x{min_size.height()}")
+
+    def _apply_adaptive_ui_sizing(self):
+        """Apply adaptive sizing to specific UI elements that need manual adjustment"""
+        # Remove hardcoded font sizes from inline styles and let theme handle it
+        self._remove_hardcoded_font_sizes()
+        
+        # Apply responsive layout adjustments
+        self._apply_responsive_layout_adjustments()
+        
+    def _remove_hardcoded_font_sizes(self):
+        """Remove hardcoded font sizes from UI elements"""
+        # Get scaled font sizes
+        small_font = self.adaptive_ui.get_scaled_font_size(9)
+        base_font = self.adaptive_ui.get_scaled_font_size(11)
+        large_font = self.adaptive_ui.get_scaled_font_size(14)
+        display_font = self.adaptive_ui.get_scaled_font_size(16)
+        
+        # Update status labels with adaptive font sizes
+        status_elements = [
+            (self.ui.hvpmStatus_LB, base_font),
+            (getattr(self.ui, 'niStatus_LB', None), base_font),
+            (getattr(self.ui, 'testStatus_LB', None), base_font),
+        ]
+        
+        for element, font_size in status_elements:
+            if element:
+                current_style = element.styleSheet()
+                # Remove old font-size declarations and add adaptive one
+                import re
+                new_style = re.sub(r'font-size:\s*\d+pt;?', f'font-size: {font_size}pt;', current_style)
+                element.setStyleSheet(new_style)
+        
+        # Update display labels (voltage, current, power)
+        display_elements = [
+            (getattr(self.ui, 'hvpmVolt_LB', None), display_font),
+            (getattr(self.ui, 'hvpmCurrent_LB', None), display_font),
+            (getattr(self.ui, 'hvpmPower_LB', None), display_font),
+        ]
+        
+        for element, font_size in display_elements:
+            if element:
+                current_style = element.styleSheet()
+                new_style = re.sub(r'font-size:\s*\d+pt;?', f'font-size: {font_size}pt;', current_style)
+                element.setStyleSheet(new_style)
+    
+    def _apply_responsive_layout_adjustments(self):
+        """Apply responsive layout adjustments"""
+        # Adjust GroupBox minimum sizes based on screen size
+        screen_width = self.adaptive_ui.get_responsive_width(1.0)
+        
+        # Calculate responsive widths for main sections
+        if screen_width < 1200:
+            # Compact layout for smaller screens
+            control_width = self.adaptive_ui.get_scaled_value(350)
+            test_width = self.adaptive_ui.get_scaled_value(320)
+        else:
+            # Standard layout for larger screens
+            control_width = self.adaptive_ui.get_scaled_value(400)
+            test_width = self.adaptive_ui.get_scaled_value(400)
+        
+        # Apply responsive widths
+        responsive_elements = [
+            (getattr(self.ui, 'controlGroupBox', None), control_width),
+            (getattr(self.ui, 'autoTestGroupBox', None), test_width),
+            (getattr(self.ui, 'niCurrentGroupBox', None), self.adaptive_ui.get_scaled_value(280)),
+        ]
+        
+        for element, width in responsive_elements:
+            if element:
+                element.setMinimumWidth(width)
+                # Remove maximum width constraints for better responsiveness
+                element.setMaximumWidth(16777215)
+    
+    def _apply_responsive_layout(self):
+        """Apply responsive layout management to UI elements"""
+        # Setup responsive GroupBoxes
+        self.responsive_manager.setup_responsive_groupbox(
+            getattr(self.ui, 'connectionGroupBox', None), 1.0
+        )
+        self.responsive_manager.setup_responsive_groupbox(
+            getattr(self.ui, 'controlGroupBox', None), 0.35
+        )
+        self.responsive_manager.setup_responsive_groupbox(
+            getattr(self.ui, 'autoTestGroupBox', None), 0.35
+        )
+        self.responsive_manager.setup_responsive_groupbox(
+            getattr(self.ui, 'niCurrentGroupBox', None), 0.25
+        )
+        self.responsive_manager.setup_responsive_groupbox(
+            getattr(self.ui, 'logGroupBox', None), 1.0
+        )
+        
+        # Setup responsive buttons
+        buttons = [
+            getattr(self.ui, 'port_PB', None),
+            getattr(self.ui, 'daqConnect_PB', None),
+            getattr(self.ui, 'readVoltCurrent_PB', None),
+            getattr(self.ui, 'setVolt_PB', None),
+            getattr(self.ui, 'startMonitoring_PB', None),
+            getattr(self.ui, 'startAutoTest_PB', None),
+            getattr(self.ui, 'stopAutoTest_PB', None),
+            getattr(self.ui, 'testSettings_PB', None),
+        ]
+        self.responsive_manager.setup_responsive_buttons(*[b for b in buttons if b])
+        
+        # Setup responsive combo boxes
+        combos = [
+            getattr(self.ui, 'hvpm_CB', None),
+            getattr(self.ui, 'comport_CB', None),
+            getattr(self.ui, 'daqDevice_CB', None),
+            getattr(self.ui, 'daqChannel_CB', None),
+            getattr(self.ui, 'testScenario_CB', None),
+        ]
+        self.responsive_manager.setup_responsive_combobox(*[c for c in combos if c])
+        
+        # Apply responsive margins to main layouts
+        layouts = [
+            getattr(self.ui, 'mainVerticalLayout', None),
+            getattr(self.ui, 'connectionLayout', None),
+            getattr(self.ui, 'mainContentLayout', None),
+        ]
+        for layout in layouts:
+            if layout:
+                self.responsive_manager.apply_responsive_margins(layout)
 
     def _setup_nidaq_environment(self):
         """Setup NI-DAQmx environment paths"""
@@ -1531,9 +1695,25 @@ class MainWindow(QtWidgets.QMainWindow):
         event.accept()
 
 def main():
+    # Enable high DPI scaling
+    QtWidgets.QApplication.setHighDpiScaleFactorRoundingPolicy(
+        QtCore.Qt.HighDpiScaleFactorRoundingPolicy.PassThrough
+    )
+    
     app = QtWidgets.QApplication(sys.argv)
     app.setApplicationName("HVPM Monitor")
-    app.setApplicationVersion("3.0")
+    app.setApplicationVersion("3.2")
+    
+    # Enable high DPI support
+    app.setAttribute(QtCore.Qt.ApplicationAttribute.AA_EnableHighDpiScaling, True)
+    app.setAttribute(QtCore.Qt.ApplicationAttribute.AA_UseHighDpiPixmaps, True)
+    
+    # Print screen information for debugging
+    screen = app.primaryScreen()
+    if screen:
+        dpi = screen.physicalDotsPerInch()
+        geometry = screen.availableGeometry()
+        print(f"[System] Screen: {geometry.width()}x{geometry.height()}, DPI: {dpi:.1f}")
     
     w = MainWindow()
     w.show()

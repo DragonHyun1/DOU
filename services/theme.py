@@ -1,7 +1,13 @@
-# Enhanced theme for HVPM Monitor
-import pyqtgraph as pg
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QFont, QPalette, QColor
+# Enhanced theme for HVPM Monitor with adaptive sizing
+try:
+    import pyqtgraph as pg
+    from PyQt6.QtCore import Qt
+    from PyQt6.QtGui import QFont, QPalette, QColor
+    PYQT_AVAILABLE = True
+except ImportError:
+    PYQT_AVAILABLE = False
+
+from .adaptive_ui import get_adaptive_ui
 
 class ModernTheme:
     # Color palette
@@ -22,10 +28,22 @@ class ModernTheme:
     }
 
 def apply_theme(app, plot_widget=None):
-    """Apply modern dark theme to the application"""
+    """Apply modern dark theme to the application with adaptive sizing"""
     colors = ModernTheme.COLORS
+    adaptive_ui = get_adaptive_ui()
     
-    # Enhanced Qt stylesheet with modern design
+    # Get scaled font sizes
+    base_font = adaptive_ui.get_scaled_font_size(11)
+    small_font = adaptive_ui.get_scaled_font_size(9)
+    large_font = adaptive_ui.get_scaled_font_size(12)
+    display_font = adaptive_ui.get_scaled_font_size(14)
+    
+    # Get scaled dimensions
+    border_radius = adaptive_ui.get_scaled_value(6)
+    padding = adaptive_ui.get_scaled_value(8)
+    margin = adaptive_ui.get_scaled_value(12)
+    
+    # Enhanced Qt stylesheet with adaptive sizing
     qss = f"""
     /* Main application styling */
     QMainWindow {{
@@ -37,18 +55,18 @@ def apply_theme(app, plot_widget=None):
         background-color: {colors['primary']};
         color: {colors['text_secondary']};
         font-family: 'Segoe UI', 'Arial', sans-serif;
-        font-size: 11pt;
+        font-size: {base_font}pt;
     }}
     
     /* Group boxes with modern styling */
     QGroupBox {{
         font-weight: bold;
-        font-size: 12pt;
+        font-size: {large_font}pt;
         color: {colors['text_primary']};
         border: 2px solid {colors['border']};
-        border-radius: 8px;
-        margin-top: 12px;
-        padding-top: 10px;
+        border-radius: {border_radius}px;
+        margin-top: {margin}px;
+        padding-top: {padding}px;
         background-color: {colors['secondary']};
     }}
     
@@ -64,11 +82,12 @@ def apply_theme(app, plot_widget=None):
     QLineEdit {{
         background-color: {colors['surface']};
         border: 2px solid {colors['border']};
-        border-radius: 6px;
-        padding: 8px 12px;
-        font-size: 12pt;
+        border-radius: {border_radius}px;
+        padding: {padding}px {margin}px;
+        font-size: {display_font}pt;
         color: {colors['text_primary']};
         selection-background-color: {colors['accent']};
+        min-height: {adaptive_ui.get_scaled_value(20)}px;
     }}
     
     QLineEdit:focus {{
@@ -86,11 +105,12 @@ def apply_theme(app, plot_widget=None):
     QComboBox {{
         background-color: {colors['surface']};
         border: 2px solid {colors['border']};
-        border-radius: 6px;
-        padding: 6px 12px;
-        font-size: 11pt;
+        border-radius: {border_radius}px;
+        padding: {padding//2}px {margin}px;
+        font-size: {base_font}pt;
         color: {colors['text_primary']};
-        min-width: 120px;
+        min-width: {adaptive_ui.get_scaled_value(120)}px;
+        min-height: {adaptive_ui.get_scaled_value(28)}px;
     }}
     
     QComboBox:hover {{
@@ -122,12 +142,13 @@ def apply_theme(app, plot_widget=None):
     QPushButton {{
         background-color: {colors['surface']};
         border: 2px solid {colors['border']};
-        border-radius: 8px;
-        padding: 8px 16px;
-        font-size: 11pt;
+        border-radius: {border_radius}px;
+        padding: {padding}px {adaptive_ui.get_scaled_value(16)}px;
+        font-size: {base_font}pt;
         font-weight: 500;
         color: {colors['text_primary']};
-        min-height: 20px;
+        min-height: {adaptive_ui.get_scaled_value(32)}px;
+        min-width: {adaptive_ui.get_scaled_value(80)}px;
     }}
     
     QPushButton:hover {{
@@ -156,10 +177,10 @@ def apply_theme(app, plot_widget=None):
     QListWidget {{
         background-color: {colors['primary']};
         border: 2px solid {colors['border']};
-        border-radius: 6px;
-        padding: 4px;
+        border-radius: {border_radius}px;
+        padding: {padding//2}px;
         font-family: 'Consolas', 'Courier New', monospace;
-        font-size: 10pt;
+        font-size: {small_font}pt;
         color: {colors['text_secondary']};
         alternate-background-color: {colors['secondary']};
     }}
