@@ -35,9 +35,9 @@ class MainWindow(QtWidgets.QMainWindow):
         # HVPM 서비스
         self.hvpm_service = HvpmService(
             combo=self.ui.hvpm_CB,
-            status_label=self.ui.hvpmStatus_LB,
-            volt_label=self.ui.hvpmVolt_LB,
-            volt_entry=self.ui.hvpmVolt_LE
+            status_label=getattr(self.ui, 'hvpmStatus_LB', None),
+            volt_label=getattr(self.ui, 'hvpmVolt_LB', None),
+            volt_entry=getattr(self.ui, 'hvpmVolt_LE', None)
         )
 
         # Auto Test 서비스
@@ -161,7 +161,7 @@ class MainWindow(QtWidgets.QMainWindow):
         
         # Update status labels with adaptive font sizes
         status_elements = [
-            (self.ui.hvpmStatus_LB, base_font),
+            (getattr(self.ui, 'hvpmStatus_LB', None), base_font),
             (getattr(self.ui, 'niStatus_LB', None), base_font),
             (getattr(self.ui, 'testStatus_LB', None), base_font),
         ]
@@ -554,13 +554,14 @@ class MainWindow(QtWidgets.QMainWindow):
         """Update connection status indicators"""
         try:
             # Update HVPM status
-            if hasattr(self.ui, 'hvpmStatus_LB') and self.ui.hvpmStatus_LB:
+            hvpm_status_label = getattr(self.ui, 'hvpmStatus_LB', None)
+            if hvpm_status_label:
                 if hasattr(self.hvpm_service, 'pm') and self.hvpm_service.pm:
-                    self.ui.hvpmStatus_LB.setText("Connected")
-                    self.ui.hvpmStatus_LB.setStyleSheet(f"color: {theme.get_status_color('connected')}; font-weight: bold;")
+                    hvpm_status_label.setText("Connected")
+                    hvpm_status_label.setStyleSheet(f"color: {theme.get_status_color('connected')}; font-weight: bold;")
                 else:
-                    self.ui.hvpmStatus_LB.setText("Disconnected")
-                    self.ui.hvpmStatus_LB.setStyleSheet(f"color: {theme.get_status_color('disconnected')}; font-weight: bold;")
+                    hvpm_status_label.setText("Disconnected")
+                    hvpm_status_label.setStyleSheet(f"color: {theme.get_status_color('disconnected')}; font-weight: bold;")
             
             # Update auto test button availability (safely)
             self._update_auto_test_buttons()
