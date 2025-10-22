@@ -51,6 +51,7 @@ class MultiChannelMonitorDialog(QtWidgets.QDialog):
         title_layout.addWidget(self.start_btn)
         
         layout.addLayout(title_layout)
+        layout.addLayout(mode_layout)
         
         # Configuration section
         config_group = QtWidgets.QGroupBox("Rail Configuration")
@@ -349,48 +350,51 @@ class MultiChannelMonitorDialog(QtWidgets.QDialog):
                 if enabled_channels:
                     self.status_label.setText(f"Reading {len(enabled_channels)} channels...")
                     
-                    # Try differential measurement for proper current calculation
+                    # Choose measurement method based on selected mode
                     try:
-                        print(f"[Single Read] Attempting differential measurement for channels: {enabled_channels}")
+                        is_current_mode = self.current_mode_rb.isChecked()
+                        mode_name = "Current" if is_current_mode else "Voltage"
                         
-                        # Use differential measurement if we have multiple channels
-                        if len(enabled_channels) >= 2:
-                            results = ni_service.read_current_via_differential_measurement(enabled_channels, samples_per_channel=12)
+                        print(f"[Single Read] {mode_name} mode selected for channels: {enabled_channels}")
+                        
+                        if is_current_mode:
+                            # Current mode: Use DAQ's direct current measurement (like other tool)
+                            results = ni_service.read_current_channels_direct(enabled_channels, samples_per_channel=12)
                         else:
-                            # Fallback to regular measurement for single channel
+                            # Voltage mode: Use regular voltage measurement
                             results = ni_service.read_voltage_channels_trace_based(enabled_channels, samples_per_channel=12)
                         
-                        print(f"[Single Read] Results received: {results}")
+                        print(f"[Single Read] {mode_name} mode results: {results}")
                         if results:
-                            # Update channel displays with results
+                            # Update channel displays based on measurement mode
+                            is_current_mode = self.current_mode_rb.isChecked()
+                            
                             for channel, data in results.items():
-                                avg_voltage = data.get('avg_voltage', 0.0)
                                 sample_count = data.get('sample_count', 0)
                                 
                                 # Update the channel widget display
                                 if channel in self.channel_widgets:
                                     widget_data = self.channel_widgets[channel]
-                                    if 'voltage_display' in widget_data:
-                                        widget_data['voltage_display'].setText(f"{avg_voltage:.3f}V")
-                                    if 'current_display' in widget_data:
-                                        # Calculate current using proper shunt voltage drop
-                                        config = self.channel_configs.get(channel, {})
-                                        shunt_r = config.get('shunt_r', 0.010)
-                                        
-                                        # Check if we have shunt voltage drop data (from differential measurement)
-                                        if 'shunt_voltage_drop' in data:
-                                            # Use proper shunt voltage drop for current calculation
-                                            shunt_voltage = data['shunt_voltage_drop']
-                                            current = shunt_voltage / shunt_r if shunt_r > 0 else 0.0
-                                            widget_data['current_display'].setText(f"{current*1000:.1f}mA")
-                                            print(f"Channel {channel}: Shunt voltage = {shunt_voltage:.6f}V, Current = {current*1000:.1f}mA")
-                                        else:
-                                            # Fallback: assume voltage reading is shunt drop (likely incorrect)
-                                            current = avg_voltage / shunt_r if shunt_r > 0 else 0.0
-                                            widget_data['current_display'].setText(f"{current*1000:.1f}mA (Rail V!)")
-                                            print(f"Channel {channel}: Using rail voltage {avg_voltage:.6f}V as shunt (INCORRECT!)")
+                                    
+                                    if is_current_mode:
+                                        # Current mode: Display measured current directly
+                                        avg_current = data.get('avg_current', 0.0)  # Current in Amps
+                                        if 'voltage_display' in widget_data:
+                                            widget_data['voltage_display'].setText("N/A (Current Mode)")
+                                        if 'current_display' in widget_data:
+                                            widget_data['current_display'].setText(f"{avg_current*1000:.3f}mA")
+                                            print(f"Channel {channel}: Direct current = {avg_current*1000:.3f}mA")
+                                    else:
+                                        # Voltage mode: Display voltage, calculate current if possible
+                                        avg_voltage = data.get('avg_voltage', 0.0)
+                                        if 'voltage_display' in widget_data:
+                                            widget_data['voltage_display'].setText(f"{avg_voltage:.3f}V")
+                                        if 'current_display' in widget_data:
+                                            widget_data['current_display'].setText("N/A (Voltage Mode)")
+                                            print(f"Channel {channel}: Voltage = {avg_voltage:.3f}V")
                                 
-                            self.status_label.setText(f"✅ Single read completed - {len(results)} channels read")
+                            mode_name = "Current" if is_current_mode else "Voltage"
+                            self.status_label.setText(f"✅ {mode_name} mode read completed - {len(results)} channels")
                         else:
                             self.status_label.setText("❌ Single read failed - no data received")
                     except Exception as e:

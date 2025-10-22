@@ -425,6 +425,93 @@ class NIDAQService(QObject):
             print(f"Self-calibration failed: {e}")
             return False
     
+    def read_current_channels_direct(self, channels: List[str], samples_per_channel: int = 12) -> Optional[dict]:
+        """Read current directly using DAQ current measurement capability (like other tool)
+        
+        This uses DAQ's built-in current measurement instead of voltage-based calculation.
+        Similar to other tool's current mode measurement.
+        """
+        if not NI_AVAILABLE or not self.connected:
+            return None
+            
+        try:
+            with nidaqmx.Task() as task:
+                print(f"=== Creating CURRENT measurement task for channels: {channels} ===")
+                
+                # Add current input channels instead of voltage channels
+                for channel in channels:
+                    channel_name = f"{self.device_name}/{channel}"
+                    print(f"Adding CURRENT channel: {channel_name}")
+                    
+                    # Use current measurement instead of voltage
+                    task.ai_channels.add_ai_current_chan(
+                        channel_name,
+                        terminal_config=nidaqmx.constants.TerminalConfiguration.RSE,
+                        min_val=-0.1,  # ±100mA range (typical for power rails)
+                        max_val=0.1,
+                        units=nidaqmx.constants.CurrentUnits.AMPS,
+                        shunt_resistor_loc=nidaqmx.constants.CurrentShuntResistorLocation.EXTERNAL,
+                        ext_shunt_resist_val=0.010  # 10mΩ shunt resistor
+                    )
+                
+                # Configure timing for current measurement
+                task.timing.cfg_samp_clk_timing(
+                    rate=30000.0,
+                    sample_mode=nidaqmx.constants.AcquisitionType.CONTINUOUS,
+                    samps_per_chan=samples_per_channel
+                )
+                
+                print(f"Starting CURRENT measurement task...")
+                task.start()
+                
+                print(f"Reading {samples_per_channel} current samples per channel...")
+                data = task.read(number_of_samples_per_channel=samples_per_channel, timeout=1.0)
+                
+                task.stop()
+                
+                print(f"Raw current data: {type(data)}, length: {len(data) if hasattr(data, '__len__') else 'N/A'}")
+                
+                # Process current measurement data
+                result = {}
+                
+                if len(channels) == 1:
+                    # Single channel current measurement
+                    if isinstance(data, (list, tuple)) and len(data) > 0:
+                        avg_current = sum(data) / len(data)
+                        print(f"Single channel {channels[0]} current: {avg_current:.6f}A ({avg_current*1000:.3f}mA)")
+                        
+                        result[channels[0]] = {
+                            'current_data': data,
+                            'avg_current': avg_current,  # Current in Amps
+                            'voltage': 0.0,  # No voltage measurement in current mode
+                            'sample_count': len(data)
+                        }
+                else:
+                    # Multiple channel current measurement
+                    if isinstance(data, (list, tuple)) and len(data) > 0:
+                        for i, channel in enumerate(channels):
+                            if i < len(data):
+                                channel_data = data[i] if isinstance(data[i], (list, tuple)) else [data[i]]
+                                if len(channel_data) > 0:
+                                    avg_current = sum(channel_data) / len(channel_data)
+                                    print(f"Channel {channel} current: {avg_current:.6f}A ({avg_current*1000:.3f}mA)")
+                                    
+                                    result[channel] = {
+                                        'current_data': channel_data,
+                                        'avg_current': avg_current,  # Current in Amps
+                                        'voltage': 0.0,  # No voltage in current mode
+                                        'sample_count': len(channel_data)
+                                    }
+                
+                print(f"=== Current measurement completed, returning {len(result)} channel results ===")
+                return result
+                
+        except Exception as e:
+            error_msg = f"Current measurement error: {e}"
+            print(error_msg)
+            self.error_occurred.emit(error_msg)
+            return None
+    
     def read_current_via_differential_measurement(self, voltage_channels: List[str], samples_per_channel: int = 12) -> Optional[dict]:
         """Read current using differential measurement across shunt resistors
         
