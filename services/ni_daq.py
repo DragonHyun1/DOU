@@ -89,6 +89,8 @@ class NIDAQService(QObject):
     channel_data_updated = pyqtSignal(dict)  # {channel: {'voltage': V, 'current': A}}
     connection_changed = pyqtSignal(bool)  # connected status
     error_occurred = pyqtSignal(str)  # error message
+    # Single-channel convenience signal (used by legacy/simple paths)
+    current_updated = pyqtSignal(float)
     
     def __init__(self):
         super().__init__()
@@ -98,6 +100,7 @@ class NIDAQService(QObject):
         self.device_name = None
         self.task = None
         self.voltage_range = 10.0  # Default ±10V range
+        self.channel = "ai0"  # Default channel name when not connected
         
         # Multi-channel configuration
         self.active_channels = {}  # {channel: config}
@@ -111,6 +114,11 @@ class NIDAQService(QObject):
         
         # Last readings
         self.last_readings = {}  # {channel: {'voltage': V, 'current': A}}
+        self.last_current = 0.0  # Ensure attribute exists before any reads
+        
+        # Scaling defaults for single-channel current computation
+        self.current_scale = 1.0
+        self.current_offset = 0.0
         
         # Default configuration for 12 channels
         self._init_default_channels()
@@ -449,7 +457,7 @@ class NIDAQService(QObject):
     
     def get_last_current(self) -> float:
         """Get last current reading"""
-        return self.last_current
+        return getattr(self, 'last_current', 0.0)
     
     def get_device_info(self) -> dict:
         """Get current device information"""
@@ -458,7 +466,7 @@ class NIDAQService(QObject):
             'device_name': self.device_name,
             'channel': self.channel,
             'monitoring': self.monitoring,
-            'last_current': self.last_current,
+            'last_current': getattr(self, 'last_current', 0.0),
             'voltage_range': self.voltage_range,
             'current_scale': self.current_scale,
             'current_offset': self.current_offset
