@@ -331,7 +331,9 @@ class MultiChannelMonitorDialog(QtWidgets.QDialog):
                 print("[Monitoring] Stopping timer")
                 self.monitor_timer.stop()
         
-        self.monitoring_requested.emit(self.monitoring)
+        # Don't emit monitoring_requested to avoid old monitoring system
+        # self.monitoring_requested.emit(self.monitoring)
+        print(f"[Monitoring] Using internal timer-based monitoring, not emitting monitoring_requested signal")
     
     def _perform_periodic_measurement(self):
         """Perform periodic measurement based on selected mode"""

@@ -1705,27 +1705,34 @@ class MainWindow(QtWidgets.QMainWindow):
     
     def _on_multi_channel_monitoring(self, start_monitoring):
         """Handle multi-channel monitoring request"""
-        if not hasattr(self.ni_service, 'start_monitoring'):
-            self._log("ERROR: Multi-channel monitoring not supported by current NI service", "error")
-            return
+        # DISABLED: Use internal timer-based monitoring instead of old NI service monitoring
+        # The old monitoring system uses incorrect current calculation (175524.3mA issue)
+        # New multi-channel monitor uses its own timer with correct current/voltage mode handling
         
-        if start_monitoring:
-            if self.ni_service.is_connected():
-                # Set monitoring interval based on auto test state
-                interval = 1000 if self.auto_test_service.is_running else 500
-                self.ni_service.set_monitoring_interval(interval)
-                
-                success = self.ni_service.start_monitoring(interval)
-                if success:
-                    self._log("Multi-channel monitoring started", "success")
-                else:
-                    self._log("ERROR: Failed to start multi-channel monitoring", "error")
-            else:
-                self._log("ERROR: NI DAQ not connected", "error")
-                QtWidgets.QMessageBox.warning(self, "Connection Required", "Please connect to NI DAQ device first.")
-        else:
-            self.ni_service.stop_monitoring()
-            self._log("Multi-channel monitoring stopped", "info")
+        print(f"[Main] Multi-channel monitoring signal received: {start_monitoring} (IGNORED - using internal timer)")
+        
+        # Don't use the old monitoring system that causes incorrect current calculations
+        # if not hasattr(self.ni_service, 'start_monitoring'):
+        #     self._log("ERROR: Multi-channel monitoring not supported by current NI service", "error")
+        #     return
+        # 
+        # if start_monitoring:
+        #     if self.ni_service.is_connected():
+        #         # Set monitoring interval based on auto test state
+        #         interval = 1000 if self.auto_test_service.is_running else 500
+        #         self.ni_service.set_monitoring_interval(interval)
+        #         
+        #         success = self.ni_service.start_monitoring(interval)
+        #         if success:
+        #             self._log("Multi-channel monitoring started", "success")
+        #         else:
+        #             self._log("ERROR: Failed to start multi-channel monitoring", "error")
+        #     else:
+        #         self._log("ERROR: NI DAQ not connected", "error")
+        #         QtWidgets.QMessageBox.warning(self, "Connection Required", "Please connect to NI DAQ device first.")
+        # else:
+        #     self.ni_service.stop_monitoring()
+        #     self._log("Multi-channel monitoring stopped", "info")
     
     def _on_channel_data_updated(self, readings):
         """Handle channel data updates"""
