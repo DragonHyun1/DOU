@@ -303,17 +303,85 @@ class MultiChannelMonitorDialog(QtWidgets.QDialog):
             QtWidgets.QMessageBox.critical(self, "Import Error", f"Failed to import data:\n{e}")
     
     def toggle_monitoring(self):
-        """Toggle monitoring state"""
+        """Toggle monitoring state with mode support"""
         self.monitoring = not self.monitoring
         
         if self.monitoring:
+            # Check measurement mode
+            is_current_mode = self.current_mode_rb.isChecked()
+            mode_name = "Current" if is_current_mode else "Voltage"
+            
             self.start_btn.setText("Stop Monitoring")
-            self.status_label.setText("Monitoring active...")
+            self.status_label.setText(f"{mode_name} monitoring active...")
+            
+            # Start periodic monitoring based on mode
+            if hasattr(self, 'monitor_timer'):
+                self.monitor_timer.stop()
+            
+            self.monitor_timer = QtCore.QTimer()
+            self.monitor_timer.timeout.connect(self._perform_periodic_measurement)
+            self.monitor_timer.start(1000)  # Update every 1 second
+            
         else:
             self.start_btn.setText("Start Monitoring")
             self.status_label.setText("Monitoring stopped")
+            
+            if hasattr(self, 'monitor_timer'):
+                self.monitor_timer.stop()
         
         self.monitoring_requested.emit(self.monitoring)
+    
+    def _perform_periodic_measurement(self):
+        """Perform periodic measurement based on selected mode"""
+        if not self.monitoring:
+            return
+            
+        if hasattr(self.parent(), 'ni_service'):
+            ni_service = self.parent().ni_service
+            if ni_service.is_connected():
+                # Get enabled channels
+                enabled_channels = [ch for ch, config in self.channel_configs.items() if config.get('enabled', False)]
+                if enabled_channels:
+                    is_current_mode = self.current_mode_rb.isChecked()
+                    
+                    try:
+                        if is_current_mode:
+                            # Current mode monitoring
+                            results = ni_service.read_current_channels_direct(enabled_channels, samples_per_channel=12)
+                        else:
+                            # Voltage mode monitoring
+                            results = ni_service.read_voltage_channels_trace_based(enabled_channels, samples_per_channel=12)
+                        
+                        if results:
+                            # Update displays with monitoring results
+                            for channel, data in results.items():
+                                if channel in self.channel_widgets:
+                                    widget_data = self.channel_widgets[channel]
+                                    
+                                    if is_current_mode:
+                                        # Current mode display
+                                        avg_current = data.get('avg_current', 0.0)
+                                        current_ma = avg_current * 1000
+                                        current_ua = avg_current * 1000000
+                                        
+                                        if 'voltage_display' in widget_data:
+                                            widget_data['voltage_display'].setText("N/A (Current Mode)")
+                                        if 'current_display' in widget_data:
+                                            if abs(current_ma) >= 0.001:
+                                                widget_data['current_display'].setText(f"{current_ma:.3f}mA")
+                                            else:
+                                                widget_data['current_display'].setText(f"{current_ua:.3f}μA")
+                                    else:
+                                        # Voltage mode display
+                                        avg_voltage = data.get('avg_voltage', 0.0)
+                                        if 'voltage_display' in widget_data:
+                                            widget_data['voltage_display'].setText(f"{avg_voltage:.3f}V")
+                                        if 'current_display' in widget_data:
+                                            widget_data['current_display'].setText("N/A (Voltage Mode)")
+                                            
+                    except Exception as e:
+                        self.status_label.setText(f"Monitoring error: {e}")
+                        print(f"Periodic measurement error: {e}")
     
     def perform_self_calibration(self):
         """Perform DAQ device self-calibration"""
@@ -394,8 +462,18 @@ class MultiChannelMonitorDialog(QtWidgets.QDialog):
                                         if 'voltage_display' in widget_data:
                                             widget_data['voltage_display'].setText("N/A (Current Mode)")
                                         if 'current_display' in widget_data:
-                                            widget_data['current_display'].setText(f"{avg_current*1000:.3f}mA")
-                                            print(f"Channel {channel}: Direct current = {avg_current*1000:.3f}mA")
+                                            # Enhanced precision display for very small currents
+                                            current_ma = avg_current * 1000  # Convert to mA
+                                            current_ua = avg_current * 1000000  # Convert to μA
+                                            
+                                            if abs(current_ma) >= 0.001:
+                                                # Display in mA if >= 1μA
+                                                widget_data['current_display'].setText(f"{current_ma:.3f}mA")
+                                                print(f"Channel {channel}: Direct current = {current_ma:.3f}mA")
+                                            else:
+                                                # Display in μA for very small currents
+                                                widget_data['current_display'].setText(f"{current_ua:.3f}μA")
+                                                print(f"Channel {channel}: Direct current = {current_ua:.3f}μA ({avg_current:.2e}A)")
                                     else:
                                         # Voltage mode: Display voltage, calculate current if possible
                                         avg_voltage = data.get('avg_voltage', 0.0)
