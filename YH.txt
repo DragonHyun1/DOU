@@ -1,11 +1,6 @@
-Current measurement error: Requested value is not a supported value for this property. The property value may be invalid because it conflicts with another property.
-Property: DAQmx_AI_Min
-Requested Value: -100.0e-3
-Maximum Value:  40.160643e-3
-Minimum Value: -40.160643e-3
-Channel Name: Dev1/ai0
+Single Read를 하면 0.000mA가 읽히는데 이게 정상인지 모르겠네.
+그리고 monitoring은 아직 수정안한거지? 수정해줘
 
-Task Name: _unnamedTask<3>
-
-Status Code: -200077
-[Single Read] Current mode results: None
+=== Current measurement completed, returning 1 channel results ===
+[Single Read] Current mode results: {'ai0': {'current_data': [7.020835999482067e-07, -2.62886271419645e-07, -5.845428952365817e-07, 5.877035238346473e-08, 3.804269761727475e-07, 5.877035238346473e-08, 5.877035238346473e-08, -2.62886271419645e-07, 5.877035238346473e-08, -2.62886271419645e-07, 5.877035238346473e-08, 5.877035238346473e-08], 'avg_current': 5.160915077185483e-09, 'voltage': 0.0, 'sample_count': 12}}
+Channel ai0: Direct current = 0.000mA
