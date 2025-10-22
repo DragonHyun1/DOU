@@ -457,11 +457,11 @@ class NIDAQService(QObject):
                     except TypeError as e:
                         print(f"Current channel API error: {e}")
                         print("Trying simplified current channel setup...")
-                        # Fallback: try with minimal parameters
+                        # Fallback: try with minimal parameters and safe range
                         task.ai_channels.add_ai_current_chan(
                             channel_name,
-                            min_val=-0.1,
-                            max_val=0.1,
+                            min_val=-0.040,  # Safe range within hardware limit
+                            max_val=0.040,
                             units=nidaqmx.constants.CurrentUnits.AMPS
                         )
                 
