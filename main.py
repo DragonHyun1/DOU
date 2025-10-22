@@ -1700,7 +1700,8 @@ class MainWindow(QtWidgets.QMainWindow):
                     config['shunt_r'], 
                     config['enabled']
                 )
-                self._log(f"Updated {channel}: {config['name']} ({config['target_v']}V)", "info")
+# Removed real-time logging to reduce system log spam
+                # self._log(f"Updated {channel}: {config['name']} ({config['target_v']}V)", "info")
     
     def _on_multi_channel_monitoring(self, start_monitoring):
         """Handle multi-channel monitoring request"""

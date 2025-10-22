@@ -361,14 +361,14 @@ class MultiChannelMonitorDialog(QtWidgets.QDialog):
                                 # Update the channel widget display
                                 if channel in self.channel_widgets:
                                     widget_data = self.channel_widgets[channel]
-                                    if 'voltage_label' in widget_data:
-                                        widget_data['voltage_label'].setText(f"{avg_voltage:.3f}V")
-                                    if 'current_label' in widget_data:
+                                    if 'voltage_display' in widget_data:
+                                        widget_data['voltage_display'].setText(f"{avg_voltage:.3f}V")
+                                    if 'current_display' in widget_data:
                                         # Calculate current using shunt resistor
                                         config = self.channel_configs.get(channel, {})
                                         shunt_r = config.get('shunt_r', 0.010)
                                         current = avg_voltage / shunt_r if shunt_r > 0 else 0.0
-                                        widget_data['current_label'].setText(f"{current*1000:.1f}mA")
+                                        widget_data['current_display'].setText(f"{current*1000:.1f}mA")
                                 
                             self.status_label.setText(f"✅ Single read completed - {len(results)} channels read")
                         else:
@@ -386,10 +386,10 @@ class MultiChannelMonitorDialog(QtWidgets.QDialog):
         """Update channel display with new readings"""
         if channel in self.channel_widgets:
             widget_data = self.channel_widgets[channel]
-            if 'voltage_label' in widget_data:
-                widget_data['voltage_label'].setText(f"{voltage:.3f}V")
-            if 'current_label' in widget_data:
-                widget_data['current_label'].setText(f"{current*1000:.1f}mA")
+            if 'voltage_display' in widget_data:
+                widget_data['voltage_display'].setText(f"{voltage:.3f}V")
+            if 'current_display' in widget_data:
+                widget_data['current_display'].setText(f"{current*1000:.1f}mA")
     
     def save_config(self):
         """Save current configuration to file"""
