@@ -55,8 +55,9 @@ class MainWindow(QtWidgets.QMainWindow):
         # Multi-channel monitoring
         self.multi_channel_dialog = None
         
-        # 동시 제어 충돌 방지
-        self._measurement_mode = "none"  # "hvpm", "ni_daq", "both", "none"
+        # 측정 모드 추적 (독립적 제어)
+        self._hvpm_monitoring = False
+        self._ni_monitoring = False
         self._show_conflict_warning = True
         
         # Test configuration settings
@@ -769,24 +770,29 @@ class MainWindow(QtWidgets.QMainWindow):
         self._update_ni_status()
     
     def toggle_monitoring(self):
-        """Toggle HVPM monitoring"""
+        """Toggle HVPM monitoring (independent from NI DAQ)"""
         if not hasattr(self.ui, 'startMonitoring_PB') or not self.ui.startMonitoring_PB:
             return
             
-        if self.ni_service.is_monitoring():
-            # Stop monitoring
-            self.ni_service.stop_monitoring()
-            self.ui.startMonitoring_PB.setText("Monitor")
-            self._log("Monitoring stopped", "info")
+        # This should control HVPM monitoring only, not NI DAQ
+        if self._graphActive:
+            # Stop HVPM monitoring
+            self.stop_graph()
+            self.ui.startMonitoring_PB.setText("Start Monitor")
+            self._log("HVPM monitoring stopped", "info")
         else:
-            # Start monitoring
-            if self.ni_service.is_connected():
-                success = self.ni_service.start_monitoring(1000)  # 1 second interval
-                if success:
-                    self.ui.startMonitoring_PB.setText("Stop")
-                    self._log("Monitoring started", "info")
+            # Start HVPM monitoring
+            if hasattr(self.hvpm_service, 'pm') and self.hvpm_service.pm:
+                self.start_graph()
+                self.ui.startMonitoring_PB.setText("Stop Monitor")
+                self._log("HVPM monitoring started", "info")
             else:
-                self._log("ERROR: NI DAQ not connected", "error")
+                self._log("ERROR: HVPM not connected", "error")
+                QtWidgets.QMessageBox.warning(
+                    self, 
+                    "Connection Required", 
+                    "Please connect to HVPM device before starting monitoring."
+                )
     
     def _on_ni_current_updated(self, current: float):
         """Handle NI current reading update"""
@@ -807,13 +813,12 @@ class MainWindow(QtWidgets.QMainWindow):
         else:
             # Start monitoring
             if self.ni_service.is_connected():
-                # 충돌 경고 표시
+                # 충돌 경고 표시 (독립적이지만 동시 사용 시 알림)
                 if self._graphActive and self._show_conflict_warning:
-                    self._log("WARNING: HVPM and NI DAQ monitoring simultaneously", "warn")
-                    self._log("WARNING: This may cause measurement interference", "warn")
-                    self._measurement_mode = "both"
-                else:
-                    self._measurement_mode = "ni_daq"
+                    self._log("INFO: HVPM and NI DAQ monitoring running independently", "info")
+                    self._log("NOTE: Both systems can run simultaneously", "info")
+                
+                self._ni_monitoring = True
                 
                 success = self.ni_service.start_monitoring(1000)  # 1 second interval
                 if success:
@@ -856,19 +861,19 @@ class MainWindow(QtWidgets.QMainWindow):
     
     def _update_measurement_mode_status(self):
         """Update status bar with current measurement mode"""
-        mode_messages = {
-            "none": "No active monitoring",
-            "hvpm": "HVPM monitoring active",
-            "ni_daq": "NI DAQ monitoring active", 
-            "both": "WARNING: DUAL monitoring - potential interference"
-        }
+        hvpm_active = self._graphActive
+        ni_active = self.ni_service.is_monitoring() if self.ni_service else False
         
-        message = mode_messages.get(self._measurement_mode, "Unknown mode")
-        
-        if self._measurement_mode == "both":
-            self.ui.statusbar.showMessage(message, 0)  # Persistent warning
+        if hvpm_active and ni_active:
+            message = "HVPM & NI DAQ monitoring active (independent)"
+        elif hvpm_active:
+            message = "HVPM monitoring active"
+        elif ni_active:
+            message = "NI DAQ monitoring active"
         else:
-            self.ui.statusbar.showMessage(message, 3000)  # 3 second display
+            message = "No active monitoring"
+        
+        self.ui.statusbar.showMessage(message, 3000)
 
     # ---------- 로그 ----------
     def _log(self, msg: str, level: str = "info"):
@@ -1209,10 +1214,10 @@ class MainWindow(QtWidgets.QMainWindow):
         if reply == QtWidgets.QMessageBox.StandardButton.No:
             return
         
-        # Start monitoring during auto test
+        # Start monitoring during auto test (optional NI DAQ monitoring)
         if self.ni_service.is_connected() and not self.ni_service.is_monitoring():
             self.ni_service.start_monitoring(1000)  # 1 second interval
-            self._log("Started NI current monitoring for test", "info")
+            self._log("Started NI current monitoring for test (optional)", "info")
         
         # Get custom script if needed
         custom_script = None
