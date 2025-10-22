@@ -1,10 +1,84 @@
-Traceback (most recent call last):
-  File "d:\PCT\Tool\DOU_0926\main.py", line 757, in toggle_ni_connection
-    device_info = self.ni_service.get_device_info()
-  File "d:\PCT\Tool\DOU_0926\services\ni_daq.py", line 539, in get_device_info
-    'current_scale': self.current_scale,
-AttributeError: 'NIDAQService' object has no attribute 'current_scale'
-=== Starting Self-Calibration for Dev1 ===
+NI I/O Trace에서 dump 받은거로 분석해본거야
+다른 tool이 read하는 부분을 받아본 것인데 "DAQReadNChanNSamp1DWfm"이 커맨드로 계속 read하다가 stop을 하니 stop 치고 멈추는 방식이더라고 
+채널은 ai0, ai1 오픈한 상태에서 진행하였고 지금 우리 툴이랑 뭐가 다른거야?
+
+
+[현재 툴]
+1.  DAQmxCreateTask ("", 0x000001BA8DA0E340)
+Process ID: 0x00007FB4         Thread ID: 0x0000B008
+Start Time: 15:03:23.7889      Call Duration 00:00:00.0010
+Status: 0 (0x0)
+2.  DAQmxGetTaskName (0x000001BA8DA0E340, "", 0 (0x0))
+Process ID: 0x00007FB4         Thread ID: 0x0000B008
+Start Time: 15:03:23.7900      Call Duration 00:00:00.0000
+Status: 16 (0x10)
+3.  DAQmxGetTaskName (0x000001BA8DA0E340, "_unnamedTask<9>", 16 (0x10))
+Process ID: 0x00007FB4         Thread ID: 0x0000B008
+Start Time: 15:03:23.7900      Call Duration 00:00:00.0000
+Status: 0 (0x0)
+4.  DAQmxCreateAIVoltageChan (0x000001BA8DA0E340, "Dev1/ai0", "", DAQmx_Val_RSE, -5.000000 (-5.000000E+00), 5.000000 (5.000000E+00), DAQmx_Val_Volts, "")
+Process ID: 0x00007FB4         Thread ID: 0x0000B008
+Start Time: 15:03:23.7900      Call Duration 00:00:00.0000
+Status: 0 (0x0)
+5.  DAQmxCfgSampClkTiming (0x000001BA8DA0E340, "", 500.000000 (5.000000E+02), DAQmx_Val_Rising, DAQmx_Val_FiniteSamps, 100 (0x0000000000000064))
+Process ID: 0x00007FB4         Thread ID: 0x0000B008
+Start Time: 15:03:23.7900      Call Duration 00:00:00.0000
+Status: 0 (0x0)
+6.  DAQmxStartTask (0x000001BA8DA0E340)
+Process ID: 0x00007FB4         Thread ID: 0x0000B008
+Start Time: 15:03:23.7900      Call Duration 00:00:00.0168
+Status: 0 (0x0)
+7.  DAQmxGetReadChannelsToRead (0x000001BA8DA0E340, "", 0 (0x0))
+Process ID: 0x00007FB4         Thread ID: 0x0000B008
+Start Time: 15:03:23.8068      Call Duration 00:00:00.0000
+Status: 9 (0x9)
+8.  DAQmxGetReadChannelsToRead (0x000001BA8DA0E340, "Dev1/ai0", 9 (0x9))
+Process ID: 0x00007FB4         Thread ID: 0x0000B008
+Start Time: 15:03:23.8068      Call Duration 00:00:00.0000
+Status: 0 (0x0)
+9.  DAQmxGetChanType (0x000001BA8DA0E340, "Dev1/ai0", DAQmx_Val_AI)
+Process ID: 0x00007FB4         Thread ID: 0x0000B008
+Start Time: 15:03:23.8068      Call Duration 00:00:00.0000
+Status: 0 (0x0)
+10.  DAQmxGetChanType (0x000001BA8DA0E340, "Dev1/ai0", DAQmx_Val_AI)
+Process ID: 0x00007FB4         Thread ID: 0x0000B008
+Start Time: 15:03:23.8068      Call Duration 00:00:00.0000
+Status: 0 (0x0)
+11.  DAQmxGetChanType (0x000001BA8DA0E340, "Dev1/ai0", DAQmx_Val_AI)
+Process ID: 0x00007FB4         Thread ID: 0x0000B008
+Start Time: 15:03:23.8068      Call Duration 00:00:00.0000
+Status: 0 (0x0)
+12.  DAQmxGetAIMeasType (0x000001BA8DA0E340, "Dev1/ai0", DAQmx_Val_Voltage)
+Process ID: 0x00007FB4         Thread ID: 0x0000B008
+Start Time: 15:03:23.8068      Call Duration 00:00:00.0000
+Status: 0 (0x0)
+13.  DAQmxReadAnalogF64 (0x000001BA8DA0E340, 100 (0x64), 10.000000 (1.000000E+01), "DAQmx_Val_GroupByChannel", {1.75741,1.7548,...}, 100 (0x64), 100 (0x64), NULL)
+Process ID: 0x00007FB4         Thread ID: 0x0000B008
+Start Time: 15:03:23.8078      Call Duration 00:00:00.2065
+Status: 0 (0x0)
+14.  DAQmxStopTask (0x000001BA8DA0E340)
+Process ID: 0x00007FB4         Thread ID: 0x0000B008
+Start Time: 15:03:24.0144      Call Duration 00:00:00.0089
+Status: 0 (0x0)
+15.  DAQmxClearTask (0x000001BA8DA0E340)
+Process ID: 0x00007FB4         Thread ID: 0x0000B008
+Start Time: 15:03:24.0234      Call Duration 00:00:00.0000
+Status: 0 (0x0)
+
+
+[다른 툴]
+7521.  DAQReadNChanNSamp1DWfm ("_unnamedTask<15>", 12 (0xC), 10.000000 (1.000000E+01), 0.000033 (3.330000E-05), {1.76466,1.75224,...}, 0.000033 (3.330000E-05), {-0.0423265,-0.0429272,...}, "")
+Process ID: 0x00009DA8         Thread ID: 0x00005068
+Start Time: 14:50:31.7744      Call Duration 00:00:00.0000
+Status: 0
+7523.  DAQControl ("_unnamedTask<15>", "Stop", "")
+Process ID: 0x00009DA8         Thread ID: 0x00005068
+Start Time: 14:50:31.7744      Call Duration 00:00:00.0099
+Status: 0
+7524.  DAQDestroyTask110 ("_unnamedTask<15>", "")
+Process ID: 0x00009DA8         Thread ID: 0x00005068
+Start Time: 14:50:31.7844      Call Duration 00:00:00.0009
+Status: 0
 
 
 
