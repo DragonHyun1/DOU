@@ -37,11 +37,16 @@ class MultiChannelMonitorDialog(QtWidgets.QDialog):
         title_layout.addStretch()
         
         # Control buttons
+        self.self_cal_btn = QtWidgets.QPushButton("Self-Calibration")
+        self.self_cal_btn.clicked.connect(self.perform_self_calibration)
+        self.self_cal_btn.setStyleSheet("QPushButton { background-color: #ff9800; color: white; font-weight: bold; }")
+        
         self.start_btn = QtWidgets.QPushButton("Start Monitoring")
         self.start_btn.clicked.connect(self.toggle_monitoring)
         self.single_read_btn = QtWidgets.QPushButton("Single Read")
         self.single_read_btn.clicked.connect(self.single_read)
         
+        title_layout.addWidget(self.self_cal_btn)
         title_layout.addWidget(self.single_read_btn)
         title_layout.addWidget(self.start_btn)
         
@@ -296,6 +301,43 @@ class MultiChannelMonitorDialog(QtWidgets.QDialog):
             self.status_label.setText("Monitoring stopped")
         
         self.monitoring_requested.emit(self.monitoring)
+    
+    def perform_self_calibration(self):
+        """Perform DAQ device self-calibration"""
+        if hasattr(self.parent(), 'ni_service'):
+            ni_service = self.parent().ni_service
+            if ni_service.is_connected():
+                device_name = ni_service.device_name
+                if device_name:
+                    self.status_label.setText("Starting self-calibration... (This may take ~18 seconds)")
+                    self.self_cal_btn.setEnabled(False)
+                    self.self_cal_btn.setText("Calibrating...")
+                    
+                    # Perform calibration in a separate thread to avoid UI freeze
+                    QtCore.QTimer.singleShot(100, lambda: self._do_calibration(device_name))
+                else:
+                    self.status_label.setText("Device name not available for calibration")
+            else:
+                self.status_label.setText("DAQ not connected - connect device first")
+        else:
+            self.status_label.setText("DAQ service not available")
+    
+    def _do_calibration(self, device_name):
+        """Actually perform the calibration"""
+        try:
+            ni_service = self.parent().ni_service
+            success = ni_service.perform_self_calibration(device_name)
+            
+            if success:
+                self.status_label.setText("✅ Self-calibration completed successfully!")
+            else:
+                self.status_label.setText("❌ Self-calibration failed")
+                
+        except Exception as e:
+            self.status_label.setText(f"❌ Calibration error: {e}")
+        finally:
+            self.self_cal_btn.setEnabled(True)
+            self.self_cal_btn.setText("Self-Calibration")
     
     def single_read(self):
         """Request single reading"""

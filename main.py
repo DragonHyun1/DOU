@@ -750,14 +750,6 @@ class MainWindow(QtWidgets.QMainWindow):
                 return
             
             if device and channel:
-                # Perform self-calibration before connection (as shown in NI I/O Trace)
-                self._log("Performing device self-calibration...", "info")
-                calibration_success = self.ni_service.perform_self_calibration(device)
-                if calibration_success:
-                    self._log("Self-calibration completed successfully", "success")
-                else:
-                    self._log("Self-calibration failed, proceeding with connection", "warn")
-                
                 success = self.ni_service.connect_device(device, channel)
                 if success:
                     
