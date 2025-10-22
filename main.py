@@ -97,7 +97,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self._cfg_refresh_reads_voltage = False
 
         # Setup enhanced UI components
-        self.setup_graphs()
+        # self.setup_graphs()  # 그래프 기능 비활성화
         self.setup_status_indicators()
         self.setup_menu_actions()
         
@@ -129,11 +129,11 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def _apply_adaptive_window_sizing(self):
         """Apply adaptive window sizing based on screen resolution and DPI"""
-        # Get responsive window size
-        responsive_width = self.adaptive_ui.get_responsive_width(0.85)  # 85% of screen width
+        # Get responsive window size - minimize width
+        responsive_width = max(1000, self.adaptive_ui.get_responsive_width(0.7))  # 70% of screen width, minimum 1000
         responsive_height = self.adaptive_ui.get_responsive_height(0.85)  # 85% of screen height
         
-        # Set initial window size
+        # Set initial window size (minimized width)
         self.resize(responsive_width, responsive_height)
         
         # Set minimum size that works on all screens
@@ -377,10 +377,11 @@ class MainWindow(QtWidgets.QMainWindow):
             self.ui.setVolt_PB.clicked.connect(self.handle_set_voltage)
         if hasattr(self.ui, 'startMonitoring_PB') and self.ui.startMonitoring_PB:
             self.ui.startMonitoring_PB.clicked.connect(self.toggle_monitoring)
-        if hasattr(self.ui, 'startGraph_PB') and self.ui.startGraph_PB:
-            self.ui.startGraph_PB.clicked.connect(self.start_graph)
-        if hasattr(self.ui, 'stopGraph_PB') and self.ui.stopGraph_PB:
-            self.ui.stopGraph_PB.clicked.connect(self.stop_graph)
+        # 그래프 버튼들 비활성화
+        # if hasattr(self.ui, 'startGraph_PB') and self.ui.startGraph_PB:
+        #     self.ui.startGraph_PB.clicked.connect(self.start_graph)
+        # if hasattr(self.ui, 'stopGraph_PB') and self.ui.stopGraph_PB:
+        #     self.ui.stopGraph_PB.clicked.connect(self.stop_graph)
         
         # NI DAQ connections (Connection Settings)
         if hasattr(self.ui, 'daqConnect_PB') and self.ui.daqConnect_PB:
@@ -752,6 +753,18 @@ class MainWindow(QtWidgets.QMainWindow):
                 success = self.ni_service.connect_device(device, channel)
                 if success:
                     self.ui.daqConnect_PB.setText("Disconnect")
+                    self.ui.daqConnect_PB.setStyleSheet("""
+                        QPushButton { 
+                            background-color: #4CAF50; 
+                            color: white; 
+                            font-weight: bold; 
+                            border-radius: 5px; 
+                            font-size: 9pt;
+                        }
+                        QPushButton:hover { 
+                            background-color: #45a049; 
+                        }
+                    """)
                     
                     # Get detailed device info
                     device_info = self.ni_service.get_device_info()
