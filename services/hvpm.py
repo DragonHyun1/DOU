@@ -5,13 +5,13 @@ from Monsoon import HVPM, sampleEngine
 
 class HvpmService:
     def __init__(self, combo: QtWidgets.QComboBox,
-                 status_label: QtWidgets.QLabel,
-                 volt_label: QtWidgets.QLabel,
-                 volt_entry: QtWidgets.QLineEdit):
+                 status_label: QtWidgets.QLabel = None,
+                 volt_label: QtWidgets.QLabel = None,
+                 volt_entry: QtWidgets.QLineEdit = None):
         self.combo = combo
-        self.status_label = status_label
-        self.volt_label = volt_label
-        self.volt_entry = volt_entry
+        self.status_label = status_label  # Can be None
+        self.volt_label = volt_label      # Can be None
+        self.volt_entry = volt_entry      # Can be None
         self.pm = None
         self.engine = None
         self.serialno = None
@@ -27,15 +27,17 @@ class HvpmService:
 
     # -------- UI helpers --------
     def _set_status(self, text: str, ok: bool):
-        self.status_label.setText(text)
-        self.status_label.setStyleSheet(
-            f"color:{'lightgreen' if ok else 'red'};font-weight:bold;"
-        )
+        if self.status_label:
+            self.status_label.setText(text)
+            self.status_label.setStyleSheet(
+                f"color:{'lightgreen' if ok else 'red'};font-weight:bold;"
+            )
 
     def _update_volt_label(self):
-        self.volt_label.setText(
-            "-" if self.last_set_vout is None else f"{self.last_set_vout:.2f} V"
-        )
+        if self.volt_label:
+            self.volt_label.setText(
+                "-" if self.last_set_vout is None else f"{self.last_set_vout:.2f} V"
+            )
 
     # -------- lifecycle --------
     def _safe_close(self):
