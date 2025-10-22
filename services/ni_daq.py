@@ -425,6 +425,116 @@ class NIDAQService(QObject):
             print(f"Self-calibration failed: {e}")
             return False
     
+    def read_current_via_differential_measurement(self, voltage_channels: List[str], samples_per_channel: int = 12) -> Optional[dict]:
+        """Read current using differential measurement across shunt resistors
+        
+        For proper current measurement, we need to measure voltage difference
+        across shunt resistor, not the rail voltage.
+        
+        Example setup:
+        - ai0: Voltage before shunt resistor (rail voltage)
+        - ai1: Voltage after shunt resistor (rail voltage - shunt drop)
+        - Current = (ai0 - ai1) / shunt_resistance
+        """
+        if not NI_AVAILABLE or not self.connected:
+            return None
+            
+        try:
+            with nidaqmx.Task() as task:
+                print(f"=== Creating differential measurement task for channels: {voltage_channels} ===")
+                
+                # Add channels for differential measurement
+                for channel in voltage_channels:
+                    channel_name = f"{self.device_name}/{channel}"
+                    print(f"Adding channel: {channel_name}")
+                    task.ai_channels.add_ai_voltage_chan(
+                        channel_name,
+                        terminal_config=nidaqmx.constants.TerminalConfiguration.RSE,
+                        min_val=-5.0,
+                        max_val=5.0,
+                        units=nidaqmx.constants.VoltageUnits.VOLTS
+                    )
+                
+                # Configure timing for differential measurement
+                task.timing.cfg_samp_clk_timing(
+                    rate=30000.0,
+                    sample_mode=nidaqmx.constants.AcquisitionType.CONTINUOUS,
+                    samps_per_chan=samples_per_channel
+                )
+                
+                print(f"Starting differential measurement task...")
+                task.start()
+                
+                print(f"Reading {samples_per_channel} samples per channel for differential calculation...")
+                data = task.read(number_of_samples_per_channel=samples_per_channel, timeout=1.0)
+                
+                task.stop()
+                
+                print(f"Raw differential data: {type(data)}, length: {len(data) if hasattr(data, '__len__') else 'N/A'}")
+                
+                # Process differential measurement for current calculation
+                result = {}
+                
+                if len(voltage_channels) >= 2:
+                    # Differential measurement between two channels
+                    if isinstance(data, (list, tuple)) and len(data) >= 2:
+                        channel1_data = data[0] if isinstance(data[0], (list, tuple)) else [data[0]]
+                        channel2_data = data[1] if isinstance(data[1], (list, tuple)) else [data[1]]
+                        
+                        if len(channel1_data) > 0 and len(channel2_data) > 0:
+                            # Calculate voltage difference (shunt voltage drop)
+                            voltage_diffs = []
+                            min_len = min(len(channel1_data), len(channel2_data))
+                            
+                            for i in range(min_len):
+                                voltage_diff = channel1_data[i] - channel2_data[i]
+                                voltage_diffs.append(voltage_diff)
+                            
+                            avg_voltage_diff = sum(voltage_diffs) / len(voltage_diffs)
+                            avg_rail_voltage = sum(channel1_data) / len(channel1_data)
+                            
+                            print(f"Differential measurement:")
+                            print(f"  Rail voltage (ai0): {avg_rail_voltage:.6f}V")
+                            print(f"  Voltage difference (ai0-ai1): {avg_voltage_diff:.6f}V")
+                            
+                            # Store both rail voltage and shunt voltage drop
+                            result[voltage_channels[0]] = {
+                                'voltage_data': channel1_data,
+                                'avg_voltage': avg_rail_voltage,  # Rail voltage
+                                'shunt_voltage_drop': avg_voltage_diff,  # Voltage drop across shunt
+                                'sample_count': len(channel1_data)
+                            }
+                            
+                            result[voltage_channels[1]] = {
+                                'voltage_data': channel2_data,
+                                'avg_voltage': sum(channel2_data) / len(channel2_data),
+                                'shunt_voltage_drop': avg_voltage_diff,  # Same shunt drop
+                                'sample_count': len(channel2_data)
+                            }
+                else:
+                    # Single channel - assume it's measuring shunt voltage drop directly
+                    if isinstance(data, (list, tuple)) and len(data) > 0:
+                        channel_data = data if isinstance(data[0], (int, float)) else data[0]
+                        avg_voltage = sum(channel_data) / len(channel_data)
+                        
+                        print(f"Single channel measurement (assuming shunt voltage): {avg_voltage:.6f}V")
+                        
+                        result[voltage_channels[0]] = {
+                            'voltage_data': channel_data,
+                            'avg_voltage': avg_voltage,  # This should be rail voltage
+                            'shunt_voltage_drop': avg_voltage,  # Assuming this IS the shunt voltage
+                            'sample_count': len(channel_data)
+                        }
+                
+                print(f"=== Differential measurement completed, returning {len(result)} channel results ===")
+                return result
+                
+        except Exception as e:
+            error_msg = f"Differential measurement error: {e}"
+            print(error_msg)
+            self.error_occurred.emit(error_msg)
+            return None
+    
     def read_voltage_channels_trace_based(self, channels: List[str], samples_per_channel: int = 12) -> Optional[dict]:
         """Read multiple voltage channels simultaneously (matching other tool's NI I/O Trace)"""
         if not NI_AVAILABLE or not self.connected:

@@ -349,10 +349,17 @@ class MultiChannelMonitorDialog(QtWidgets.QDialog):
                 if enabled_channels:
                     self.status_label.setText(f"Reading {len(enabled_channels)} channels...")
                     
-                    # Use the trace-based multi-channel read method (like other tool: 12 samples)
+                    # Try differential measurement for proper current calculation
                     try:
-                        print(f"[Single Read] Attempting to read channels: {enabled_channels}")
-                        results = ni_service.read_voltage_channels_trace_based(enabled_channels, samples_per_channel=12)
+                        print(f"[Single Read] Attempting differential measurement for channels: {enabled_channels}")
+                        
+                        # Use differential measurement if we have multiple channels
+                        if len(enabled_channels) >= 2:
+                            results = ni_service.read_current_via_differential_measurement(enabled_channels, samples_per_channel=12)
+                        else:
+                            # Fallback to regular measurement for single channel
+                            results = ni_service.read_voltage_channels_trace_based(enabled_channels, samples_per_channel=12)
+                        
                         print(f"[Single Read] Results received: {results}")
                         if results:
                             # Update channel displays with results
@@ -366,18 +373,22 @@ class MultiChannelMonitorDialog(QtWidgets.QDialog):
                                     if 'voltage_display' in widget_data:
                                         widget_data['voltage_display'].setText(f"{avg_voltage:.3f}V")
                                     if 'current_display' in widget_data:
-                                        # Calculate current using shunt resistor
-                                        # NOTE: DAQ measures voltage across shunt resistor, not rail voltage
-                                        # For proper current measurement, we need voltage drop across shunt
-                                        # Current implementation assumes voltage reading is shunt voltage drop
+                                        # Calculate current using proper shunt voltage drop
                                         config = self.channel_configs.get(channel, {})
                                         shunt_r = config.get('shunt_r', 0.010)
                                         
-                                        # IMPORTANT: This assumes avg_voltage is the voltage DROP across shunt resistor
-                                        # If avg_voltage is rail voltage, current calculation will be incorrect
-                                        # Proper setup requires measuring voltage across shunt resistor specifically
-                                        current = avg_voltage / shunt_r if shunt_r > 0 else 0.0
-                                        widget_data['current_display'].setText(f"{current*1000:.1f}mA (Check Setup!)")
+                                        # Check if we have shunt voltage drop data (from differential measurement)
+                                        if 'shunt_voltage_drop' in data:
+                                            # Use proper shunt voltage drop for current calculation
+                                            shunt_voltage = data['shunt_voltage_drop']
+                                            current = shunt_voltage / shunt_r if shunt_r > 0 else 0.0
+                                            widget_data['current_display'].setText(f"{current*1000:.1f}mA")
+                                            print(f"Channel {channel}: Shunt voltage = {shunt_voltage:.6f}V, Current = {current*1000:.1f}mA")
+                                        else:
+                                            # Fallback: assume voltage reading is shunt drop (likely incorrect)
+                                            current = avg_voltage / shunt_r if shunt_r > 0 else 0.0
+                                            widget_data['current_display'].setText(f"{current*1000:.1f}mA (Rail V!)")
+                                            print(f"Channel {channel}: Using rail voltage {avg_voltage:.6f}V as shunt (INCORRECT!)")
                                 
                             self.status_label.setText(f"✅ Single read completed - {len(results)} channels read")
                         else:
