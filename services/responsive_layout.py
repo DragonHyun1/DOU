@@ -1,5 +1,6 @@
 # Responsive layout utilities for HVPM Monitor
 try:
+    from PyQt6 import QtWidgets
     from PyQt6.QtWidgets import QWidget, QSizePolicy
     from PyQt6.QtCore import QSize, Qt
     PYQT_AVAILABLE = True
@@ -58,6 +59,27 @@ class ResponsiveLayoutManager:
         base_margin = self.adaptive_ui.get_scaled_value(10)
         layout.setContentsMargins(base_margin, base_margin, base_margin, base_margin)
         layout.setSpacing(self.adaptive_ui.get_scaled_value(8))
+    
+    def apply_responsive_margins_recursive(self, root_widget):
+        """Apply responsive margins/spacing to all layouts under a root widget"""
+        if not PYQT_AVAILABLE or root_widget is None:
+            return
+        try:
+            # Find all layouts in the widget tree
+            all_layouts = root_widget.findChildren(QtWidgets.QLayout)
+        except Exception:
+            all_layouts = []
+        # Apply margins/spacing, skipping known zero-margin layouts
+        skip_names = {"graphLayout"}
+        for layout in all_layouts:
+            try:
+                name = getattr(layout, "objectName", lambda: "")()
+                if name in skip_names:
+                    continue
+                self.apply_responsive_margins(layout)
+            except Exception:
+                # Best effort; continue on any individual failure
+                continue
     
     def setup_responsive_groupbox(self, groupbox, preferred_width_ratio=0.3):
         """Setup responsive behavior for a GroupBox"""

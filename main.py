@@ -152,8 +152,9 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def _apply_adaptive_ui_sizing(self):
         """Apply adaptive sizing to specific UI elements that need manual adjustment"""
-        # Remove hardcoded font sizes from inline styles and let theme handle it
+        # Normalize inline styles (fonts/paddings) and let theme handle base visuals
         self._remove_hardcoded_font_sizes()
+        self._normalize_inline_styles()
         
         # Apply responsive layout adjustments
         self._apply_responsive_layout_adjustments()
@@ -193,6 +194,57 @@ class MainWindow(QtWidgets.QMainWindow):
                 current_style = element.styleSheet()
                 new_style = re.sub(r'font-size:\s*\d+pt;?', f'font-size: {font_size}pt;', current_style)
                 element.setStyleSheet(new_style)
+
+        # Also scale font-size in any other styled widgets to avoid clipping
+        try:
+            widgets = self.findChildren(QtWidgets.QWidget)
+            # Scale all explicit font-size declarations proportionally
+            for w in widgets:
+                try:
+                    ss = w.styleSheet()
+                    if not ss:
+                        continue
+                    # Replace each font-size:Npt with scaled value based on N
+                    def repl_font(m):
+                        size = int(m.group(1))
+                        scaled = self.adaptive_ui.get_scaled_font_size(size)
+                        return f"font-size: {scaled}pt"
+                    new_ss = re.sub(r"font-size:\s*(\d+)pt", repl_font, ss)
+                    if new_ss != ss:
+                        w.setStyleSheet(new_ss)
+                except Exception:
+                    continue
+        except Exception:
+            pass
+
+    def _normalize_inline_styles(self):
+        """Scale px-based paddings/radii in inline styles to match DPI"""
+        import re as _re
+        try:
+            scale = getattr(self.adaptive_ui, 'scale_factor', 1.0)
+            scale = min(max(0.75, float(scale)), 1.6)
+        except Exception:
+            scale = 1.0
+
+        def _scale_px(match):
+            try:
+                val = int(match.group(1))
+                new_val = max(1, int(round(val * scale)))
+                return f"{new_val}px"
+            except Exception:
+                return match.group(0)
+
+        widgets = self.findChildren(QtWidgets.QWidget)
+        for w in widgets:
+            try:
+                ss = w.styleSheet()
+                if not ss or 'px' not in ss:
+                    continue
+                new_ss = _re.sub(r"(\d+)px", _scale_px, ss)
+                if new_ss != ss:
+                    w.setStyleSheet(new_ss)
+            except Exception:
+                continue
     
     def _apply_responsive_layout_adjustments(self):
         """Apply responsive layout adjustments"""
@@ -223,6 +275,27 @@ class MainWindow(QtWidgets.QMainWindow):
                 element.setMinimumWidth(width)
                 # Remove maximum width constraints for better responsiveness
                 element.setMaximumWidth(16777215)
+
+        # Relax overly strict max sizes to prevent clipping on scaled UIs
+        to_relax_max_w = [
+            'testConfigFrame', 'testProgressFrame', 'testResultsFrame',
+            'niConnectionFrame'
+        ]
+        for name in to_relax_max_w:
+            w = getattr(self.ui, name, None)
+            if w:
+                try:
+                    w.setMaximumWidth(16777215)
+                except Exception:
+                    pass
+
+        # Connection group often clips due to fixed max height in .ui; clear it
+        cg = getattr(self.ui, 'connectionGroupBox', None)
+        if cg:
+            try:
+                cg.setMaximumHeight(16777215)
+            except Exception:
+                pass
     
     def _apply_responsive_layout(self):
         """Apply responsive layout management to UI elements"""
@@ -275,6 +348,12 @@ class MainWindow(QtWidgets.QMainWindow):
         for layout in layouts:
             if layout:
                 self.responsive_manager.apply_responsive_margins(layout)
+
+        # Apply margins/spacing to all other nested layouts to ensure visual balance
+        try:
+            self.responsive_manager.apply_responsive_margins_recursive(self)
+        except Exception:
+            pass
 
     def _setup_nidaq_environment(self):
         """Setup NI-DAQmx environment paths"""
@@ -518,7 +597,6 @@ class MainWindow(QtWidgets.QMainWindow):
                     QGroupBox::title {{
                         color: {hvpm_color};
                         font-weight: bold;
-                        font-size: 9pt;
                     }}
                 """)
             
@@ -529,7 +607,6 @@ class MainWindow(QtWidgets.QMainWindow):
                     QGroupBox::title {{
                         color: {ni_color};
                         font-weight: bold;
-                        font-size: 9pt;
                     }}
                 """)
                 
