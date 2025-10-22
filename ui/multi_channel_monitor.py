@@ -323,10 +323,12 @@ class MultiChannelMonitorDialog(QtWidgets.QDialog):
             self.monitor_timer.start(1000)  # Update every 1 second
             
         else:
+            print("[Monitoring] Stopping monitoring")
             self.start_btn.setText("Start Monitoring")
             self.status_label.setText("Monitoring stopped")
             
             if hasattr(self, 'monitor_timer'):
+                print("[Monitoring] Stopping timer")
                 self.monitor_timer.stop()
         
         self.monitoring_requested.emit(self.monitoring)
@@ -378,10 +380,25 @@ class MultiChannelMonitorDialog(QtWidgets.QDialog):
                                             widget_data['voltage_display'].setText(f"{avg_voltage:.3f}V")
                                         if 'current_display' in widget_data:
                                             widget_data['current_display'].setText("N/A (Voltage Mode)")
+                        else:
+                            print("[Monitoring] No results received")
+                            self.status_label.setText("Monitoring: No data received")
                                             
                     except Exception as e:
-                        self.status_label.setText(f"Monitoring error: {e}")
-                        print(f"Periodic measurement error: {e}")
+                        error_msg = f"Monitoring error: {e}"
+                        self.status_label.setText(error_msg)
+                        print(f"[Monitoring] Exception: {e}")
+                        import traceback
+                        traceback.print_exc()
+                else:
+                    print("[Monitoring] No enabled channels")
+                    self.status_label.setText("Monitoring: No enabled channels")
+            else:
+                print("[Monitoring] DAQ not connected")
+                self.status_label.setText("Monitoring: DAQ not connected")
+        else:
+            print("[Monitoring] No NI service found")
+            self.status_label.setText("Monitoring: No DAQ service")
     
     def perform_self_calibration(self):
         """Perform DAQ device self-calibration"""
