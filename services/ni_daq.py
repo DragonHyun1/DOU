@@ -386,6 +386,81 @@ class NIDAQService(QObject):
         except Exception as e:
             self.error_occurred.emit(f"Disconnect error: {e}")
     
+    def perform_self_calibration(self, device_name: str) -> bool:
+        """Perform device self-calibration (based on NI I/O Trace)"""
+        if not NI_AVAILABLE:
+            return False
+            
+        try:
+            print(f"=== Starting Self-Calibration for {device_name} ===")
+            start_time = time.time()
+            
+            # Perform self-calibration using NI-DAQmx
+            import nidaqmx.system
+            device = nidaqmx.system.Device(device_name)
+            device.self_cal()
+            
+            duration = time.time() - start_time
+            print(f"Self-calibration completed in {duration:.1f} seconds")
+            return True
+            
+        except Exception as e:
+            print(f"Self-calibration failed: {e}")
+            return False
+    
+    def read_voltage_channels_trace_based(self, channels: List[str], samples_per_channel: int = 1000) -> Optional[dict]:
+        """Read multiple voltage channels simultaneously (based on NI I/O Trace)"""
+        if not NI_AVAILABLE or not self.connected:
+            return None
+            
+        try:
+            with nidaqmx.Task() as task:
+                # Add multiple channels as shown in trace: ai0, ai1
+                for channel in channels:
+                    channel_name = f"{self.device_name}/{channel}"
+                    task.ai_channels.add_ai_voltage_chan(
+                        channel_name,
+                        terminal_config=nidaqmx.constants.TerminalConfiguration.RSE,
+                        min_val=-5.0,  # As shown in trace
+                        max_val=5.0,   # As shown in trace
+                        units=nidaqmx.constants.VoltageUnits.VOLTS
+                    )
+                
+                # Configure timing exactly as shown in trace
+                task.timing.cfg_samp_clk_timing(
+                    rate=500.0,  # 500 Hz sample rate from trace
+                    sample_mode=nidaqmx.constants.AcquisitionType.FINITE,
+                    samps_per_chan=samples_per_channel  # 1000 samples from trace
+                )
+                
+                # Start task and read data (matching trace sequence)
+                task.start()
+                data = task.read(number_of_samples_per_channel=samples_per_channel, timeout=10.0)
+                task.stop()
+                
+                # Process data for each channel
+                result = {}
+                if len(channels) == 1:
+                    result[channels[0]] = {
+                        'voltage_data': data,
+                        'avg_voltage': sum(data) / len(data) if data else 0.0,
+                        'sample_count': len(data) if isinstance(data, list) else samples_per_channel
+                    }
+                else:
+                    for i, channel in enumerate(channels):
+                        channel_data = data[i] if isinstance(data[0], list) else [data[i]]
+                        result[channel] = {
+                            'voltage_data': channel_data,
+                            'avg_voltage': sum(channel_data) / len(channel_data) if channel_data else 0.0,
+                            'sample_count': len(channel_data)
+                        }
+                
+                return result
+                
+        except Exception as e:
+            self.error_occurred.emit(f"Multi-channel read error: {e}")
+            return None
+    
     def read_current_once(self) -> Optional[float]:
         """Read current value once"""
         if not self.connected or not self.task:
