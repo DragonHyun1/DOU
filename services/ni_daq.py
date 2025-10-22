@@ -203,8 +203,10 @@ class NIDAQService(QObject):
                         
                         temp_task.ai_channels.add_ai_voltage_chan(
                             channel_name,
-                            min_val=-voltage_range,
-                            max_val=voltage_range
+                            terminal_config=nidaqmx.constants.TerminalConfiguration.RSE,
+                            min_val=-5.0,  # Use consistent ±5V range
+                            max_val=5.0,
+                            units=nidaqmx.constants.VoltageUnits.VOLTS
                         )
                         
                         voltage = temp_task.read()
@@ -350,11 +352,13 @@ class NIDAQService(QObject):
             print(f"Creating analog input channel: {channel_name}")
             print(f"Voltage range: ±{self.voltage_range}V")
             
-            # Add analog input channel
+            # Add analog input channel (matching NI I/O Trace configuration)
             self.task.ai_channels.add_ai_voltage_chan(
                 channel_name,
-                min_val=-self.voltage_range,
-                max_val=self.voltage_range
+                terminal_config=nidaqmx.constants.TerminalConfiguration.RSE,
+                min_val=-5.0,  # Use ±5V as shown in trace for better accuracy
+                max_val=5.0,
+                units=nidaqmx.constants.VoltageUnits.VOLTS
             )
             
             print("Channel created successfully, performing test read...")

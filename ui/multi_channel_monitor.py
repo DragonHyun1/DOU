@@ -340,9 +340,56 @@ class MultiChannelMonitorDialog(QtWidgets.QDialog):
             self.self_cal_btn.setText("Self-Calibration")
     
     def single_read(self):
-        """Request single reading"""
-        self.status_label.setText("Single read requested...")
-        # This will be connected to the service
+        """Perform single read of all enabled channels"""
+        if hasattr(self.parent(), 'ni_service'):
+            ni_service = self.parent().ni_service
+            if ni_service.is_connected():
+                # Get enabled channels
+                enabled_channels = [ch for ch, config in self.channel_configs.items() if config.get('enabled', False)]
+                if enabled_channels:
+                    self.status_label.setText(f"Reading {len(enabled_channels)} channels...")
+                    
+                    # Use the trace-based multi-channel read method
+                    try:
+                        results = ni_service.read_voltage_channels_trace_based(enabled_channels, samples_per_channel=100)
+                        if results:
+                            # Update channel displays with results
+                            for channel, data in results.items():
+                                avg_voltage = data.get('avg_voltage', 0.0)
+                                sample_count = data.get('sample_count', 0)
+                                
+                                # Update the channel widget display
+                                if channel in self.channel_widgets:
+                                    widget_data = self.channel_widgets[channel]
+                                    if 'voltage_label' in widget_data:
+                                        widget_data['voltage_label'].setText(f"{avg_voltage:.3f}V")
+                                    if 'current_label' in widget_data:
+                                        # Calculate current using shunt resistor
+                                        config = self.channel_configs.get(channel, {})
+                                        shunt_r = config.get('shunt_r', 0.010)
+                                        current = avg_voltage / shunt_r if shunt_r > 0 else 0.0
+                                        widget_data['current_label'].setText(f"{current*1000:.1f}mA")
+                                
+                            self.status_label.setText(f"✅ Single read completed - {len(results)} channels read")
+                        else:
+                            self.status_label.setText("❌ Single read failed - no data received")
+                    except Exception as e:
+                        self.status_label.setText(f"❌ Single read error: {e}")
+                else:
+                    self.status_label.setText("No channels enabled for reading")
+            else:
+                self.status_label.setText("DAQ not connected - connect device first")
+        else:
+            self.status_label.setText("DAQ service not available")
+    
+    def update_channel_display(self, channel: str, voltage: float, current: float):
+        """Update channel display with new readings"""
+        if channel in self.channel_widgets:
+            widget_data = self.channel_widgets[channel]
+            if 'voltage_label' in widget_data:
+                widget_data['voltage_label'].setText(f"{voltage:.3f}V")
+            if 'current_label' in widget_data:
+                widget_data['current_label'].setText(f"{current*1000:.1f}mA")
     
     def save_config(self):
         """Save current configuration to file"""
