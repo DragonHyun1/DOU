@@ -46,12 +46,24 @@ class MultiChannelMonitorDialog(QtWidgets.QDialog):
         self.single_read_btn = QtWidgets.QPushButton("Single Read")
         self.single_read_btn.clicked.connect(self.single_read)
         
+        # Measurement mode selection
+        mode_layout = QtWidgets.QHBoxLayout()
+        mode_label = QtWidgets.QLabel("Measurement Mode:")
+        self.voltage_mode_rb = QtWidgets.QRadioButton("Voltage Mode")
+        self.current_mode_rb = QtWidgets.QRadioButton("Current Mode")
+        self.voltage_mode_rb.setChecked(True)  # Default to voltage mode
+        
+        mode_layout.addWidget(mode_label)
+        mode_layout.addWidget(self.voltage_mode_rb)
+        mode_layout.addWidget(self.current_mode_rb)
+        mode_layout.addStretch()
+        
         title_layout.addWidget(self.self_cal_btn)
         title_layout.addWidget(self.single_read_btn)
         title_layout.addWidget(self.start_btn)
         
         layout.addLayout(title_layout)
-        layout.addLayout(mode_layout)
+        layout.addLayout(mode_layout)  # mode_layout is defined above
         
         # Configuration section
         config_group = QtWidgets.QGroupBox("Rail Configuration")
