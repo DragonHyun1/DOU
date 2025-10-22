@@ -51,7 +51,7 @@ class MultiChannelMonitorDialog(QtWidgets.QDialog):
         mode_label = QtWidgets.QLabel("Measurement Mode:")
         self.voltage_mode_rb = QtWidgets.QRadioButton("Voltage Mode")
         self.current_mode_rb = QtWidgets.QRadioButton("Current Mode")
-        self.voltage_mode_rb.setChecked(True)  # Default to voltage mode
+        self.current_mode_rb.setChecked(True)  # Default to current mode
         
         mode_layout.addWidget(mode_label)
         mode_layout.addWidget(self.voltage_mode_rb)
@@ -118,18 +118,18 @@ class MultiChannelMonitorDialog(QtWidgets.QDialog):
     def init_default_channels(self):
         """Initialize default channel configurations"""
         default_rails = [
-            {'name': '3V3_MAIN', 'target_v': 3.30, 'shunt_r': 0.010},
-            {'name': '1V8_IO', 'target_v': 1.80, 'shunt_r': 0.020},
-            {'name': '1V2_CORE', 'target_v': 1.20, 'shunt_r': 0.010},
-            {'name': '5V0_USB', 'target_v': 5.00, 'shunt_r': 0.050},
-            {'name': '2V5_ADC', 'target_v': 2.50, 'shunt_r': 0.020},
-            {'name': '3V3_AUX', 'target_v': 3.30, 'shunt_r': 0.010},
-            {'name': '1V0_DDR', 'target_v': 1.00, 'shunt_r': 0.005},
-            {'name': '1V5_PLL', 'target_v': 1.50, 'shunt_r': 0.020},
-            {'name': '2V8_RF', 'target_v': 2.80, 'shunt_r': 0.010},
-            {'name': '3V0_SENSOR', 'target_v': 3.00, 'shunt_r': 0.015},
-            {'name': '1V35_CPU', 'target_v': 1.35, 'shunt_r': 0.005},
-            {'name': '2V1_MEM', 'target_v': 2.10, 'shunt_r': 0.010}
+            {'name': '-', 'target_v': 0.0, 'shunt_r': 0.0},
+            {'name': '-', 'target_v': 0.0, 'shunt_r': 0.0},
+            {'name': '-', 'target_v': 0.0, 'shunt_r': 0.0},
+            {'name': '-', 'target_v': 0.0, 'shunt_r': 0.0},
+            {'name': '-', 'target_v': 0.0, 'shunt_r': 0.0},
+            {'name': '-', 'target_v': 0.0, 'shunt_r': 0.0},
+            {'name': '-', 'target_v': 0.0, 'shunt_r': 0.0},
+            {'name': '-', 'target_v': 0.0, 'shunt_r': 0.0},
+            {'name': '-', 'target_v': 0.0, 'shunt_r': 0.0},
+            {'name': '-', 'target_v': 0.0, 'shunt_r': 0.0},
+            {'name': '-', 'target_v': 0.0, 'shunt_r': 0.0},
+            {'name': '-', 'target_v': 0.0, 'shunt_r': 0.0}
         ]
         
         for i, rail in enumerate(default_rails):
@@ -177,13 +177,13 @@ class MultiChannelMonitorDialog(QtWidgets.QDialog):
         voltage_label = QtWidgets.QLabel("Voltage:")
         voltage_display = QtWidgets.QLabel("----")
         voltage_display.setMinimumWidth(60)
-        voltage_display.setStyleSheet("font-weight: bold; color: blue;")
+        voltage_display.setStyleSheet("font-weight: bold; color: #FFD700;")  # Gold/Yellow color
         
         # Current display
         current_label = QtWidgets.QLabel("Current:")
         current_display = QtWidgets.QLabel("----")
         current_display.setMinimumWidth(60)
-        current_display.setStyleSheet("font-weight: bold; color: red;")
+        current_display.setStyleSheet("font-weight: bold; color: #FFD700;")  # Gold/Yellow color
         
         # Add to layout
         layout.addWidget(enable_cb)
@@ -479,7 +479,7 @@ class MultiChannelMonitorDialog(QtWidgets.QDialog):
                                         # Current mode: Display measured current directly
                                         avg_current = data.get('avg_current', 0.0)  # Current in Amps
                                         if 'voltage_display' in widget_data:
-                                            widget_data['voltage_display'].setText("N/A (Current Mode)")
+                                            widget_data['voltage_display'].setText("-")
                                         if 'current_display' in widget_data:
                                             # Enhanced precision display for very small currents
                                             current_ma = avg_current * 1000  # Convert to mA
@@ -499,7 +499,7 @@ class MultiChannelMonitorDialog(QtWidgets.QDialog):
                                         if 'voltage_display' in widget_data:
                                             widget_data['voltage_display'].setText(f"{avg_voltage:.3f}V")
                                         if 'current_display' in widget_data:
-                                            widget_data['current_display'].setText("N/A (Voltage Mode)")
+                                            widget_data['current_display'].setText("-")
                                             print(f"Channel {channel}: Voltage = {avg_voltage:.3f}V")
                                 
                             mode_name = "Current" if is_current_mode else "Voltage"
