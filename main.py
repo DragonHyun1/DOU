@@ -752,19 +752,6 @@ class MainWindow(QtWidgets.QMainWindow):
             if device and channel:
                 success = self.ni_service.connect_device(device, channel)
                 if success:
-                    self.ui.daqConnect_PB.setText("Disconnect")
-                    self.ui.daqConnect_PB.setStyleSheet("""
-                        QPushButton { 
-                            background-color: #4CAF50; 
-                            color: white; 
-                            font-weight: bold; 
-                            border-radius: 5px; 
-                            font-size: 9pt;
-                        }
-                        QPushButton:hover { 
-                            background-color: #45a049; 
-                        }
-                    """)
                     
                     # Get detailed device info
                     device_info = self.ni_service.get_device_info()
@@ -777,6 +764,8 @@ class MainWindow(QtWidgets.QMainWindow):
                 else:
                     self._log(f"ERROR: Failed to connect to {device}/{channel}", "error")
                     self._log("   Check device connections and drivers", "error")
+                    # 연결 실패 시에도 상태 업데이트 (버튼 색상 유지)
+                    self._update_ni_status()
             else:
                 if "No devices found" in device:
                     self._log("ERROR: No NI DAQ devices available", "error")
@@ -785,8 +774,8 @@ class MainWindow(QtWidgets.QMainWindow):
                     self._log("ERROR: NI DAQ system error detected", "error")
                 else:
                     self._log("ERROR: Invalid device selection", "error")
-        
-        self._update_ni_status()
+                # 잘못된 선택 시에도 상태 업데이트
+                self._update_ni_status()
     
     def toggle_monitoring(self):
         """Toggle HVPM real-time V/I/P reading (no graphs)"""
@@ -886,7 +875,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self._update_measurement_mode_status()
     
     def _update_ni_status(self):
-        """Update NI DAQ status display"""
+        """Update NI DAQ status display and button colors"""
+        # Update status label
         if hasattr(self.ui, 'niStatus_LB') and self.ui.niStatus_LB:
             if self.ni_service.is_connected():
                 # Get device info for display
@@ -903,6 +893,37 @@ class MainWindow(QtWidgets.QMainWindow):
             else:
                 self.ui.niStatus_LB.setText("Disconnected")
                 self.ui.niStatus_LB.setStyleSheet("font-weight: bold; font-size: 10pt; color: #ff6b6b;")
+        
+        # Update connect button color and text based on actual connection status
+        if hasattr(self.ui, 'daqConnect_PB') and self.ui.daqConnect_PB:
+            if self.ni_service.is_connected():
+                self.ui.daqConnect_PB.setText("Disconnect")
+                self.ui.daqConnect_PB.setStyleSheet("""
+                    QPushButton { 
+                        background-color: #4CAF50; 
+                        color: white; 
+                        font-weight: bold; 
+                        border-radius: 5px; 
+                        font-size: 9pt;
+                    }
+                    QPushButton:hover { 
+                        background-color: #45a049; 
+                    }
+                """)
+            else:
+                self.ui.daqConnect_PB.setText("Connect")
+                self.ui.daqConnect_PB.setStyleSheet("""
+                    QPushButton { 
+                        background-color: #f44336; 
+                        color: white; 
+                        font-weight: bold; 
+                        border-radius: 5px; 
+                        font-size: 9pt;
+                    }
+                    QPushButton:hover { 
+                        background-color: #da190b; 
+                    }
+                """)
     
     def _on_ni_connection_changed(self, connected: bool):
         """Handle NI DAQ connection status change"""
