@@ -75,7 +75,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.test_data_collection_active = False
         self.last_timestamp_log = 0
 
-        # 버퍼/타이머 초기화
+        # 버퍼/타이머 초기화 (그래프용 - 비활성화)
         self._t0 = None
         self._tbuf = deque(maxlen=600)   # 10Hz*60s = 최근 1분
         self._vbuf = deque(maxlen=600)
@@ -84,6 +84,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self._graphTimer = QTimer(self)
         self._graphTimer.setInterval(100)        # 10 Hz UI 업데이트
         self._graphTimer.timeout.connect(self._on_graph_tick)
+        
+        # HVPM 간단 모니터링용
+        self._hvpm_monitoring_active = False
+        self._hvpm_monitor_timer = QTimer(self)
+        self._hvpm_monitor_timer.setInterval(1000)  # 1초마다
+        self._hvpm_monitor_timer.timeout.connect(self._on_hvpm_monitor_tick)
 
         # ADB 상태 초기화
         self.selected_device = None
@@ -770,22 +776,24 @@ class MainWindow(QtWidgets.QMainWindow):
         self._update_ni_status()
     
     def toggle_monitoring(self):
-        """Toggle HVPM monitoring (independent from NI DAQ)"""
+        """Toggle HVPM real-time V/I/P reading (no graphs)"""
         if not hasattr(self.ui, 'startMonitoring_PB') or not self.ui.startMonitoring_PB:
             return
             
-        # This should control HVPM monitoring only, not NI DAQ
-        if self._graphActive:
+        # Simple HVPM V/I/P monitoring without graphs
+        if hasattr(self, '_hvpm_monitoring_active') and self._hvpm_monitoring_active:
             # Stop HVPM monitoring
-            self.stop_graph()
+            self._hvpm_monitoring_active = False
+            if hasattr(self, '_hvpm_monitor_timer'):
+                self._hvpm_monitor_timer.stop()
             self.ui.startMonitoring_PB.setText("Start Monitor")
-            self._log("HVPM monitoring stopped", "info")
+            self._log("HVPM V/I/P monitoring stopped", "info")
         else:
             # Start HVPM monitoring
             if hasattr(self.hvpm_service, 'pm') and self.hvpm_service.pm:
-                self.start_graph()
+                self._start_hvpm_monitoring()
                 self.ui.startMonitoring_PB.setText("Stop Monitor")
-                self._log("HVPM monitoring started", "info")
+                self._log("HVPM V/I/P monitoring started", "info")
             else:
                 self._log("ERROR: HVPM not connected", "error")
                 QtWidgets.QMessageBox.warning(
@@ -793,6 +801,40 @@ class MainWindow(QtWidgets.QMainWindow):
                     "Connection Required", 
                     "Please connect to HVPM device before starting monitoring."
                 )
+    
+    def _start_hvpm_monitoring(self):
+        """Start simple HVPM V/I/P monitoring"""
+        self._hvpm_monitoring_active = True
+        self._hvpm_monitor_timer.start()
+        
+    def _on_hvpm_monitor_tick(self):
+        """Update HVPM V/I/P display every second"""
+        try:
+            if not (hasattr(self.hvpm_service, 'pm') and self.hvpm_service.pm):
+                self._log("WARNING: HVPM connection lost during monitoring", "warn")
+                self.toggle_monitoring()  # Stop monitoring
+                return
+                
+            # Read HVPM values
+            v, i = self.hvpm_service.read_vi(log_callback=None)  # No logging for continuous updates
+            
+            if v is not None and i is not None:
+                # Update displays
+                self.hvpm_service.last_set_vout = v
+                self.hvpm_service._update_volt_label()
+                
+                # Update current display
+                if hasattr(self.ui, 'hvpmCurrent_LB') and self.ui.hvpmCurrent_LB:
+                    self.ui.hvpmCurrent_LB.setText(f"{i:.3f} A")
+                
+                # Update power display
+                if hasattr(self.ui, 'hvpmPower_LB') and self.ui.hvpmPower_LB:
+                    power = v * i
+                    self.ui.hvpmPower_LB.setText(f"{power:.3f} W")
+                    
+        except Exception as e:
+            self._log(f"ERROR: HVPM monitoring error: {e}", "error")
+            self.toggle_monitoring()  # Stop monitoring on error
     
     def _on_ni_current_updated(self, current: float):
         """Handle NI current reading update"""
@@ -1112,11 +1154,8 @@ class MainWindow(QtWidgets.QMainWindow):
             else:
                 self._log("ERROR: Failed to read HVPM values", "error")
             
-            # Also read NI current if connected
-            if self.ni_service.is_connected():
-                ni_current = self.ni_service.read_current_once()
-                if ni_current is not None:
-                    self._log(f"NI Current: {ni_current:.3f}A", "info")
+            # NI DAQ reading removed - HVPM Read V&I should only read HVPM
+            # No NI DAQ interaction needed for HVPM-only operation
                 
         except Exception as e:
             self._log(f"ERROR: Read error: {e}", "error")
