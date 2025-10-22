@@ -212,8 +212,15 @@ class NIDAQService(QObject):
                         voltage = temp_task.read()
                         
                         # Calculate current using shunt resistor
+                        # IMPORTANT: This calculation assumes 'voltage' is the voltage DROP across shunt resistor
+                        # If 'voltage' is the rail voltage, this calculation is INCORRECT
+                        # Proper current measurement requires dedicated shunt voltage measurement
                         shunt_r = config.get('shunt_r', 0.010)
                         current = voltage / shunt_r if shunt_r > 0 else 0.0
+                        
+                        # Add warning if voltage seems too high for shunt measurement
+                        if voltage > 0.1:  # Shunt voltage drop should typically be < 100mV
+                            print(f"WARNING: {channel} voltage ({voltage:.3f}V) seems too high for shunt measurement!")
                         
                         readings[channel] = {
                             'voltage': voltage,

@@ -367,10 +367,17 @@ class MultiChannelMonitorDialog(QtWidgets.QDialog):
                                         widget_data['voltage_display'].setText(f"{avg_voltage:.3f}V")
                                     if 'current_display' in widget_data:
                                         # Calculate current using shunt resistor
+                                        # NOTE: DAQ measures voltage across shunt resistor, not rail voltage
+                                        # For proper current measurement, we need voltage drop across shunt
+                                        # Current implementation assumes voltage reading is shunt voltage drop
                                         config = self.channel_configs.get(channel, {})
                                         shunt_r = config.get('shunt_r', 0.010)
+                                        
+                                        # IMPORTANT: This assumes avg_voltage is the voltage DROP across shunt resistor
+                                        # If avg_voltage is rail voltage, current calculation will be incorrect
+                                        # Proper setup requires measuring voltage across shunt resistor specifically
                                         current = avg_voltage / shunt_r if shunt_r > 0 else 0.0
-                                        widget_data['current_display'].setText(f"{current*1000:.1f}mA")
+                                        widget_data['current_display'].setText(f"{current*1000:.1f}mA (Check Setup!)")
                                 
                             self.status_label.setText(f"✅ Single read completed - {len(results)} channels read")
                         else:
