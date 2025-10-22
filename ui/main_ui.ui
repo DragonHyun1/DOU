@@ -47,13 +47,13 @@
       <property name="minimumSize">
        <size>
         <width>0</width>
-        <height>50</height>
+        <height>40</height>
        </size>
       </property>
       <property name="maximumSize">
        <size>
         <width>16777215</width>
-        <height>80</height>
+        <height>60</height>
        </size>
       </property>
       <property name="title">
@@ -297,14 +297,14 @@
         <item>
          <widget class="QGroupBox" name="controlGroupBox">
           <property name="sizePolicy">
-           <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+           <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
             <horstretch>2</horstretch>
             <verstretch>0</verstretch>
            </sizepolicy>
           </property>
           <property name="minimumSize">
            <size>
-            <width>400</width>
+            <width>350</width>
             <height>0</height>
            </size>
           </property>
@@ -642,7 +642,7 @@
           </property>
           <property name="minimumSize">
            <size>
-            <width>250</width>
+            <width>280</width>
             <height>0</height>
            </size>
           </property>

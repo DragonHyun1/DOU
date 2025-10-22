@@ -195,18 +195,20 @@ class MainWindow(QtWidgets.QMainWindow):
         # Calculate responsive widths for main sections
         if screen_width < 1200:
             # Compact layout for smaller screens
-            control_width = self.adaptive_ui.get_scaled_value(350)
-            test_width = self.adaptive_ui.get_scaled_value(320)
+            control_width = self.adaptive_ui.get_scaled_value(320)
+            test_width = self.adaptive_ui.get_scaled_value(300)
+            ni_width = self.adaptive_ui.get_scaled_value(260)
         else:
             # Standard layout for larger screens
-            control_width = self.adaptive_ui.get_scaled_value(400)
-            test_width = self.adaptive_ui.get_scaled_value(400)
+            control_width = self.adaptive_ui.get_scaled_value(350)
+            test_width = self.adaptive_ui.get_scaled_value(350)
+            ni_width = self.adaptive_ui.get_scaled_value(280)
         
         # Apply responsive widths
         responsive_elements = [
             (getattr(self.ui, 'controlGroupBox', None), control_width),
             (getattr(self.ui, 'autoTestGroupBox', None), test_width),
-            (getattr(self.ui, 'niCurrentGroupBox', None), self.adaptive_ui.get_scaled_value(280)),
+            (getattr(self.ui, 'niCurrentGroupBox', None), ni_width),
         ]
         
         for element, width in responsive_elements:
