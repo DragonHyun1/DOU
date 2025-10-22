@@ -1,17 +1,17 @@
-  super().__init__()
-[AdaptiveUI] Screen DPI: 95.60270547243287, Scale Factor: 1.00
 Traceback (most recent call last):
-  File "d:\PCT\Tool\DOU_0926\main.py", line 1718, in <module>
+  File "d:\PCT\Tool\DOU_0926\main.py", line 1719, in <module>
     main()
-  File "d:\PCT\Tool\DOU_0926\main.py", line 1712, in main
+  File "d:\PCT\Tool\DOU_0926\main.py", line 1713, in main
     w = MainWindow()
-  File "d:\PCT\Tool\DOU_0926\main.py", line 27, in __init__
-    self.ui.setupUi(self)
-  File "d:\PCT\Tool\DOU_0926\generated\main_ui.py", line 478, in setupUi
-    self.retranslateUi(MainWindow)
-  File "d:\PCT\Tool\DOU_0926\generated\main_ui.py", line 486, in retranslateUi
-    self.hvpmStatus_LB.setStyleSheet(_translate("MainWindow", "color: #ff6b6b; font-weight: bold;"))
-AttributeError: 'Ui_MainWindow' object has no attribute 'hvpmStatus_LB'. Did you mean: 'testStatus_LB'?
+  File "d:\PCT\Tool\DOU_0926\main.py", line 105, in __init__
+    self.refresh_connections()
+  File "d:\PCT\Tool\DOU_0926\main.py", line 538, in refresh_connections
+    self.hvpm_service.refresh_ports(log_callback=self._log)
+  File "d:\PCT\Tool\DOU_0926\services\hvpm.py", line 192, in refresh_ports
+    self._set_status("Not Connected ❌", False)
+  File "d:\PCT\Tool\DOU_0926\services\hvpm.py", line 30, in _set_status
+    self.status_label.setText(text)
+AttributeError: 'NoneType' object has no attribute 'setText'
 
 
 
