@@ -1,2 +1,11 @@
-Current measurement error: AIChannelCollection.add_ai_current_chan() got an unexpected keyword argument 'ext_shunt_resist_val'
+Current measurement error: Requested value is not a supported value for this property. The property value may be invalid because it conflicts with another property.
+Property: DAQmx_AI_Min
+Requested Value: -100.0e-3
+Maximum Value:  40.160643e-3
+Minimum Value: -40.160643e-3
+Channel Name: Dev1/ai0
+
+Task Name: _unnamedTask<3>
+
+Status Code: -200077
 [Single Read] Current mode results: None
