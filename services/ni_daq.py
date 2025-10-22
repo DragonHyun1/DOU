@@ -443,16 +443,27 @@ class NIDAQService(QObject):
                     channel_name = f"{self.device_name}/{channel}"
                     print(f"Adding CURRENT channel: {channel_name}")
                     
-                    # Use current measurement instead of voltage
-                    task.ai_channels.add_ai_current_chan(
-                        channel_name,
-                        terminal_config=nidaqmx.constants.TerminalConfiguration.RSE,
-                        min_val=-0.1,  # ±100mA range (typical for power rails)
-                        max_val=0.1,
-                        units=nidaqmx.constants.CurrentUnits.AMPS,
-                        shunt_resistor_loc=nidaqmx.constants.CurrentShuntResistorLocation.EXTERNAL,
-                        ext_shunt_resist_val=0.010  # 10mΩ shunt resistor
-                    )
+                    # Use current measurement with correct API parameters
+                    try:
+                        task.ai_channels.add_ai_current_chan(
+                            channel_name,
+                            terminal_config=nidaqmx.constants.TerminalConfiguration.RSE,
+                            min_val=-0.1,  # ±100mA range
+                            max_val=0.1,
+                            units=nidaqmx.constants.CurrentUnits.AMPS,
+                            shunt_resistor_loc=nidaqmx.constants.CurrentShuntResistorLocation.EXTERNAL,
+                            ext_shunt_resist_val=0.010  # 10mΩ shunt
+                        )
+                    except TypeError as e:
+                        print(f"Current channel API error: {e}")
+                        print("Trying simplified current channel setup...")
+                        # Fallback: try with minimal parameters
+                        task.ai_channels.add_ai_current_chan(
+                            channel_name,
+                            min_val=-0.1,
+                            max_val=0.1,
+                            units=nidaqmx.constants.CurrentUnits.AMPS
+                        )
                 
                 # Configure timing for current measurement
                 task.timing.cfg_samp_clk_timing(
