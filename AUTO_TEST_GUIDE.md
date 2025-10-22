@@ -1,9 +1,10 @@
 Traceback (most recent call last):
-  File "d:\PCT\Tool\DOU_0926\main.py", line 765, in toggle_ni_connection
+  File "d:\PCT\Tool\DOU_0926\main.py", line 757, in toggle_ni_connection
     device_info = self.ni_service.get_device_info()
-  File "d:\PCT\Tool\DOU_0926\services\ni_daq.py", line 536, in get_device_info
-    'last_current': self.last_current,
-AttributeError: 'NIDAQService' object has no attribute 'last_current'. Did you mean: 'get_last_current'?
+  File "d:\PCT\Tool\DOU_0926\services\ni_daq.py", line 539, in get_device_info
+    'current_scale': self.current_scale,
+AttributeError: 'NIDAQService' object has no attribute 'current_scale'
+=== Starting Self-Calibration for Dev1 ===
 
 
 
