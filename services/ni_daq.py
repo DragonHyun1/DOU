@@ -418,57 +418,90 @@ class NIDAQService(QObject):
             print(f"Self-calibration failed: {e}")
             return False
     
-    def read_voltage_channels_trace_based(self, channels: List[str], samples_per_channel: int = 1000) -> Optional[dict]:
-        """Read multiple voltage channels simultaneously (based on NI I/O Trace)"""
+    def read_voltage_channels_trace_based(self, channels: List[str], samples_per_channel: int = 12) -> Optional[dict]:
+        """Read multiple voltage channels simultaneously (matching other tool's NI I/O Trace)"""
         if not NI_AVAILABLE or not self.connected:
             return None
             
         try:
             with nidaqmx.Task() as task:
-                # Add multiple channels as shown in trace: ai0, ai1
+                print(f"=== Creating task for channels: {channels} ===")
+                
+                # Add multiple channels as shown in other tool's trace
                 for channel in channels:
                     channel_name = f"{self.device_name}/{channel}"
+                    print(f"Adding channel: {channel_name}")
                     task.ai_channels.add_ai_voltage_chan(
                         channel_name,
                         terminal_config=nidaqmx.constants.TerminalConfiguration.RSE,
-                        min_val=-5.0,  # As shown in trace
-                        max_val=5.0,   # As shown in trace
+                        min_val=-5.0,
+                        max_val=5.0,
                         units=nidaqmx.constants.VoltageUnits.VOLTS
                     )
                 
-                # Configure timing exactly as shown in trace
+                # Configure timing like other tool (continuous sampling)
                 task.timing.cfg_samp_clk_timing(
-                    rate=500.0,  # 500 Hz sample rate from trace
-                    sample_mode=nidaqmx.constants.AcquisitionType.FINITE,
-                    samps_per_chan=samples_per_channel  # 1000 samples from trace
+                    rate=30000.0,  # Higher rate like other tool (30kHz vs 500Hz)
+                    sample_mode=nidaqmx.constants.AcquisitionType.CONTINUOUS,  # Continuous instead of Finite
+                    samps_per_chan=samples_per_channel
                 )
                 
-                # Start task and read data (matching trace sequence)
+                print(f"Starting task with {len(channels)} channels...")
                 task.start()
-                data = task.read(number_of_samples_per_channel=samples_per_channel, timeout=10.0)
+                
+                # Read data like DAQReadNChanNSamp1DWfm (small chunks continuously)
+                print(f"Reading {samples_per_channel} samples per channel...")
+                data = task.read(number_of_samples_per_channel=samples_per_channel, timeout=1.0)
+                
+                print(f"Stopping task...")
                 task.stop()
+                
+                print(f"Raw data received: {type(data)}, length: {len(data) if hasattr(data, '__len__') else 'N/A'}")
                 
                 # Process data for each channel
                 result = {}
                 if len(channels) == 1:
-                    result[channels[0]] = {
-                        'voltage_data': data,
-                        'avg_voltage': sum(data) / len(data) if data else 0.0,
-                        'sample_count': len(data) if isinstance(data, list) else samples_per_channel
-                    }
-                else:
-                    for i, channel in enumerate(channels):
-                        channel_data = data[i] if isinstance(data[0], list) else [data[i]]
-                        result[channel] = {
-                            'voltage_data': channel_data,
-                            'avg_voltage': sum(channel_data) / len(channel_data) if channel_data else 0.0,
-                            'sample_count': len(channel_data)
+                    # Single channel
+                    if isinstance(data, (list, tuple)) and len(data) > 0:
+                        avg_voltage = sum(data) / len(data)
+                        print(f"Single channel {channels[0]}: {len(data)} samples, avg: {avg_voltage:.6f}V")
+                        result[channels[0]] = {
+                            'voltage_data': data,
+                            'avg_voltage': avg_voltage,
+                            'sample_count': len(data)
                         }
+                    else:
+                        print(f"No valid data for single channel {channels[0]}")
+                        result[channels[0]] = {'voltage_data': [], 'avg_voltage': 0.0, 'sample_count': 0}
+                else:
+                    # Multiple channels
+                    if isinstance(data, (list, tuple)) and len(data) > 0:
+                        for i, channel in enumerate(channels):
+                            if i < len(data):
+                                channel_data = data[i] if isinstance(data[i], (list, tuple)) else [data[i]]
+                                if len(channel_data) > 0:
+                                    avg_voltage = sum(channel_data) / len(channel_data)
+                                    print(f"Channel {channel}: {len(channel_data)} samples, avg: {avg_voltage:.6f}V")
+                                    result[channel] = {
+                                        'voltage_data': channel_data,
+                                        'avg_voltage': avg_voltage,
+                                        'sample_count': len(channel_data)
+                                    }
+                                else:
+                                    print(f"No data for channel {channel}")
+                                    result[channel] = {'voltage_data': [], 'avg_voltage': 0.0, 'sample_count': 0}
+                    else:
+                        print(f"No valid multi-channel data received")
+                        for channel in channels:
+                            result[channel] = {'voltage_data': [], 'avg_voltage': 0.0, 'sample_count': 0}
                 
+                print(f"=== Read completed, returning {len(result)} channel results ===")
                 return result
                 
         except Exception as e:
-            self.error_occurred.emit(f"Multi-channel read error: {e}")
+            error_msg = f"Multi-channel read error: {e}"
+            print(error_msg)
+            self.error_occurred.emit(error_msg)
             return None
     
     def read_current_once(self) -> Optional[float]:

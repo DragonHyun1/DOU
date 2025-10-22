@@ -349,9 +349,11 @@ class MultiChannelMonitorDialog(QtWidgets.QDialog):
                 if enabled_channels:
                     self.status_label.setText(f"Reading {len(enabled_channels)} channels...")
                     
-                    # Use the trace-based multi-channel read method
+                    # Use the trace-based multi-channel read method (like other tool: 12 samples)
                     try:
-                        results = ni_service.read_voltage_channels_trace_based(enabled_channels, samples_per_channel=100)
+                        print(f"[Single Read] Attempting to read channels: {enabled_channels}")
+                        results = ni_service.read_voltage_channels_trace_based(enabled_channels, samples_per_channel=12)
+                        print(f"[Single Read] Results received: {results}")
                         if results:
                             # Update channel displays with results
                             for channel, data in results.items():
