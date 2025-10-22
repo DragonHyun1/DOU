@@ -1,6 +1,7 @@
 from PyQt6 import QtWidgets, QtCore
 from PyQt6.uic import loadUi
 import os
+from services.responsive_layout import get_responsive_manager
 
 class TestSettingsDialog(QtWidgets.QDialog):
     """Test parameter settings dialog"""
@@ -15,6 +16,12 @@ class TestSettingsDialog(QtWidgets.QDialog):
         except Exception as e:
             # Fallback: create UI programmatically
             self._create_ui_programmatically()
+        
+        # Apply responsive margins/spacing across dialog
+        try:
+            get_responsive_manager().apply_responsive_margins_recursive(self)
+        except Exception:
+            pass
         
         # Default settings
         self.settings = {
