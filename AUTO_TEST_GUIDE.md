@@ -1,17 +1,64 @@
-Traceback (most recent call last):
-  File "d:\PCT\Tool\DOU_0926\main.py", line 1719, in <module>
-    main()
-  File "d:\PCT\Tool\DOU_0926\main.py", line 1713, in main
-    w = MainWindow()
-  File "d:\PCT\Tool\DOU_0926\main.py", line 105, in __init__
-    self.refresh_connections()
-  File "d:\PCT\Tool\DOU_0926\main.py", line 538, in refresh_connections
-    self.hvpm_service.refresh_ports(log_callback=self._log)
-  File "d:\PCT\Tool\DOU_0926\services\hvpm.py", line 192, in refresh_ports
-    self._set_status("Not Connected ❌", False)
-  File "d:\PCT\Tool\DOU_0926\services\hvpm.py", line 30, in _set_status
-    self.status_label.setText(text)
-AttributeError: 'NoneType' object has no attribute 'setText'
+NI I/O Trace에서 dump 받은 것 공유 
+
+[Self-Calibration 기능]
+1.  DAQSelfCalibrate ("Dev1", "")
+Process ID: 0x00009DA8         Thread ID: 0x00005068
+Start Time: 13:23:15.1923      Call Duration 00:00:18.2035
+Status: 0
+
+[Enable 되어있는 ai voltage 측정 실행시킨 결과]
+1.  DAQCreateAIVoltageChan ("_unnamedTask<9>", "", "Dev1/ai0", RSE, -5.000000 (-5.000000E+00), 5.000000 (5.000000E+00), Volts, "", "Dev1/ai0", "")
+Process ID: 0x00009DA8         Thread ID: 0x00005068
+Start Time: 13:25:38.6652      Call Duration 00:00:00.0009
+Status: 0
+2.  DAQCreateAIVoltageChan ("_unnamedTask<9>", "", "Dev1/ai1", RSE, -5.000000 (-5.000000E+00), 5.000000 (5.000000E+00), Volts, "", "Dev1/ai1", "")
+Process ID: 0x00009DA8         Thread ID: 0x00005068
+Start Time: 13:25:38.6662      Call Duration 00:00:00.0000
+Status: 0
+3.  setTimingI32EnumAP ("_unnamedTask<9>", "", SampTimingType, Sample Clock, "")
+Process ID: 0x00009DA8         Thread ID: 0x00005068
+Start Time: 13:25:38.6662      Call Duration 00:00:00.0000
+Status: 0
+4.  setTimingI32EnumAP ("_unnamedTask<9>", "", SampQuant.SampMode, Finite Samples, "")
+Process ID: 0x00009DA8         Thread ID: 0x00005068
+Start Time: 13:25:38.6662      Call Duration 00:00:00.0000
+Status: 0
+5.  setTimingF64U64AP ("_unnamedTask<9>", "", SampQuant.SampPerChan, 1000.000000 (1.000000E+03), "")
+Process ID: 0x00009DA8         Thread ID: 0x00005068
+Start Time: 13:25:38.6662      Call Duration 00:00:00.0000
+Status: 0
+6.  setTimingI32EnumAP ("_unnamedTask<9>", "", SampClk.ActiveEdge, Rising, "")
+Process ID: 0x00009DA8         Thread ID: 0x00005068
+Start Time: 13:25:38.6672      Call Duration 00:00:00.0000
+Status: 0
+7.  setTimingF64AP ("_unnamedTask<9>", "", SampClk.Rate, 500.000000 (5.000000E+02), "")
+Process ID: 0x00009DA8         Thread ID: 0x00005068
+Start Time: 13:25:38.6672      Call Duration 00:00:00.0000
+Status: 0
+8.  setTimingTerminalAP ("_unnamedTask<9>", "", SampClk.Src, "", "")
+Process ID: 0x00009DA8         Thread ID: 0x00005068
+Start Time: 13:25:38.6672      Call Duration 00:00:00.0000
+Status: 0
+9.  DAQControl ("_unnamedTask<9>", "Start", "")
+Process ID: 0x00009DA8         Thread ID: 0x00005068
+Start Time: 13:25:38.6672      Call Duration 00:00:00.0169
+Status: 0
+10.  DAQReadNChanNSamp2DF64 ("_unnamedTask<9>", 1000 (0x3E8), 10.000000 (1.000000E+01), 0 (0x0), 2 (0x2), 1000 (0x3E8), {1.75661,1.76097,...}, "")
+Process ID: 0x00009DA8         Thread ID: 0x00005068
+Start Time: 13:25:38.6841      Call Duration 00:00:01.9990
+Status: 0
+11.  DAQControl ("_unnamedTask<9>", "Stop", "")
+Process ID: 0x00009DA8         Thread ID: 0x00009B98
+Start Time: 13:25:40.6832      Call Duration 00:00:00.0089
+Status: 0
+12.  DAQDestroyTask110 ("_unnamedTask<9>", "")
+Process ID: 0x00009DA8         Thread ID: 0x00009B98
+Start Time: 13:25:40.6921      Call Duration 00:00:00.0000
+Status: 0
+
+
+
+
 
 
 
