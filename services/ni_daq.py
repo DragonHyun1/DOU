@@ -96,9 +96,14 @@ class NIDAQService(QObject):
         # Connection state
         self.connected = False
         self.device_name = None
+        self.channel = None  # Initialize channel attribute
         self.task = None
         self.voltage_range = 10.0  # Default ±10V range
         self.last_current = 0.0  # Initialize last_current attribute
+        
+        # Current scaling parameters
+        self.current_scale = 1.0  # Default scale factor
+        self.current_offset = 0.0  # Default offset
         
         # Multi-channel configuration
         self.active_channels = {}  # {channel: config}
