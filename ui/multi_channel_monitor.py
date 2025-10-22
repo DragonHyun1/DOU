@@ -369,7 +369,7 @@ class MultiChannelMonitorDialog(QtWidgets.QDialog):
                                         current_ua = avg_current * 1000000
                                         
                                         if 'voltage_display' in widget_data:
-                                            widget_data['voltage_display'].setText("N/A (Current Mode)")
+                                            widget_data['voltage_display'].setText("-")
                                         if 'current_display' in widget_data:
                                             if abs(current_ma) >= 0.001:
                                                 widget_data['current_display'].setText(f"{current_ma:.3f}mA")
@@ -381,7 +381,7 @@ class MultiChannelMonitorDialog(QtWidgets.QDialog):
                                         if 'voltage_display' in widget_data:
                                             widget_data['voltage_display'].setText(f"{avg_voltage:.3f}V")
                                         if 'current_display' in widget_data:
-                                            widget_data['current_display'].setText("N/A (Voltage Mode)")
+                                            widget_data['current_display'].setText("-")
                         else:
                             print("[Monitoring] No results received")
                             self.status_label.setText("Monitoring: No data received")
