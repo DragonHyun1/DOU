@@ -1,0 +1,22 @@
+질문하고 싶은게 왜 다른 툴에서는 커맨드 하나만 계속 날려서 값을 읽어오는 식으로 하는데 현재 우리 툴은 저렇게 한 번 읽어오려고 할 때마다 값들을 set할게 많은건지?
+
+[현재 tool에서 실행되는 커맨드들]
+1.  DAQmxCreateTask ("", 0x000001BA8DA0E340)
+2.  DAQmxGetTaskName (0x000001BA8DA0E340, "", 0 (0x0))
+3.  DAQmxGetTaskName (0x000001BA8DA0E340, "_unnamedTask<9>", 16 (0x10))
+4.  DAQmxCreateAIVoltageChan (0x000001BA8DA0E340, "Dev1/ai0", "", DAQmx_Val_RSE, -5.000000 (-5.000000E+00), 5.000000 (5.000000E+00), DAQmx_Val_Volts, "")
+5.  DAQmxCfgSampClkTiming (0x000001BA8DA0E340, "", 500.000000 (5.000000E+02), DAQmx_Val_Rising, DAQmx_Val_FiniteSamps, 100 (0x0000000000000064))
+6.  DAQmxStartTask (0x000001BA8DA0E340)
+7.  DAQmxGetReadChannelsToRead (0x000001BA8DA0E340, "", 0 (0x0))
+8.  DAQmxGetReadChannelsToRead (0x000001BA8DA0E340, "Dev1/ai0", 9 (0x9))
+9.  DAQmxGetChanType (0x000001BA8DA0E340, "Dev1/ai0", DAQmx_Val_AI)
+10.  DAQmxGetChanType (0x000001BA8DA0E340, "Dev1/ai0", DAQmx_Val_AI)
+11.  DAQmxGetChanType (0x000001BA8DA0E340, "Dev1/ai0", DAQmx_Val_AI)
+12.  DAQmxGetAIMeasType (0x000001BA8DA0E340, "Dev1/ai0", DAQmx_Val_Voltage)
+13.  DAQmxReadAnalogF64 (0x000001BA8DA0E340, 100 (0x64), 10.000000 (1.000000E+01), "DAQmx_Val_GroupByChannel", {1.75741,1.7548,...}, 100 (0x64), 100 (0x64), NULL)
+14.  DAQmxStopTask (0x000001BA8DA0E340)
+15.  DAQmxClearTask (0x000001BA8DA0E340)
+
+[다른 툴에서 사용하는 커맨드]
+아래 커맨드들만 Stop 버튼 누를때까지 반복하여 날려서 값을 가져오는 방식인 것 같음
+DAQReadNChanNSamp1DWfm
