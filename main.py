@@ -252,7 +252,7 @@ class MainWindow(QtWidgets.QMainWindow):
             getattr(self.ui, 'startMonitoring_PB', None),
             getattr(self.ui, 'startAutoTest_PB', None),
             getattr(self.ui, 'stopAutoTest_PB', None),
-            getattr(self.ui, 'testSettings_PB', None),
+            # testSettings_PB removed
         ]
         self.responsive_manager.setup_responsive_buttons(*[b for b in buttons if b])
         
@@ -400,8 +400,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.ui.startAutoTest_PB.clicked.connect(self.start_auto_test)
         if hasattr(self.ui, 'stopAutoTest_PB') and self.ui.stopAutoTest_PB:
             self.ui.stopAutoTest_PB.clicked.connect(self.stop_auto_test)
-        if hasattr(self.ui, 'testSettings_PB') and self.ui.testSettings_PB:
-            self.ui.testSettings_PB.clicked.connect(self.open_test_settings)
+        # testSettings_PB removed
         
         # Combo box connections
         if hasattr(self.ui, 'comport_CB') and self.ui.comport_CB:
@@ -451,8 +450,7 @@ class MainWindow(QtWidgets.QMainWindow):
         # Auto test tooltips (check if elements exist)
         if hasattr(self.ui, 'testScenario_CB') and self.ui.testScenario_CB:
             self.ui.testScenario_CB.setToolTip("Select test scenario to run")
-        if hasattr(self.ui, 'testSettings_PB') and self.ui.testSettings_PB:
-            self.ui.testSettings_PB.setToolTip("Open test parameter settings")
+        # testSettings_PB removed
         if hasattr(self.ui, 'startAutoTest_PB') and self.ui.startAutoTest_PB:
             self.ui.startAutoTest_PB.setToolTip("Start automated test with voltage control")
         if hasattr(self.ui, 'stopAutoTest_PB') and self.ui.stopAutoTest_PB:
@@ -492,17 +490,12 @@ class MainWindow(QtWidgets.QMainWindow):
             self._log("WARNING: Auto test UI elements not found - auto test features disabled", "warn")
             return
             
-        # Test scenarios are now pre-populated in the UI file, but we can verify they have data
-        scenarios = self.auto_test_service.get_available_scenarios()
+        # Clear existing scenarios and prepare for new ones
+        self.ui.testScenario_CB.clear()
         
-        # Ensure all items have proper data values
-        for i in range(self.ui.testScenario_CB.count()):
-            item_data = self.ui.testScenario_CB.itemData(i)
-            if not item_data:
-                # Set data based on index if not already set
-                scenario_keys = ["screen_onoff", "screen_onoff_long", "cpu_stress", "cpu_stress_long"]
-                if i < len(scenario_keys):
-                    self.ui.testScenario_CB.setItemData(i, scenario_keys[i])
+        # Add placeholder for future scenarios
+        self.ui.testScenario_CB.addItem("No test scenarios available")
+        self.ui.testScenario_CB.setEnabled(False)  # Disable until scenarios are added
         
         # Connect scenario selection change
         if hasattr(self.ui, 'testScenario_CB') and self.ui.testScenario_CB:
@@ -1257,30 +1250,34 @@ class MainWindow(QtWidgets.QMainWindow):
         )
 
     def start_auto_test(self):
-        """Start automated test"""
+        """Start automated test with selected scenario"""
         if self.auto_test_service.is_running:
             return
         
+        # Check if any scenario is selected
+        if self.ui.testScenario_CB.count() == 0 or not self.ui.testScenario_CB.isEnabled():
+            QtWidgets.QMessageBox.warning(self, "No Scenario", "No test scenarios available. Please add test scenarios first.")
+            return
+            
+        current_text = self.ui.testScenario_CB.currentText()
+        if current_text == "No test scenarios available":
+            QtWidgets.QMessageBox.warning(self, "No Scenario", "Please add test scenarios first.")
+            return
+        
         # Get selected scenario
+        scenario_name = self.ui.testScenario_CB.currentText()
         scenario_data = self.ui.testScenario_CB.currentData()
+        
         if not scenario_data:
-            QtWidgets.QMessageBox.warning(self, "No Scenario", "Please select a test scenario.")
+            QtWidgets.QMessageBox.warning(self, "Invalid Scenario", "Selected scenario is not properly configured.")
             return
         
         # Confirm test start
-        scenario_name = self.ui.testScenario_CB.currentText()
-        stabilization_v = self.test_config['stabilization_voltage']
-        test_v = self.test_config['test_voltage']
-        
         reply = QtWidgets.QMessageBox.question(
             self,
             "Start Auto Test",
-            f"Start automated test?\n\n"
-            f"Scenario: {scenario_name}\n"
-            f"Stabilization Voltage: {stabilization_v}V\n"
-            f"Test Voltage: {test_v}V\n"
-            f"Device: {self.selected_device}\n\n"
-            f"This will automatically control voltage and device.",
+            f"Start test scenario: {scenario_name}?\n\n"
+            f"Make sure all required devices are connected and configured properly.",
             QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No
         )
         
@@ -1539,10 +1536,17 @@ class MainWindow(QtWidgets.QMainWindow):
         scenario_data = self.ui.testScenario_CB.currentData()
         scenario_name = self.ui.testScenario_CB.currentText()
         
-        # Show/hide custom script frame
-        if hasattr(self.ui, 'customScriptFrame') and self.ui.customScriptFrame:
-            is_custom = "Custom Script" in scenario_name
-            self.ui.customScriptFrame.setVisible(is_custom)
+        # Log scenario selection for debugging
+        self._log(f"Test scenario selected: {scenario_name}", "info")
+        
+        # Enable/disable start button based on scenario selection
+        if hasattr(self.ui, 'startAutoTest_PB') and self.ui.startAutoTest_PB:
+            if scenario_name and scenario_name != "No test scenarios available":
+                # Check if not currently running a test
+                if not self.auto_test_service.is_running:
+                    self.ui.startAutoTest_PB.setEnabled(True)
+            else:
+                self.ui.startAutoTest_PB.setEnabled(False)
         
         if scenario_data:
             self._log(f"Test scenario selected: {scenario_name}", "info")
@@ -1567,7 +1571,7 @@ class MainWindow(QtWidgets.QMainWindow):
         """Debug function to check UI elements"""
         ui_elements = [
             'startAutoTest_PB', 'stopAutoTest_PB', 'testScenario_CB',
-            'testSettings_PB', 'testProgress_PB', 'testStatus_LB', 'testResults_TE'
+            'testProgress_PB', 'testStatus_LB', 'testResults_TE'
         ]
         
         missing_elements = []

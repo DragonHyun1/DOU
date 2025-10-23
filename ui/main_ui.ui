@@ -729,66 +729,10 @@
                   <property name="styleSheet">
                    <string>QComboBox { font-size: 9pt; padding: 4px; }</string>
                   </property>
-                  <item>
-                   <property name="text">
-                    <string>Screen On/Off (5x)</string>
-                   </property>
-                  </item>
-                  <item>
-                   <property name="text">
-                    <string>Screen On/Off Long (10x)</string>
-                   </property>
-                  </item>
-                  <item>
-                   <property name="text">
-                    <string>CPU Stress (60s)</string>
-                   </property>
-                  </item>
-                  <item>
-                   <property name="text">
-                    <string>CPU Stress Long (5min)</string>
-                   </property>
-                  </item>
-                  <item>
-                   <property name="text">
-                    <string>Custom Script</string>
-                   </property>
-                  </item>
+                  <!-- Test scenarios will be added programmatically -->
                  </widget>
                 </item>
-                <item>
-                 <widget class="QPushButton" name="testSettings_PB">
-                  <property name="minimumSize">
-                   <size>
-                    <width>30</width>
-                    <height>28</height>
-                   </size>
-                  </property>
-                  <property name="maximumSize">
-                   <size>
-                    <width>30</width>
-                    <height>28</height>
-                   </size>
-                  </property>
-                  <property name="toolTip">
-                   <string>Open test parameter settings</string>
-                  </property>
-                  <property name="styleSheet">
-                   <string>QPushButton { 
-                   background-color: #555; 
-                   color: white; 
-                   border-radius: 4px; 
-                   font-size: 12pt;
-                 }
-                 QPushButton:hover { 
-                   background-color: #666; 
-                 }</string>
-                  </property>
-                  <property name="text">
-                   <string>⚙️</string>
-                  </property>
-                 </widget>
-                </item>
+                <!-- testSettings_PB removed as requested -->
                </layout>
               </item>
               <item>
