@@ -56,6 +56,13 @@ class MainWindow(QtWidgets.QMainWindow):
         # Multi-channel monitoring
         self.multi_channel_dialog = None
         
+        # Initialize test scenario engine after ni_service is created
+        self.test_scenario_engine = TestScenarioEngine(
+            hvpm_service=self.hvpm_service,
+            daq_service=self.ni_service,
+            log_callback=self._log
+        )
+        
         # 측정 모드 추적 (독립적 제어)
         self._hvpm_monitoring = False
         self._ni_monitoring = False
