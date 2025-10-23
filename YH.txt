@@ -1,15 +1,18 @@
-NI-DAQmx Python package imported successfully
-  - Package version: 1.2.0
-  - Runtime version: DriverVersion(major_version=16, minor_version=1, update_version=0)
-  - Python package and runtime loaded successfully
-[System] Screen: 1920x1032, DPI: 95.6
-[AdaptiveUI] Screen DPI: 95.60270547243287, Scale Factor: 1.00
-[AdaptiveUI] Window sized to 1344x877, min: 1344x722
-Traceback (most recent call last):
-  File "d:\PCT\Tool\DOU_0926\main.py", line 1831, in <module>
+아래는 왜 두개로 중복으로 들어갔고
+if __name__ == "__main__":
     main()
-  File "d:\PCT\Tool\DOU_0926\main.py", line 1825, in main
+
+실행 시에 아래와 같이 뜬다.
+=== FINAL DEVICE LIST ===
+Total devices: 1
+  1. Dev1 (Real - USB-6289)
+Traceback (most recent call last):
+  File "d:\PCT\Tool\DOU_0926\main.py", line 1835, in <module>
+    main()
+  File "d:\PCT\Tool\DOU_0926\main.py", line 1829, in main
     w = MainWindow()
-  File "d:\PCT\Tool\DOU_0926\main.py", line 53, in __init__
-    daq_service=self.ni_service,
-AttributeError: 'MainWindow' object has no attribute 'ni_service'. Did you mean: 'hvpm_service'?
+  File "d:\PCT\Tool\DOU_0926\main.py", line 128, in __init__
+    self._on_voltage_config_changed()
+  File "d:\PCT\Tool\DOU_0926\main.py", line 1261, in _on_voltage_config_changed
+    self.auto_test_service.set_voltages(voltages)
+TypeError: AutoTestService.set_voltages() missing 1 required positional argument: 'test_voltage'
