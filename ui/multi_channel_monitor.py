@@ -53,6 +53,35 @@ class MultiChannelMonitorDialog(QtWidgets.QDialog):
         self.current_mode_rb = QtWidgets.QRadioButton("Current Mode")
         self.current_mode_rb.setChecked(True)  # Default to current mode
         
+        # Improve radio button visibility
+        radio_style = """
+            QRadioButton {
+                font-weight: bold;
+                color: #2c3e50;
+                spacing: 8px;
+            }
+            QRadioButton::indicator {
+                width: 16px;
+                height: 16px;
+            }
+            QRadioButton::indicator:unchecked {
+                border: 2px solid #7f8c8d;
+                background-color: white;
+                border-radius: 8px;
+            }
+            QRadioButton::indicator:checked {
+                border: 2px solid #3498db;
+                background-color: #3498db;
+                border-radius: 8px;
+            }
+            QRadioButton::indicator:checked:hover {
+                background-color: #2980b9;
+                border-color: #2980b9;
+            }
+        """
+        self.voltage_mode_rb.setStyleSheet(radio_style)
+        self.current_mode_rb.setStyleSheet(radio_style)
+        
         mode_layout.addWidget(mode_label)
         mode_layout.addWidget(self.voltage_mode_rb)
         mode_layout.addWidget(self.current_mode_rb)
@@ -138,14 +167,43 @@ class MultiChannelMonitorDialog(QtWidgets.QDialog):
     
     def add_channel_widget(self, channel: str, name: str, target_v: float, shunt_r: float, enabled: bool = False):
         """Add a channel monitoring widget"""
-        # Channel group box
+        # Channel group box with increased height
         group = QtWidgets.QGroupBox(f"Channel {channel}")
+        group.setMinimumHeight(80)  # Increase vertical height
         layout = QtWidgets.QHBoxLayout(group)
         
-        # Enable checkbox
+        # Enable checkbox with improved visibility
         enable_cb = QtWidgets.QCheckBox("Enable")
         enable_cb.setChecked(enabled)
         enable_cb.stateChanged.connect(lambda: self.update_channel_config(channel))
+        
+        # Improve checkbox visibility
+        checkbox_style = """
+            QCheckBox {
+                font-weight: bold;
+                color: #2c3e50;
+                spacing: 8px;
+            }
+            QCheckBox::indicator {
+                width: 18px;
+                height: 18px;
+            }
+            QCheckBox::indicator:unchecked {
+                border: 2px solid #7f8c8d;
+                background-color: white;
+                border-radius: 3px;
+            }
+            QCheckBox::indicator:checked {
+                border: 2px solid #27ae60;
+                background-color: #27ae60;
+                border-radius: 3px;
+            }
+            QCheckBox::indicator:checked:hover {
+                background-color: #229954;
+                border-color: #229954;
+            }
+        """
+        enable_cb.setStyleSheet(checkbox_style)
         
         # Rail name
         name_label = QtWidgets.QLabel("Name:")
