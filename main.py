@@ -1832,20 +1832,7 @@ def main():
     sys.exit(app.exec())
 
 if __name__ == "__main__":
-    main()h DPI scaling is enabled by default
-    # No need to manually set AA_EnableHighDpiScaling as it's deprecated in PyQt6
-    
-    # Print screen information for debugging
-    screen = app.primaryScreen()
-    if screen:
-        dpi = screen.physicalDotsPerInch()
-        geometry = screen.availableGeometry()
-        print(f"[System] Screen: {geometry.width()}x{geometry.height()}, DPI: {dpi:.1f}")
-    
-    w = MainWindow()
-    w.show()
-    
-    sys.exit(app.exec())
+    main()
 
 if __name__ == "__main__":
     main()
