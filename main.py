@@ -5,6 +5,7 @@ from PyQt6.QtCore import QTimer
 from generated import main_ui
 from services.hvpm import HvpmService
 from services.auto_test import AutoTestService
+from services.test_scenario_engine import TestScenarioEngine
 from services.ni_daq import create_ni_service
 from services import theme, adb
 from services.adaptive_ui import get_adaptive_ui
@@ -43,6 +44,13 @@ class MainWindow(QtWidgets.QMainWindow):
         # Auto Test 서비스
         self.auto_test_service = AutoTestService(
             hvpm_service=self.hvpm_service,
+            log_callback=self._log
+        )
+        
+        # Initialize test scenario engine
+        self.test_scenario_engine = TestScenarioEngine(
+            hvpm_service=self.hvpm_service,
+            daq_service=self.ni_service,
             log_callback=self._log
         )
         
@@ -1252,24 +1260,25 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def start_auto_test(self):
         """Start automated test with selected scenario"""
-        if self.auto_test_service.is_running:
+        # Check if test scenario engine is running
+        if self.test_scenario_engine.is_running():
             return
         
         # Check if any scenario is selected
         if self.ui.testScenario_CB.count() == 0 or not self.ui.testScenario_CB.isEnabled():
-            QtWidgets.QMessageBox.warning(self, "No Scenario", "No test scenarios available. Please add test scenarios first.")
+            QtWidgets.QMessageBox.warning(self, "No Scenario", "No test scenarios available.")
             return
             
         current_text = self.ui.testScenario_CB.currentText()
         if current_text == "No test scenarios available":
-            QtWidgets.QMessageBox.warning(self, "No Scenario", "Please add test scenarios first.")
+            QtWidgets.QMessageBox.warning(self, "No Scenario", "No test scenarios available.")
             return
         
         # Get selected scenario
         scenario_name = self.ui.testScenario_CB.currentText()
-        scenario_data = self.ui.testScenario_CB.currentData()
+        scenario_key = self.ui.testScenario_CB.currentData()
         
-        if not scenario_data:
+        if not scenario_key:
             QtWidgets.QMessageBox.warning(self, "Invalid Scenario", "Selected scenario is not properly configured.")
             return
         
@@ -1278,39 +1287,39 @@ class MainWindow(QtWidgets.QMainWindow):
             self,
             "Start Auto Test",
             f"Start test scenario: {scenario_name}?\n\n"
-            f"Make sure all required devices are connected and configured properly.",
+            f"This will control ADB device, HVPM, and DAQ automatically.\n"
+            f"Make sure all required devices are connected and configured properly.\n\n"
+            f"Test duration: Approximately 1-2 minutes",
             QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No
         )
         
         if reply == QtWidgets.QMessageBox.StandardButton.No:
             return
         
-        # Start monitoring during auto test (optional NI DAQ monitoring)
-        if self.ni_service.is_connected() and not self.ni_service.is_monitoring():
-            self.ni_service.start_monitoring(1000)  # 1 second interval
-            self._log("Started NI current monitoring for test (optional)", "info")
-        
-        # Get custom script if needed
-        custom_script = None
-        if scenario_data == "custom_script" and hasattr(self.ui, 'customScript_TE') and self.ui.customScript_TE:
-            custom_script = self.ui.customScript_TE.toPlainText().strip()
-            if not custom_script:
-                QtWidgets.QMessageBox.warning(self, "Custom Script Required", "Please enter ADB commands for the custom script test.")
-                return
-        
-        # Clear previous results and reset data collection state
-        if hasattr(self.ui, 'testResults_TE') and self.ui.testResults_TE:
-            self.ui.testResults_TE.clear()
-        
-        # Reset data collection state
-        self.test_data_collection_active = False
-        self.last_timestamp_log = 0
-        
-        # Start test
-        success = self.auto_test_service.start_test(scenario_data, custom_script)
-        if success:
-            self._update_auto_test_buttons()
-            self.ui.testProgress_PB.setValue(0)
+        try:
+            # Start the test using test scenario engine
+            success = self.test_scenario_engine.start_test(scenario_key)
+            
+            if success:
+                self._log(f"Test scenario started: {scenario_name}", "info")
+                
+                # Update UI state
+                if hasattr(self.ui, 'startAutoTest_PB') and self.ui.startAutoTest_PB:
+                    self.ui.startAutoTest_PB.setEnabled(False)
+                if hasattr(self.ui, 'stopAutoTest_PB') and self.ui.stopAutoTest_PB:
+                    self.ui.stopAutoTest_PB.setEnabled(True)
+                if hasattr(self.ui, 'testProgress_PB') and self.ui.testProgress_PB:
+                    self.ui.testProgress_PB.setValue(0)
+                if hasattr(self.ui, 'testStatus_LB') and self.ui.testStatus_LB:
+                    self.ui.testStatus_LB.setText("Test scenario running...")
+                    self.ui.testStatus_LB.setStyleSheet("font-size: 11pt; color: #4CAF50; font-weight: bold;")
+            else:
+                self._log(f"Failed to start test scenario: {scenario_name}", "error")
+                QtWidgets.QMessageBox.critical(self, "Test Error", f"Failed to start test scenario: {scenario_name}")
+            
+        except Exception as e:
+            self._log(f"Failed to start test scenario: {e}", "error")
+            QtWidgets.QMessageBox.critical(self, "Test Error", f"Failed to start test:\n{e}")
             self.ui.testStatus_LB.setText("Initializing test...")
             self.ui.testStatus_LB.setStyleSheet("font-size: 11pt; color: #4CAF50; font-weight: bold;")
             
@@ -1331,20 +1340,30 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def stop_auto_test(self):
         """Stop automated test"""
-        if not self.auto_test_service.is_running:
+        if not self.test_scenario_engine.is_running():
             return
         
         reply = QtWidgets.QMessageBox.question(
             self,
-            "Stop Auto Test",
-            "Are you sure you want to stop the current test?",
+            "Stop Test Scenario",
+            "Are you sure you want to stop the current test scenario?",
             QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No
         )
         
         if reply == QtWidgets.QMessageBox.StandardButton.Yes:
-            self.auto_test_service.stop_test()
-            self._update_auto_test_buttons()
-            self.ui.testProgress_PB.setValue(0)
+            success = self.test_scenario_engine.stop_test()
+            if success:
+                self._log("Test scenario stopped by user", "info")
+            else:
+                self._log("Failed to stop test scenario", "error")
+            
+            # Update UI state
+            if hasattr(self.ui, 'startAutoTest_PB') and self.ui.startAutoTest_PB:
+                self.ui.startAutoTest_PB.setEnabled(True)
+            if hasattr(self.ui, 'stopAutoTest_PB') and self.ui.stopAutoTest_PB:
+                self.ui.stopAutoTest_PB.setEnabled(False)
+            if hasattr(self.ui, 'testProgress_PB') and self.ui.testProgress_PB:
+                self.ui.testProgress_PB.setValue(0)
             if hasattr(self.ui, 'testStatus_LB') and self.ui.testStatus_LB:
                 self.ui.testStatus_LB.setText("Test stopped by user")
                 self.ui.testStatus_LB.setStyleSheet("font-size: 11pt; color: #FF9800; font-weight: bold;")
