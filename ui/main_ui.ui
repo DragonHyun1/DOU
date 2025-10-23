@@ -39,7 +39,7 @@
     <item>
      <widget class="QGroupBox" name="connectionGroupBox">
       <property name="sizePolicy">
-       <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
+       <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
         <horstretch>0</horstretch>
         <verstretch>0</verstretch>
        </sizepolicy>
@@ -47,7 +47,7 @@
       <property name="minimumSize">
        <size>
         <width>0</width>
-        <height>40</height>
+        <height>60</height>
        </size>
       </property>
       <property name="maximumSize">
@@ -65,6 +65,12 @@
        </property>
        <item>
         <widget class="QLabel" name="PM_LB">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
          <property name="minimumSize">
           <size>
            <width>80</width>
@@ -78,6 +84,12 @@
        </item>
        <item>
         <widget class="QComboBox" name="hvpm_CB">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
          <property name="minimumSize">
           <size>
            <width>120</width>
@@ -95,6 +107,12 @@
        </item>
        <item>
         <widget class="QLabel" name="comport_LB">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
          <property name="minimumSize">
           <size>
            <width>80</width>
@@ -108,6 +126,12 @@
        </item>
        <item>
         <widget class="QComboBox" name="comport_CB">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
          <property name="minimumSize">
           <size>
            <width>150</width>
@@ -125,6 +149,12 @@
        </item>
        <item>
         <widget class="QLabel" name="daqLabel">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
          <property name="minimumSize">
           <size>
            <width>60</width>
@@ -138,6 +168,12 @@
        </item>
        <item>
         <widget class="QComboBox" name="daqDevice_CB">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
          <property name="minimumSize">
           <size>
            <width>120</width>
@@ -148,6 +184,12 @@
        </item>
        <item>
         <widget class="QComboBox" name="daqChannel_CB">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
          <property name="minimumSize">
           <size>
            <width>50</width>
@@ -178,6 +220,12 @@
        </item>
        <item>
         <widget class="QPushButton" name="daqConnect_PB">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
          <property name="minimumSize">
           <size>
            <width>60</width>
@@ -201,8 +249,14 @@
          </property>
         </widget>
        </item>
-       <item>
+       <item alignment="Qt::AlignTop">
         <widget class="QPushButton" name="port_PB">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
          <property name="minimumSize">
           <size>
            <width>70</width>
@@ -226,13 +280,11 @@
        <number>15</number>
       </property>
       <item>
-      </item>
-      <item>
        <layout class="QVBoxLayout" name="verticalLayout_3">
         <item>
          <widget class="QGroupBox" name="controlGroupBox">
           <property name="sizePolicy">
-           <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+           <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
             <horstretch>2</horstretch>
             <verstretch>0</verstretch>
            </sizepolicy>
@@ -274,7 +326,7 @@
                 <item>
                  <widget class="QLabel" name="currentVoltageTitle">
                   <property name="sizePolicy">
-                   <sizepolicy hsizetype="Preferred" vsizetype="Minimum">
+                   <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
                     <horstretch>0</horstretch>
                     <verstretch>0</verstretch>
                    </sizepolicy>
@@ -325,7 +377,7 @@
                 <item>
                  <widget class="QLabel" name="currentCurrentTitle">
                   <property name="sizePolicy">
-                   <sizepolicy hsizetype="Preferred" vsizetype="Minimum">
+                   <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
                     <horstretch>0</horstretch>
                     <verstretch>0</verstretch>
                    </sizepolicy>
@@ -376,7 +428,7 @@
                 <item>
                  <widget class="QLabel" name="powerTitle">
                   <property name="sizePolicy">
-                   <sizepolicy hsizetype="Preferred" vsizetype="Minimum">
+                   <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
                     <horstretch>0</horstretch>
                     <verstretch>0</verstretch>
                    </sizepolicy>
@@ -413,7 +465,7 @@
            <item>
             <widget class="QFrame" name="voltageInputFrame">
              <property name="sizePolicy">
-              <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+              <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
                <horstretch>0</horstretch>
                <verstretch>0</verstretch>
               </sizepolicy>
@@ -444,8 +496,14 @@
               <enum>QFrame::Raised</enum>
              </property>
              <layout class="QVBoxLayout" name="voltageInputLayout">
-              <item>
+              <item alignment="Qt::AlignTop">
                <widget class="QLabel" name="setVoltageTitle">
+                <property name="sizePolicy">
+                 <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                  <horstretch>0</horstretch>
+                  <verstretch>0</verstretch>
+                 </sizepolicy>
+                </property>
                 <property name="styleSheet">
                  <string>font-weight: bold; font-size: 12pt; color: #dcdcdc;</string>
                 </property>
@@ -459,6 +517,12 @@
               </item>
               <item>
                <widget class="QLineEdit" name="hvpmVolt_LE">
+                <property name="sizePolicy">
+                 <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                  <horstretch>0</horstretch>
+                  <verstretch>0</verstretch>
+                 </sizepolicy>
+                </property>
                 <property name="styleSheet">
                  <string>QLineEdit { 
                  font-size: 14pt; 
@@ -486,6 +550,12 @@
                 </property>
                 <item>
                  <widget class="QPushButton" name="readVoltCurrent_PB">
+                  <property name="sizePolicy">
+                   <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                    <horstretch>0</horstretch>
+                    <verstretch>0</verstretch>
+                   </sizepolicy>
+                  </property>
                   <property name="minimumSize">
                    <size>
                     <width>0</width>
@@ -511,6 +581,12 @@
                 </item>
                 <item>
                  <widget class="QPushButton" name="setVolt_PB">
+                  <property name="sizePolicy">
+                   <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                    <horstretch>0</horstretch>
+                    <verstretch>0</verstretch>
+                   </sizepolicy>
+                  </property>
                   <property name="minimumSize">
                    <size>
                     <width>0</width>
@@ -536,6 +612,12 @@
                 </item>
                 <item>
                  <widget class="QPushButton" name="startMonitoring_PB">
+                  <property name="sizePolicy">
+                   <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                    <horstretch>0</horstretch>
+                    <verstretch>0</verstretch>
+                   </sizepolicy>
+                  </property>
                   <property name="minimumSize">
                    <size>
                     <width>0</width>
@@ -570,7 +652,7 @@
         <item>
          <widget class="QGroupBox" name="niCurrentGroupBox">
           <property name="sizePolicy">
-           <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+           <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
             <horstretch>1</horstretch>
             <verstretch>0</verstretch>
            </sizepolicy>
@@ -591,7 +673,7 @@
            <item>
             <widget class="QFrame" name="niConnectionFrame">
              <property name="sizePolicy">
-              <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+              <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
                <horstretch>0</horstretch>
                <verstretch>0</verstretch>
               </sizepolicy>
@@ -627,6 +709,12 @@
               </property>
               <item>
                <widget class="QPushButton" name="multiChannelMonitor_PB">
+                <property name="sizePolicy">
+                 <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                  <horstretch>0</horstretch>
+                  <verstretch>0</verstretch>
+                 </sizepolicy>
+                </property>
                 <property name="text">
                  <string>Multi-Channel Monitor</string>
                 </property>
@@ -642,10 +730,10 @@
       </item>
       <item>
        <layout class="QHBoxLayout" name="horizontalLayout">
-        <item>
+        <item alignment="Qt::AlignTop">
          <widget class="QGroupBox" name="autoTestGroupBox">
           <property name="sizePolicy">
-           <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+           <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
             <horstretch>2</horstretch>
             <verstretch>0</verstretch>
            </sizepolicy>
@@ -663,10 +751,10 @@
            <property name="spacing">
             <number>8</number>
            </property>
-           <item>
+           <item alignment="Qt::AlignTop">
             <widget class="QFrame" name="testConfigFrame">
              <property name="sizePolicy">
-              <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+              <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
                <horstretch>0</horstretch>
                <verstretch>0</verstretch>
               </sizepolicy>
@@ -674,7 +762,7 @@
              <property name="minimumSize">
               <size>
                <width>0</width>
-               <height>80</height>
+               <height>30</height>
               </size>
              </property>
              <property name="maximumSize">
@@ -704,10 +792,16 @@
                <layout class="QHBoxLayout" name="scenarioLayout">
                 <item>
                  <widget class="QLabel" name="testScenarioLabel">
+                  <property name="sizePolicy">
+                   <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                    <horstretch>0</horstretch>
+                    <verstretch>0</verstretch>
+                   </sizepolicy>
+                  </property>
                   <property name="minimumSize">
                    <size>
                     <width>60</width>
-                    <height>20</height>
+                    <height>10</height>
                    </size>
                   </property>
                   <property name="styleSheet">
@@ -720,19 +814,23 @@
                 </item>
                 <item>
                  <widget class="QComboBox" name="testScenario_CB">
+                  <property name="sizePolicy">
+                   <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                    <horstretch>0</horstretch>
+                    <verstretch>0</verstretch>
+                   </sizepolicy>
+                  </property>
                   <property name="minimumSize">
                    <size>
                     <width>0</width>
-                    <height>28</height>
+                    <height>15</height>
                    </size>
                   </property>
                   <property name="styleSheet">
                    <string>QComboBox { font-size: 9pt; padding: 4px; }</string>
                   </property>
-                  <!-- Test scenarios will be added programmatically -->
                  </widget>
                 </item>
-                <!-- testSettings_PB removed as requested -->
                </layout>
               </item>
               <item>
@@ -798,10 +896,10 @@ input keyevent KEYCODE_WAKEUP</string>
              </layout>
             </widget>
            </item>
-           <item>
+           <item alignment="Qt::AlignTop">
             <widget class="QFrame" name="testProgressFrame">
              <property name="sizePolicy">
-              <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+              <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
                <horstretch>0</horstretch>
                <verstretch>0</verstretch>
               </sizepolicy>
@@ -828,6 +926,12 @@ input keyevent KEYCODE_WAKEUP</string>
              <layout class="QVBoxLayout" name="testProgressLayout">
               <item>
                <widget class="QLabel" name="testProgressLabel">
+                <property name="sizePolicy">
+                 <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                  <horstretch>0</horstretch>
+                  <verstretch>0</verstretch>
+                 </sizepolicy>
+                </property>
                 <property name="styleSheet">
                  <string>font-weight: bold; font-size: 12pt; color: #dcdcdc;</string>
                 </property>
@@ -841,6 +945,12 @@ input keyevent KEYCODE_WAKEUP</string>
               </item>
               <item>
                <widget class="QProgressBar" name="testProgress_PB">
+                <property name="sizePolicy">
+                 <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                  <horstretch>0</horstretch>
+                  <verstretch>0</verstretch>
+                 </sizepolicy>
+                </property>
                 <property name="styleSheet">
                  <string>QProgressBar {
                  border: 2px solid #555;
@@ -862,6 +972,12 @@ input keyevent KEYCODE_WAKEUP</string>
               </item>
               <item>
                <widget class="QLabel" name="testStatus_LB">
+                <property name="sizePolicy">
+                 <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                  <horstretch>0</horstretch>
+                  <verstretch>0</verstretch>
+                 </sizepolicy>
+                </property>
                 <property name="styleSheet">
                  <string>font-size: 11pt; color: #aaa;</string>
                 </property>
@@ -880,6 +996,12 @@ input keyevent KEYCODE_WAKEUP</string>
                 </property>
                 <item>
                  <widget class="QPushButton" name="startAutoTest_PB">
+                  <property name="sizePolicy">
+                   <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                    <horstretch>0</horstretch>
+                    <verstretch>0</verstretch>
+                   </sizepolicy>
+                  </property>
                   <property name="minimumSize">
                    <size>
                     <width>0</width>
@@ -911,6 +1033,12 @@ input keyevent KEYCODE_WAKEUP</string>
                  <widget class="QPushButton" name="stopAutoTest_PB">
                   <property name="enabled">
                    <bool>false</bool>
+                  </property>
+                  <property name="sizePolicy">
+                   <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                    <horstretch>0</horstretch>
+                    <verstretch>0</verstretch>
+                   </sizepolicy>
                   </property>
                   <property name="minimumSize">
                    <size>
@@ -944,29 +1072,13 @@ input keyevent KEYCODE_WAKEUP</string>
              </layout>
             </widget>
            </item>
-           <item>
-            <spacer name="autoTestSpacer">
-             <property name="orientation">
-              <enum>Qt::Vertical</enum>
-             </property>
-             <property name="sizeType">
-              <enum>QSizePolicy::Expanding</enum>
-             </property>
-             <property name="sizeHint" stdset="0">
-              <size>
-               <width>20</width>
-               <height>40</height>
-              </size>
-             </property>
-            </spacer>
-           </item>
           </layout>
          </widget>
         </item>
         <item>
          <widget class="QFrame" name="testResultsFrame">
           <property name="sizePolicy">
-           <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+           <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
             <horstretch>1</horstretch>
             <verstretch>0</verstretch>
            </sizepolicy>
@@ -997,13 +1109,19 @@ input keyevent KEYCODE_WAKEUP</string>
            <enum>QFrame::Raised</enum>
           </property>
           <layout class="QVBoxLayout" name="testResultsLayout">
-           <item>
+           <item alignment="Qt::AlignTop">
             <widget class="QLabel" name="testResultsLabel">
              <property name="sizePolicy">
-              <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+              <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
                <horstretch>0</horstretch>
                <verstretch>0</verstretch>
               </sizepolicy>
+             </property>
+             <property name="minimumSize">
+              <size>
+               <width>0</width>
+               <height>30</height>
+              </size>
              </property>
              <property name="font">
               <font>
@@ -1022,10 +1140,10 @@ input keyevent KEYCODE_WAKEUP</string>
              </property>
             </widget>
            </item>
-           <item>
+           <item alignment="Qt::AlignHCenter|Qt::AlignTop">
             <widget class="QTextEdit" name="testResults_TE">
              <property name="sizePolicy">
-              <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+              <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
                <horstretch>0</horstretch>
                <verstretch>0</verstretch>
               </sizepolicy>
@@ -1033,7 +1151,7 @@ input keyevent KEYCODE_WAKEUP</string>
              <property name="minimumSize">
               <size>
                <width>0</width>
-               <height>200</height>
+               <height>350</height>
               </size>
              </property>
              <property name="styleSheet">
@@ -1063,6 +1181,12 @@ input keyevent KEYCODE_WAKEUP</string>
     </item>
     <item>
      <widget class="QGroupBox" name="logGroupBox">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
       <property name="minimumSize">
        <size>
         <width>0</width>
@@ -1079,8 +1203,14 @@ input keyevent KEYCODE_WAKEUP</string>
        <string>System Log</string>
       </property>
       <layout class="QVBoxLayout" name="logLayout">
-       <item>
+       <item alignment="Qt::AlignTop">
         <widget class="QListWidget" name="log_LW">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
          <property name="styleSheet">
           <string>QListWidget { 
             background-color: #1e1e1e; 
