@@ -6,6 +6,7 @@ from generated import main_ui
 from services.hvpm import HvpmService
 from services.auto_test import AutoTestService
 from services.test_scenario_engine import TestScenarioEngine
+from services.test_scenario_engine import TestScenarioEngine
 from services.ni_daq import create_ni_service
 from services import theme, adb
 from services.adaptive_ui import get_adaptive_ui
@@ -603,7 +604,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 adb_connected = False
                 
             try:
-                test_running = bool(self.auto_test_service.is_running)
+                test_running = bool(hasattr(self, 'test_scenario_engine') and self.test_scenario_engine.is_running())
             except Exception:
                 test_running = False
             
@@ -1253,10 +1254,11 @@ class MainWindow(QtWidgets.QMainWindow):
     def _on_voltage_config_changed(self):
         """Handle voltage configuration changes"""
         # Voltage configuration is now handled through settings dialog
-        self.auto_test_service.set_voltages(
+        voltages = [
             self.test_config['stabilization_voltage'],
             self.test_config['test_voltage']
-        )
+        ]
+        self.auto_test_service.set_voltages(voltages)
 
     def start_auto_test(self):
         """Start automated test with selected scenario"""
@@ -1561,10 +1563,12 @@ class MainWindow(QtWidgets.QMainWindow):
         
         # Enable/disable start button based on scenario selection
         if hasattr(self.ui, 'startAutoTest_PB') and self.ui.startAutoTest_PB:
-            if scenario_name and scenario_name != "No test scenarios available":
+            if scenario_name and scenario_name not in ["No test scenarios available", "Test engine not ready"]:
                 # Check if not currently running a test
-                if not self.auto_test_service.is_running:
+                if hasattr(self, 'test_scenario_engine') and not self.test_scenario_engine.is_running():
                     self.ui.startAutoTest_PB.setEnabled(True)
+                else:
+                    self.ui.startAutoTest_PB.setEnabled(False)
             else:
                 self.ui.startAutoTest_PB.setEnabled(False)
         
