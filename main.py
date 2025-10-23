@@ -495,7 +495,8 @@ class MainWindow(QtWidgets.QMainWindow):
         
         # Add placeholder for future scenarios
         self.ui.testScenario_CB.addItem("No test scenarios available")
-        self.ui.testScenario_CB.setEnabled(False)  # Disable until scenarios are added
+        # Keep enabled so user can see the placeholder and add scenarios later
+        self.ui.testScenario_CB.setEnabled(True)
         
         # Connect scenario selection change
         if hasattr(self.ui, 'testScenario_CB') and self.ui.testScenario_CB:

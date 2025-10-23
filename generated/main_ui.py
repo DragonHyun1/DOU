@@ -318,11 +318,7 @@ class Ui_MainWindow(object):
         self.testScenario_CB.addItem("")
         self.testScenario_CB.addItem("")
         self.scenarioLayout.addWidget(self.testScenario_CB)
-        self.testSettings_PB = QtWidgets.QPushButton(parent=self.testConfigFrame)
-        self.testSettings_PB.setMinimumSize(QtCore.QSize(30, 28))
-        self.testSettings_PB.setMaximumSize(QtCore.QSize(30, 28))
-        self.testSettings_PB.setObjectName("testSettings_PB")
-        self.scenarioLayout.addWidget(self.testSettings_PB)
+        # testSettings_PB removed
         self.testConfigLayout.addLayout(self.scenarioLayout)
         self.customScriptFrame = QtWidgets.QFrame(parent=self.testConfigFrame)
         self.customScriptFrame.setVisible(False)
@@ -603,17 +599,7 @@ class Ui_MainWindow(object):
         self.testScenario_CB.setItemText(2, _translate("MainWindow", "CPU Stress (60s)"))
         self.testScenario_CB.setItemText(3, _translate("MainWindow", "CPU Stress Long (5min)"))
         self.testScenario_CB.setItemText(4, _translate("MainWindow", "Custom Script"))
-        self.testSettings_PB.setToolTip(_translate("MainWindow", "Open test parameter settings"))
-        self.testSettings_PB.setStyleSheet(_translate("MainWindow", "QPushButton { \n"
-"                   background-color: #555; \n"
-"                   color: white; \n"
-"                   border-radius: 4px; \n"
-"                   font-size: 12pt;\n"
-"                 }\n"
-"                 QPushButton:hover { \n"
-"                   background-color: #666; \n"
-"                 }"))
-        self.testSettings_PB.setText(_translate("MainWindow", "⚙️"))
+        # testSettings_PB removed
         self.customScriptFrame.setStyleSheet(_translate("MainWindow", "QFrame { \n"
 "                 background-color: #2a2a2a; \n"
 "                 border-radius: 5px; \n"
