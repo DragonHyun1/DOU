@@ -47,13 +47,6 @@ class MainWindow(QtWidgets.QMainWindow):
             log_callback=self._log
         )
         
-        # Initialize test scenario engine
-        self.test_scenario_engine = TestScenarioEngine(
-            hvpm_service=self.hvpm_service,
-            daq_service=self.ni_service,
-            log_callback=self._log
-        )
-        
         # NI DAQ 서비스
         self._setup_nidaq_environment()
         self.ni_service = create_ni_service()
@@ -1813,6 +1806,22 @@ def main():
     app.setApplicationVersion("3.2")
     
     # PyQt6: High DPI scaling is enabled by default
+    # No need to manually set AA_EnableHighDpiScaling as it's deprecated in PyQt6
+    
+    # Print screen information for debugging
+    screen = app.primaryScreen()
+    if screen:
+        dpi = screen.physicalDotsPerInch()
+        geometry = screen.availableGeometry()
+        print(f"[System] Screen: {geometry.width()}x{geometry.height()}, DPI: {dpi:.1f}")
+    
+    w = MainWindow()
+    w.show()
+    
+    sys.exit(app.exec())
+
+if __name__ == "__main__":
+    main()h DPI scaling is enabled by default
     # No need to manually set AA_EnableHighDpiScaling as it's deprecated in PyQt6
     
     # Print screen information for debugging
