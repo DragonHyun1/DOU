@@ -1,8 +1,3 @@
-아래는 왜 두개로 중복으로 들어갔고
-if __name__ == "__main__":
-    main()
-
-실행 시에 아래와 같이 뜬다.
 === FINAL DEVICE LIST ===
 Total devices: 1
   1. Dev1 (Real - USB-6289)
