@@ -1,6 +1,15 @@
-Single Read를 하면 0.000mA가 읽히는데 이게 정상인지 모르겠네.
-그리고 monitoring은 아직 수정안한거지? 수정해줘
-
-=== Current measurement completed, returning 1 channel results ===
-[Single Read] Current mode results: {'ai0': {'current_data': [7.020835999482067e-07, -2.62886271419645e-07, -5.845428952365817e-07, 5.877035238346473e-08, 3.804269761727475e-07, 5.877035238346473e-08, 5.877035238346473e-08, -2.62886271419645e-07, 5.877035238346473e-08, -2.62886271419645e-07, 5.877035238346473e-08, 5.877035238346473e-08], 'avg_current': 5.160915077185483e-09, 'voltage': 0.0, 'sample_count': 12}}
-Channel ai0: Direct current = 0.000mA
+NI-DAQmx Python package imported successfully
+  - Package version: 1.2.0
+  - Runtime version: DriverVersion(major_version=16, minor_version=1, update_version=0)
+  - Python package and runtime loaded successfully
+[System] Screen: 1920x1032, DPI: 95.6
+[AdaptiveUI] Screen DPI: 95.60270547243287, Scale Factor: 1.00
+[AdaptiveUI] Window sized to 1344x877, min: 1344x722
+Traceback (most recent call last):
+  File "d:\PCT\Tool\DOU_0926\main.py", line 1831, in <module>
+    main()
+  File "d:\PCT\Tool\DOU_0926\main.py", line 1825, in main
+    w = MainWindow()
+  File "d:\PCT\Tool\DOU_0926\main.py", line 53, in __init__
+    daq_service=self.ni_service,
+AttributeError: 'MainWindow' object has no attribute 'ni_service'. Did you mean: 'hvpm_service'?
