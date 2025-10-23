@@ -1254,11 +1254,10 @@ class MainWindow(QtWidgets.QMainWindow):
     def _on_voltage_config_changed(self):
         """Handle voltage configuration changes"""
         # Voltage configuration is now handled through settings dialog
-        voltages = [
+        self.auto_test_service.set_voltages(
             self.test_config['stabilization_voltage'],
             self.test_config['test_voltage']
-        ]
-        self.auto_test_service.set_voltages(voltages)
+        )
 
     def start_auto_test(self):
         """Start automated test with selected scenario"""
