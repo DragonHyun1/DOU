@@ -1,8 +1,213 @@
-=== Current measurement completed, returning 2 channel results ===
-First current read from ai0: 0.0A
-First current read from ai1: 0.0A
-Screen test completed (46.8s), stopping data collection
-DAQ monitoring loop ended
-QBasicTimer::start: QBasicTimer can only be used with threads started with QThread
-QBasicTimer::start: QBasicTimer can only be used with threads started with QThread
-QBasicTimer::start: QBasicTimer can only be used with threads started with QThread
+# -------------------------------------------------
+# main.py
+# -------------------------------------------------
+import sys
+from device import Device
+from utils import EvalContext
+from lib.act_library import ActLibrary
+
+# -------------------------------------------------
+# UI 헬퍼 (텍스트 입력·클릭·탭 등)
+# -------------------------------------------------
+def type_text(dev: Device, txt: str):
+    """공백·특수문자를 포함한 텍스트 입력."""
+    dev.shell(f'input text "{txt}"')
+    dev.sleep(300)                     # 입력이 처리될 시간을 줍니다.
+
+
+def click_text(dev: Device, pattern: str) -> bool:
+    """정규표현식(textMatches) 으로 UI 를 클릭."""
+    return dev.click({"textMatches": pattern})
+
+
+def click_res(dev: Device, res_id: str) -> bool:
+    """resourceId 로 UI 클릭."""
+    return dev.click({"resourceId": res_id})
+
+
+def press_key(dev: Device, key: str):
+    """home, search, enter, app_switch 등 키 입력."""
+    dev.press(key)
+
+
+# -------------------------------------------------
+# DSL 구문 → 파이썬 함수
+# -------------------------------------------------
+def open_sbrowser(dev: Device):
+    """Internet_Translation 섹션 – 사파리·크롬 등 브라우저 실행"""
+    dev.shell("am start -n com.sec.android.app.sbrowser")
+    dev.sleep(5000)
+
+
+def handle_continue_dialog(dev: Device):
+    """Continue / Not now 다이얼로그가 있으면 클릭."""
+    # Continue
+    if dev.u2(textMatches="(?i)Continue").exists:
+        click_text(dev, "(?i)Continue")
+        dev.sleep(1000)
+
+    # Not now
+    if dev.u2(textMatches="(?i)Not now").exists:
+        click_text(dev, "(?i)Not now")
+        dev.sleep(1000)
+
+
+def google_url_entry(dev: Device):
+    """주소창에 www.google.com 를 입력하고 검색어 입력까지."""
+    # www.google.com 클릭 (있는 경우)
+    if dev.u2(textMatches=r"\Qwww.google.com\E",
+               resourceId="com.sec.android.app.sbrowser:id/compact_url_text").exists:
+        click_text(dev, r"\Qwww.google.com\E")
+        dev.sleep(1000)
+
+    # 주소창을 클릭하고 기존 텍스트 삭제
+    click_res(dev, "com.sec.android.app.sbrowser:id/location_bar_edit_text")
+    dev.sleep(2000)
+    click_text(dev, r"\QClear\E")
+    dev.sleep(500)
+
+    # 검색창(placeholder) 클릭 → 검색어 입력
+    click_text(dev, r"\QSearch or enter URL\E")
+    dev.sleep(500)
+    type_text(dev, "google.com/imghp?hl=en&ogbl")
+    dev.sleep(3000)
+    press_key(dev, "enter")
+    dev.sleep(3000)
+
+
+def google_search_check(dev: Device, ctx: EvalContext):
+    """Google 검색 후 온보딩 팝업·홈버튼 탭을 처리."""
+    # HOME 버튼을 한 번 탭 (좌표는 home_point 로 미리 구해 둔 값)
+    home_x = ctx.vars.get("home_x")
+    home_y = ctx.vars.get("home_y")
+    if home_x is None or home_y is None:
+        # home_point 가 아직 실행되지 않았다면 강제 호출
+        act.home_point(ctx, dev)
+
+    dev.tap(int(home_x), int(home_y))          # DOWN+UP 를 하나의 tap 으로 대체
+    dev.sleep(1500)                           # 원본 1500ms
+
+    # “Holding the home button now lets you search what’s on your screen”
+    if dev.u2(textMatches=r"\QHolding the home button now lets you search what’s on your screen\E").exists:
+        click_text(dev,
+                   r"\QHolding the home button now lets you search what’s on your screen\E")
+        dev.sleep(1000)
+        click_text(dev, r"\QClose\E")
+        dev.sleep(1000)
+
+    # Google Quick Search Box 온보딩 단계들 – 존재하면 차례대로 클릭
+    onboarding_ids = [
+        "com.google.android.googlequicksearchbox:id/omnient_onboarding_continue_button",
+        "com.google.android.googlequicksearchbox:id/omnient_onboarding_complete_btn",
+        "com.google.android.googlequicksearchbox:id/omnient_onboarding_dialog_complete_btn",
+        "com.google.android.googlequicksearchbox:id/omnient_onboarding_tooltip_page_close_button",
+    ]
+    for rid in onboarding_ids:
+        if dev.u2(resourceId=rid).exists:
+            dev.click({"resourceId": rid})
+            dev.sleep(1000)
+
+
+def pageboost(dev: Device):
+    """Pageboost – 사파리 앱을 10번 실행하고 홈으로 돌아가기."""
+    for _ in range(10):
+        dev.shell("am start -n com.sec.android.app.sbrowser")
+        dev.sleep(1000)
+        press_key(dev, "home")
+        dev.sleep(2000)
+
+
+# -------------------------------------------------
+# 메인 흐름
+# -------------------------------------------------
+def main(serial: str):
+    # ---- 1️⃣ 기본 객체 생성 -------------------------------------------------
+    dev = Device(serial)            # uiautomator2 연결
+    ctx = EvalContext()            # 변수·식 저장소
+    act = ActLibrary()             # 00_ACT_Library 를 메서드로 이용
+
+    # 전역 플래그 (필요 시 ctx.flags 로 사용)
+    ctx.flags.update({
+        "PointerLocation": False,
+        "TopLayerScriptView": False,
+        "AllowDeepSleep": True,
+        "LockScreenRelease": False,
+        "IgnoreError": True,
+        "TouchBoosterEnable": False,
+        "FullcapUpload": False,
+    })
+
+    # -----------------------------------------------------------------
+    # ① 기본 설정 로드 (default_setting)
+    # -----------------------------------------------------------------
+    act.default_setting(ctx, dev)           # $LibraryPath 로 지정된 기본 UI·설정
+    dev.sleep(1000)
+
+    # -----------------------------------------------------------------
+    # ② Wi‑Fi 켜기 & 5 GHz 설정 (wifi on check + set_wifi_5)
+    # -----------------------------------------------------------------
+    # “wifi on check” → Wi‑Fi 를 켜고, 현재 상태를 확인한다.
+    dev.shell("svc wifi enable")
+    dev.sleep(500)                         # 조금 기다린 뒤
+    # 실제 Wi‑Fi 연결이 안 된 경우를 대비해 5 GHz SSID 를 읽어 파일에 저장한 후
+    # set_wifi_5 라이브러리를 호출한다.
+    act.set_wifi_5(ctx, dev)               # loadlibrary set_wifi_5
+
+    # -----------------------------------------------------------------
+    # ③ 모델·화면 체크 (set_test_screen)
+    # -----------------------------------------------------------------
+    act.set_test_screen(ctx, dev)           # loadlibrary set_test_screen
+    dev.sleep(500)
+
+    # -----------------------------------------------------------------
+    # ④ 좌표·스크롤 라인 사전 계산 (scroll_line_check, home_point, back_point)
+    # -----------------------------------------------------------------
+    act.scroll_line_check(ctx, dev)
+    act.home_point(ctx, dev)                # home_x / home_y 등 계산
+    act.back_point(ctx, dev)                # back_x / back_y 등 계산
+    dev.sleep(500)
+
+    # -----------------------------------------------------------------
+    # ⑤ 인터넷 번역(구글 검색) – 사파리 열고 구글 URL 입력
+    # -----------------------------------------------------------------
+    open_sbrowser(dev)                     # 5000 run com.sec.android.app.sbrowser
+    dev.sleep(5000)                        # 원본 5000ms 대기
+
+    handle_continue_dialog(dev)             # Continue / Not now 처리
+    dev.sleep(3000)                        # 원본 3000ms 대기
+
+    google_url_entry(dev)                  # www.google.com → 검색어 입력
+    dev.sleep(2000)
+
+    # -----------------------------------------------------------------
+    # ⑥ 구글 검색 결과 확인 및 온보딩 팝업 닫기
+    # -----------------------------------------------------------------
+    google_search_check(dev, ctx)
+    dev.sleep(2000)
+
+    # -----------------------------------------------------------------
+    # ⑦ Pageboost – 사파리를 10번 실행해 메모리/CPU 부하 테스트
+    # -----------------------------------------------------------------
+    pageboost(dev)
+
+    # -----------------------------------------------------------------
+    # ⑧ 최근 알림·앱 정리
+    # -----------------------------------------------------------------
+    act.recent_noti_clear(ctx, dev)        # loadlibrary recent_noti_clear
+
+    print("\n✅ 전체 스크립트가 정상 종료되었습니다.")
+    # 필요하면 몇 가지 변수값을 출력해 확인한다.
+    print("▶ screen_x :", ctx.vars.get("screen_x"))
+    print("▶ screen_y :", ctx.vars.get("screen_y"))
+    print("▶ home_x   :", ctx.vars.get("home_x"))
+    print("▶ home_y   :", ctx.vars.get("home_y"))
+
+
+# -------------------------------------------------
+# 실행 진입점
+# -------------------------------------------------
+if __name__ == "__main__":
+    if len(sys.argv) != 2:
+        print("Usage: python main.py <adb-serial>")
+        sys.exit(1)
+    main(sys.argv[1])
