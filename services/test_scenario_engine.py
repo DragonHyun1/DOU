@@ -694,8 +694,15 @@ class TestScenarioEngine(QObject):
                 sample = self.daq_data[0]
                 self.log_callback(f"Data structure: {list(sample.keys())}", "info")
             
+            # Create test_results directory if it doesn't exist
+            import os
+            results_dir = "test_results"
+            if not os.path.exists(results_dir):
+                os.makedirs(results_dir)
+                self.log_callback(f"Created directory: {results_dir}", "info")
+            
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"screen_onoff_test_{timestamp}.xlsx"
+            filename = f"{results_dir}/screen_onoff_test_{timestamp}.xlsx"
             
             self.log_callback(f"Exporting to file: {filename}", "info")
             
@@ -987,22 +994,47 @@ class TestScenarioEngine(QObject):
     def _get_channel_rail_names(self) -> Dict[str, str]:
         """Get rail names for enabled channels"""
         if not self.multi_channel_monitor:
-            return {'ai0': 'Rail_A', 'ai1': 'Rail_B'}
+            return {'ai0': 'VDD_CORE', 'ai1': 'VDD_MEM'}
         
         try:
             rail_names = {}
-            for channel, config in self.multi_channel_monitor.channel_configs.items():
-                if config.get('enabled', False):
-                    rail_name = config.get('name', f'Rail_{channel}')
+            enabled_channels = self._get_enabled_channels_from_monitor()
+            
+            for channel in enabled_channels:
+                if channel in self.multi_channel_monitor.channel_configs:
+                    config = self.multi_channel_monitor.channel_configs[channel]
+                    rail_name = config.get('name', '')
+                    
+                    # If name is empty or just '-', use meaningful default names
+                    if not rail_name or rail_name == '-' or rail_name.strip() == '':
+                        if channel == 'ai0':
+                            rail_name = 'VDD_CORE'
+                        elif channel == 'ai1':
+                            rail_name = 'VDD_MEM'
+                        elif channel == 'ai2':
+                            rail_name = 'VDD_GPU'
+                        elif channel == 'ai3':
+                            rail_name = 'VDD_IO'
+                        else:
+                            rail_name = f'VDD_{channel.upper()}'
+                    
                     rail_names[channel] = rail_name
+                else:
+                    # Channel not in config, use default name
+                    if channel == 'ai0':
+                        rail_names[channel] = 'VDD_CORE'
+                    elif channel == 'ai1':
+                        rail_names[channel] = 'VDD_MEM'
+                    else:
+                        rail_names[channel] = f'VDD_{channel.upper()}'
             
             if not rail_names:
-                return {'ai0': 'Rail_A', 'ai1': 'Rail_B'}
+                return {'ai0': 'VDD_CORE', 'ai1': 'VDD_MEM'}
                 
             return rail_names
         except Exception as e:
             self.log_callback(f"Error getting rail names: {e}", "error")
-            return {'ai0': 'Rail_A', 'ai1': 'Rail_B'}
+            return {'ai0': 'VDD_CORE', 'ai1': 'VDD_MEM'}
     
     def _get_measurement_mode(self) -> str:
         """Get current measurement mode from multi-channel monitor"""
@@ -1090,6 +1122,9 @@ class TestScenarioEngine(QObject):
             rail_names = self._get_channel_rail_names()
             measurement_mode = getattr(self, '_monitoring_mode', 'current')
             
+            self.log_callback(f"Excel export debug - Enabled channels: {enabled_channels}", "info")
+            self.log_callback(f"Excel export debug - Rail names: {rail_names}", "info")
+            self.log_callback(f"Excel export debug - Measurement mode: {measurement_mode}", "info")
             self.log_callback(f"Creating Excel with format: A1=Time, B1={rail_names} ({measurement_mode} mode)", "info")
             
             # Create custom formatted data
