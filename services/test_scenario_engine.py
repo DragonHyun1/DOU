@@ -19,6 +19,12 @@ except ImportError:
     PANDAS_AVAILABLE = False
 
 try:
+    import xlsxwriter
+    XLSXWRITER_AVAILABLE = True
+except ImportError:
+    XLSXWRITER_AVAILABLE = False
+
+try:
     from PyQt6.QtCore import QObject, pyqtSignal, QTimer
     QT_AVAILABLE = True
 except ImportError:
@@ -241,7 +247,10 @@ class TestScenarioEngine(QObject):
                     self.status = TestStatus.FAILED
                     self.current_test.status = TestStatus.FAILED
                     self.current_test.error_message = f"Failed at step: {step.name}"
+                    self.current_test.end_time = datetime.now()
                     self.log_callback(f"Test failed at step: {step.name}", "error")
+                    if QT_AVAILABLE:
+                        self.test_completed.emit(False, f"Test failed at step: {step.name}")
                     return
                 
                 # Wait for step duration (with progress updates for long steps)
@@ -483,7 +492,11 @@ class TestScenarioEngine(QObject):
             filename = f"screen_onoff_test_{timestamp}.xlsx"
             
             if PANDAS_AVAILABLE:
-                success = self._export_to_excel_pandas(filename)
+                if XLSXWRITER_AVAILABLE:
+                    success = self._export_to_excel_pandas(filename)
+                else:
+                    # Use basic pandas Excel writer without xlsxwriter
+                    success = self._export_to_excel_basic(filename)
             else:
                 success = self._export_to_csv_fallback(filename.replace('.xlsx', '.csv'))
             
@@ -540,9 +553,10 @@ class TestScenarioEngine(QObject):
             return 0.0
         
         try:
-            # Use DAQ service to read current
-            # This would call the appropriate method based on current measurement mode
-            return self.daq_service.read_current_once(channel) or 0.0
+            # Use DAQ service to read current (current implementation doesn't support multi-channel)
+            # For now, read from the connected channel regardless of the requested channel
+            current_value = self.daq_service.read_current_once()
+            return current_value or 0.0
         except Exception as e:
             self.log_callback(f"Error reading current from {channel}: {e}", "error")
             return 0.0
@@ -717,3 +731,45 @@ class TestScenarioEngine(QObject):
             
         except Exception as e:
             self.log_callback(f"Error creating summary sheet: {e}", "error")
+    
+    def _export_to_excel_basic(self, filename: str) -> bool:
+        """Export data to Excel using basic pandas writer (without xlsxwriter)"""
+        try:
+            if not self.daq_data:
+                self.log_callback("No data to export", "warn")
+                return True
+            
+            # Create DataFrame
+            df = pd.DataFrame(self.daq_data)
+            
+            # Use basic Excel writer (openpyxl engine)
+            with pd.ExcelWriter(filename, engine='openpyxl') as writer:
+                # Write main data
+                df.to_excel(writer, sheet_name='Test_Data', index=False)
+                
+                # Create basic summary sheet
+                summary_data = {
+                    'Test Information': [
+                        'Test Name',
+                        'Start Time', 
+                        'Data Points',
+                        'Status'
+                    ],
+                    'Value': [
+                        self.current_test.scenario_name if self.current_test else 'Unknown',
+                        self.current_test.start_time.strftime('%Y-%m-%d %H:%M:%S') if self.current_test else 'Unknown',
+                        len(self.daq_data),
+                        self.status.value.upper()
+                    ]
+                }
+                
+                summary_df = pd.DataFrame(summary_data)
+                summary_df.to_excel(writer, sheet_name='Test_Summary', index=False)
+            
+            self.log_callback(f"Basic Excel export completed: {filename}", "info")
+            return True
+        except Exception as e:
+            self.log_callback(f"Error exporting to Excel (basic): {e}", "error")
+            # Fallback to CSV if Excel fails
+            csv_filename = filename.replace('.xlsx', '.csv')
+            return self._export_to_csv_fallback(csv_filename)
