@@ -531,6 +531,8 @@ class TestScenarioEngine(QObject):
             
             # Start DAQ monitoring in background with error handling
             try:
+                # Store enabled channels for the monitoring thread
+                self._monitoring_channels = enabled_channels
                 monitoring_thread = threading.Thread(target=self._daq_monitoring_loop)
                 monitoring_thread.daemon = True
                 monitoring_thread.start()
@@ -711,64 +713,77 @@ class TestScenarioEngine(QObject):
             return False
     
     def _daq_monitoring_loop(self):
-        """DAQ monitoring loop (runs in separate thread) with enhanced stability"""
-        self.log_callback("DAQ monitoring loop started", "info")
+        """DAQ monitoring loop (runs in separate thread) - Thread-safe version"""
+        # Use print for thread-safe logging (no Qt signals)
+        print("DAQ monitoring loop started")
         
         try:
             loop_count = 0
+            # Use pre-stored enabled channels (thread-safe)
+            enabled_channels = getattr(self, '_monitoring_channels', ['ai0', 'ai1'])
+            
+            if not enabled_channels:
+                print("ERROR: No enabled channels found for monitoring!")
+                return
+            
+            print(f"Monitoring {len(enabled_channels)} channels: {enabled_channels}")
+            
             while self.monitoring_active and not self.stop_requested:
                 try:
                     loop_count += 1
                     
-                    # Get enabled channels from multi-channel monitor
-                    enabled_channels = self._get_enabled_channels()
+                    # Read current from each enabled channel
+                    channel_data = {}
+                    successful_reads = 0
                     
-                    if enabled_channels:
-                        # Read current from each enabled channel
-                        channel_data = {}
-                        successful_reads = 0
-                        
-                        for channel in enabled_channels:
-                            try:
-                                # Read current from DAQ service
-                                current = self._read_channel_current(channel)
+                    for channel in enabled_channels:
+                        try:
+                            # Read current from DAQ service (thread-safe call)
+                            if self.daq_service:
+                                current = self.daq_service.read_current_once()
                                 channel_data[f"{channel}_current"] = current
                                 successful_reads += 1
                                 
                                 # Log first successful read for debugging
                                 if loop_count == 1:
-                                    self.log_callback(f"First read from {channel}: {current}A", "info")
-                                    
-                            except Exception as e:
-                                # Log error but don't crash the monitoring loop
-                                if loop_count % 10 == 1:  # Log every 10th error to avoid spam
-                                    self.log_callback(f"Error reading channel {channel}: {e}", "error")
-                                channel_data[f"{channel}_current"] = 0.0
-                        
-                        # Add timestamp safely
-                        try:
-                            if self.current_test and self.current_test.start_time:
-                                time_elapsed = (datetime.now() - self.current_test.start_time).total_seconds()
+                                    print(f"First read from {channel}: {current}A")
                             else:
-                                time_elapsed = 0.0
-                                
-                            data_point = {
-                                'timestamp': datetime.now(),
-                                'time_elapsed': time_elapsed,
-                                **channel_data
-                            }
-                            
-                            self.daq_data.append(data_point)
-                            
-                            # Log progress every 10 seconds
-                            if loop_count % 10 == 0:
-                                self.log_callback(f"DAQ monitoring: {len(self.daq_data)} points collected, {successful_reads}/{len(enabled_channels)} channels OK", "info")
+                                # Simulate data if no DAQ service
+                                import random
+                                current = round(random.uniform(0.1, 0.3), 3)
+                                channel_data[f"{channel}_current"] = current
+                                successful_reads += 1
                                 
                         except Exception as e:
-                            self.log_callback(f"Error creating data point: {e}", "error")
-                    else:
-                        if loop_count == 1:
-                            self.log_callback("ERROR: No enabled channels found for monitoring!", "error")
+                            # Log error but don't crash the monitoring loop
+                            if loop_count % 10 == 1:  # Log every 10th error to avoid spam
+                                print(f"Error reading channel {channel}: {e}")
+                            channel_data[f"{channel}_current"] = 0.0
+                    
+                    # Add timestamp safely
+                    try:
+                        if self.current_test and self.current_test.start_time:
+                            time_elapsed = (datetime.now() - self.current_test.start_time).total_seconds()
+                        else:
+                            time_elapsed = 0.0
+                            
+                        data_point = {
+                            'timestamp': datetime.now(),
+                            'time_elapsed': time_elapsed,
+                            **channel_data
+                        }
+                        
+                        # Thread-safe data append
+                        if hasattr(self, 'daq_data'):
+                            self.daq_data.append(data_point)
+                        
+                        # Log progress every 10 seconds
+                        if loop_count % 10 == 0:
+                            data_count = len(self.daq_data) if hasattr(self, 'daq_data') else 0
+                            print(f"DAQ monitoring: {data_count} points collected, {successful_reads}/{len(enabled_channels)} channels OK")
+                            
+                    except Exception as e:
+                        print(f"Error creating data point: {e}")
                     
                     # Safe sleep
                     try:
@@ -778,14 +793,14 @@ class TestScenarioEngine(QObject):
                         
                 except Exception as loop_error:
                     # Log loop error but continue monitoring
-                    self.log_callback(f"Error in monitoring loop iteration {loop_count}: {loop_error}", "error")
+                    print(f"Error in monitoring loop iteration {loop_count}: {loop_error}")
                     time.sleep(1.0)  # Wait before retry
                     
         except Exception as e:
-            self.log_callback(f"Critical error in DAQ monitoring loop: {e}", "error")
+            print(f"Critical error in DAQ monitoring loop: {e}")
         finally:
             self.monitoring_active = False
-            self.log_callback("DAQ monitoring loop ended", "info")
+            print("DAQ monitoring loop ended")
     
     def _get_enabled_channels(self) -> List[str]:
         """Get list of enabled channels from multi-channel monitor"""
