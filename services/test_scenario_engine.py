@@ -18,6 +18,14 @@ try:
 except ImportError:
     PANDAS_AVAILABLE = False
 
+try:
+    from PyQt6.QtCore import QObject, pyqtSignal, QTimer
+    QT_AVAILABLE = True
+except ImportError:
+    QT_AVAILABLE = False
+    QObject = object
+    def pyqtSignal(*args): return None
+
 from .adb_service import ADBService
 
 
@@ -63,10 +71,16 @@ class TestResult:
     error_message: str = ""
 
 
-class TestScenarioEngine:
+class TestScenarioEngine(QObject):
     """Engine for executing complex test scenarios"""
     
+    # Qt Signals for thread-safe communication
+    progress_updated = pyqtSignal(int, str)  # progress, status
+    test_completed = pyqtSignal(bool, str)   # success, message
+    log_message = pyqtSignal(str, str)       # message, level
+    
     def __init__(self, hvpm_service=None, daq_service=None, log_callback: Callable = None):
+        super().__init__()
         self.logger = logging.getLogger(__name__)
         self.hvpm_service = hvpm_service
         self.daq_service = daq_service
@@ -88,7 +102,6 @@ class TestScenarioEngine:
         self.enabled_channels = []
         
         # Progress tracking
-        self.progress_callback = None
         self.current_step = 0
         self.total_steps = 0
         
@@ -104,6 +117,10 @@ class TestScenarioEngine:
             self.logger.warning(message)
         else:
             self.logger.info(message)
+        
+        # Emit log signal for thread-safe UI updates
+        if QT_AVAILABLE:
+            self.log_message.emit(message, level)
     
     def _register_builtin_scenarios(self):
         """Register built-in test scenarios"""
@@ -244,6 +261,8 @@ class TestScenarioEngine:
                 self.current_test.status = TestStatus.COMPLETED
                 self.current_test.end_time = datetime.now()
                 self.log_callback("Test scenario completed successfully", "info")
+                if QT_AVAILABLE:
+                    self.test_completed.emit(True, "Test completed successfully")
             
         except Exception as e:
             self.status = TestStatus.FAILED
@@ -251,6 +270,8 @@ class TestScenarioEngine:
                 self.current_test.status = TestStatus.FAILED
                 self.current_test.error_message = str(e)
             self.log_callback(f"Test execution error: {e}", "error")
+            if QT_AVAILABLE:
+                self.test_completed.emit(False, f"Test failed: {e}")
         
         finally:
             # Cleanup
@@ -603,19 +624,21 @@ class TestScenarioEngine:
         """Get current test result"""
         return self.current_test
     
-    def set_progress_callback(self, callback: Callable[[int, str], None]):
-        """Set progress callback function"""
-        self.progress_callback = callback
+    def connect_progress_callback(self, callback: Callable[[int, str], None]):
+        """Connect progress callback to signal"""
+        if QT_AVAILABLE:
+            self.progress_updated.connect(callback)
     
     def set_multi_channel_monitor(self, monitor):
         """Set multi-channel monitor reference"""
         self.multi_channel_monitor = monitor
     
     def _update_progress(self, step_name: str):
-        """Update progress and notify callback"""
-        if self.progress_callback and self.total_steps > 0:
+        """Update progress and emit signal"""
+        if self.total_steps > 0:
             progress = int((self.current_step / self.total_steps) * 100)
-            self.progress_callback(progress, step_name)
+            if QT_AVAILABLE:
+                self.progress_updated.emit(progress, step_name)
     
     def _get_enabled_channels_from_monitor(self) -> List[str]:
         """Get enabled channels from multi-channel monitor"""

@@ -64,8 +64,10 @@ class MainWindow(QtWidgets.QMainWindow):
             log_callback=self._log
         )
         
-        # Set progress callback for test scenario engine
-        self.test_scenario_engine.set_progress_callback(self._on_auto_test_progress)
+        # Connect test scenario engine signals
+        self.test_scenario_engine.connect_progress_callback(self._on_auto_test_progress)
+        self.test_scenario_engine.test_completed.connect(self._on_auto_test_completed)
+        self.test_scenario_engine.log_message.connect(self._log)
         
         # 측정 모드 추적 (독립적 제어)
         self._hvpm_monitoring = False
@@ -1309,6 +1311,30 @@ class MainWindow(QtWidgets.QMainWindow):
         if self.test_scenario_engine.is_running():
             return
         
+        # Check device connections first
+        connection_errors = []
+        
+        # Check HVPM connection
+        try:
+            if not (hasattr(self.hvpm_service, 'pm') and self.hvpm_service.pm):
+                connection_errors.append("HVPM device not connected")
+        except Exception as e:
+            connection_errors.append(f"HVPM connection error: {e}")
+        
+        # Check ADB connection
+        try:
+            if not self.selected_device or self.selected_device == "No devices found":
+                connection_errors.append("ADB device not connected")
+        except Exception as e:
+            connection_errors.append(f"ADB connection error: {e}")
+        
+        # Show connection errors if any
+        if connection_errors:
+            error_msg = "Device connection issues:\n\n" + "\n".join(f"• {error}" for error in connection_errors)
+            error_msg += "\n\nPlease connect all required devices and try again."
+            QtWidgets.QMessageBox.warning(self, "Connection Required", error_msg)
+            return
+        
         # Check if any scenario is selected
         if self.ui.testScenario_CB.count() == 0 or not self.ui.testScenario_CB.isEnabled():
             QtWidgets.QMessageBox.warning(self, "No Scenario", "No test scenarios available.")
@@ -1358,6 +1384,19 @@ class MainWindow(QtWidgets.QMainWindow):
                 if hasattr(self.ui, 'testStatus_LB') and self.ui.testStatus_LB:
                     self.ui.testStatus_LB.setText("Test scenario running...")
                     self.ui.testStatus_LB.setStyleSheet("font-size: 11pt; color: #4CAF50; font-weight: bold;")
+                
+                # Update Auto Test group box title to show running status
+                if hasattr(self.ui, 'autoTestGroupBox') and self.ui.autoTestGroupBox:
+                    self.ui.autoTestGroupBox.setTitle("Auto Test - RUNNING")
+                
+                # Update status bar
+                self.ui.statusbar.showMessage(f"Running Auto Test: {scenario_name}", 0)
+                
+                # Log with enhanced formatting
+                self._log(f"Starting automated test: {scenario_name}", "info")
+                if hasattr(self.ui, 'testResults_TE') and self.ui.testResults_TE:
+                    timestamp = time.strftime("%H:%M:%S")
+                    self.ui.testResults_TE.append(f"[{timestamp}] Test Started: {scenario_name}")
             else:
                 self._log(f"Failed to start test scenario: {scenario_name}", "error")
                 QtWidgets.QMessageBox.critical(self, "Test Error", f"Failed to start test scenario: {scenario_name}")
@@ -1365,23 +1404,6 @@ class MainWindow(QtWidgets.QMainWindow):
         except Exception as e:
             self._log(f"Failed to start test scenario: {e}", "error")
             QtWidgets.QMessageBox.critical(self, "Test Error", f"Failed to start test:\n{e}")
-            self.ui.testStatus_LB.setText("Initializing test...")
-            self.ui.testStatus_LB.setStyleSheet("font-size: 11pt; color: #4CAF50; font-weight: bold;")
-            
-            # Update Auto Test group box title to show running status
-            if hasattr(self.ui, 'autoTestGroupBox') and self.ui.autoTestGroupBox:
-                self.ui.autoTestGroupBox.setTitle("Auto Test - RUNNING")
-            
-            # Update status bar
-            self.ui.statusbar.showMessage(f"Running Auto Test: {scenario_name}", 0)
-            
-            # Log with enhanced formatting
-            self._log(f"Starting automated test: {scenario_name}", "info")
-            if hasattr(self.ui, 'testResults_TE') and self.ui.testResults_TE:
-                timestamp = time.strftime("%H:%M:%S")
-                self.ui.testResults_TE.append(f"[{timestamp}] Test Started: {scenario_name}")
-        else:
-            QtWidgets.QMessageBox.warning(self, "Test Start Failed", "Failed to start automated test. Check connections and try again.")
 
     def stop_auto_test(self):
         """Stop automated test"""
