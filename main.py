@@ -64,6 +64,9 @@ class MainWindow(QtWidgets.QMainWindow):
             log_callback=self._log
         )
         
+        # Set progress callback for test scenario engine
+        self.test_scenario_engine.set_progress_callback(self._on_auto_test_progress)
+        
         # 측정 모드 추적 (독립적 제어)
         self._hvpm_monitoring = False
         self._ni_monitoring = False
@@ -499,12 +502,24 @@ class MainWindow(QtWidgets.QMainWindow):
             self._log("WARNING: Auto test UI elements not found - auto test features disabled", "warn")
             return
             
-        # Clear existing scenarios and prepare for new ones
+        # Clear existing scenarios and load from test scenario engine
         self.ui.testScenario_CB.clear()
         
-        # Add placeholder for future scenarios
-        self.ui.testScenario_CB.addItem("No test scenarios available")
-        # Keep enabled so user can see the placeholder and add scenarios later
+        # Load available scenarios from test scenario engine
+        try:
+            scenarios = self.test_scenario_engine.get_available_scenarios()
+            if scenarios:
+                for scenario_key, scenario_config in scenarios.items():
+                    self.ui.testScenario_CB.addItem(scenario_config.name, scenario_key)
+                self._log(f"Loaded {len(scenarios)} test scenarios", "info")
+            else:
+                self.ui.testScenario_CB.addItem("No test scenarios available")
+                self._log("No test scenarios available", "warn")
+        except Exception as e:
+            self._log(f"Error loading test scenarios: {e}", "error")
+            self.ui.testScenario_CB.addItem("Error loading scenarios")
+        
+        # Enable combo box
         self.ui.testScenario_CB.setEnabled(True)
         
         # Connect scenario selection change
@@ -1423,6 +1438,11 @@ class MainWindow(QtWidgets.QMainWindow):
         # Save test results
         self._save_test_results(success, message)
         
+        # Get test data from scenario engine
+        test_result = self.test_scenario_engine.get_current_test()
+        if test_result and test_result.daq_data:
+            self._log(f"Test completed with {len(test_result.daq_data)} data points", "info")
+        
         if success:
             if hasattr(self.ui, 'testProgress_PB') and self.ui.testProgress_PB:
                 self.ui.testProgress_PB.setValue(100)
@@ -1707,6 +1727,9 @@ class MainWindow(QtWidgets.QMainWindow):
                 # Connect NI service signals if available
                 if hasattr(self.ni_service, 'channel_data_updated'):
                     self.ni_service.channel_data_updated.connect(self._on_channel_data_updated)
+                
+                # Connect multi-channel monitor to test scenario engine
+                self.test_scenario_engine.set_multi_channel_monitor(self.multi_channel_dialog)
             
             self.multi_channel_dialog.show()
             self.multi_channel_dialog.raise_()

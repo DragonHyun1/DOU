@@ -83,6 +83,15 @@ class TestScenarioEngine:
         self.monitoring_thread: Optional[threading.Thread] = None
         self.monitoring_active = False
         
+        # Multi-channel monitor integration
+        self.multi_channel_monitor = None
+        self.enabled_channels = []
+        
+        # Progress tracking
+        self.progress_callback = None
+        self.current_step = 0
+        self.total_steps = 0
+        
         # Register built-in scenarios
         self.scenarios = {}
         self._register_builtin_scenarios()
@@ -146,6 +155,10 @@ class TestScenarioEngine:
             daq_data=[]
         )
         
+        # Initialize progress tracking
+        self.current_step = 0
+        self.total_steps = len(scenario.steps)
+        
         self.status = TestStatus.INITIALIZING
         self.stop_requested = False
         
@@ -190,11 +203,14 @@ class TestScenarioEngine:
             self.log_callback(f"Executing scenario: {scenario.name}", "info")
             
             # Execute each step
-            for step in scenario.steps:
+            for i, step in enumerate(scenario.steps):
                 if self.stop_requested:
                     break
                 
-                self.log_callback(f"Executing step: {step.name}", "info")
+                self.current_step = i + 1
+                self._update_progress(f"Executing: {step.name}")
+                self.log_callback(f"Step {self.current_step}/{self.total_steps}: {step.name}", "info")
+                
                 success = self._execute_step(step)
                 
                 if not success:
@@ -204,9 +220,16 @@ class TestScenarioEngine:
                     self.log_callback(f"Test failed at step: {step.name}", "error")
                     return
                 
-                # Wait for step duration
+                # Wait for step duration (with progress updates for long steps)
                 if step.duration > 0:
-                    time.sleep(step.duration)
+                    if step.duration > 5:  # For long steps, show countdown
+                        for remaining in range(int(step.duration), 0, -1):
+                            if self.stop_requested:
+                                break
+                            self._update_progress(f"{step.name} - {remaining}s remaining")
+                            time.sleep(1)
+                    else:
+                        time.sleep(step.duration)
             
             # Test completed successfully
             if not self.stop_requested:
@@ -481,9 +504,7 @@ class TestScenarioEngine:
     
     def _get_enabled_channels(self) -> List[str]:
         """Get list of enabled channels from multi-channel monitor"""
-        # This would interface with the multi-channel monitor UI
-        # For now, return default channels
-        return ['ai0', 'ai1']
+        return self._get_enabled_channels_from_monitor()
     
     def _read_channel_current(self, channel: str) -> float:
         """Read current from specific DAQ channel"""
@@ -499,10 +520,46 @@ class TestScenarioEngine:
             return 0.0
     
     def _export_to_excel_pandas(self, filename: str) -> bool:
-        """Export data to Excel using pandas"""
+        """Export data to Excel using pandas with enhanced formatting"""
         try:
+            if not self.daq_data:
+                self.log_callback("No data to export", "warn")
+                return True
+            
+            # Create DataFrame
             df = pd.DataFrame(self.daq_data)
-            df.to_excel(filename, index=False)
+            
+            # Create Excel writer with xlsxwriter engine for formatting
+            with pd.ExcelWriter(filename, engine='xlsxwriter') as writer:
+                # Write main data
+                df.to_excel(writer, sheet_name='Test_Data', index=False)
+                
+                # Get workbook and worksheet objects
+                workbook = writer.book
+                worksheet = writer.sheets['Test_Data']
+                
+                # Add formats
+                header_format = workbook.add_format({
+                    'bold': True,
+                    'text_wrap': True,
+                    'valign': 'top',
+                    'fg_color': '#D7E4BC',
+                    'border': 1
+                })
+                
+                # Format headers
+                for col_num, value in enumerate(df.columns.values):
+                    worksheet.write(0, col_num, value, header_format)
+                
+                # Auto-adjust column widths
+                for i, col in enumerate(df.columns):
+                    column_len = max(df[col].astype(str).str.len().max(), len(col)) + 2
+                    worksheet.set_column(i, i, min(column_len, 50))
+                
+                # Add test summary sheet
+                self._add_test_summary_sheet(writer, workbook)
+                
+            self.log_callback(f"Enhanced Excel export completed: {filename}", "info")
             return True
         except Exception as e:
             self.log_callback(f"Error exporting to Excel: {e}", "error")
@@ -538,3 +595,95 @@ class TestScenarioEngine:
     def get_current_test(self) -> Optional[TestResult]:
         """Get current test result"""
         return self.current_test
+    
+    def set_progress_callback(self, callback: Callable[[int, str], None]):
+        """Set progress callback function"""
+        self.progress_callback = callback
+    
+    def set_multi_channel_monitor(self, monitor):
+        """Set multi-channel monitor reference"""
+        self.multi_channel_monitor = monitor
+    
+    def _update_progress(self, step_name: str):
+        """Update progress and notify callback"""
+        if self.progress_callback and self.total_steps > 0:
+            progress = int((self.current_step / self.total_steps) * 100)
+            self.progress_callback(progress, step_name)
+    
+    def _get_enabled_channels_from_monitor(self) -> List[str]:
+        """Get enabled channels from multi-channel monitor"""
+        if not self.multi_channel_monitor:
+            # Return default channels if no monitor available
+            return ['ai0', 'ai1']
+        
+        try:
+            enabled_channels = []
+            for channel, config in self.multi_channel_monitor.channel_configs.items():
+                if config.get('enabled', False):
+                    enabled_channels.append(channel)
+            return enabled_channels
+        except Exception as e:
+            self.log_callback(f"Error getting enabled channels: {e}", "error")
+            return ['ai0', 'ai1']
+    
+    def _add_test_summary_sheet(self, writer, workbook):
+        """Add test summary sheet to Excel file"""
+        try:
+            # Create summary sheet
+            summary_sheet = workbook.add_worksheet('Test_Summary')
+            
+            # Formats
+            title_format = workbook.add_format({
+                'bold': True,
+                'font_size': 16,
+                'fg_color': '#4CAF50',
+                'font_color': 'white'
+            })
+            
+            label_format = workbook.add_format({
+                'bold': True,
+                'fg_color': '#E8F5E8'
+            })
+            
+            # Test information
+            summary_sheet.write('A1', 'Test Summary', title_format)
+            summary_sheet.write('A3', 'Test Name:', label_format)
+            summary_sheet.write('B3', self.current_test.scenario_name if self.current_test else 'Unknown')
+            
+            summary_sheet.write('A4', 'Start Time:', label_format)
+            summary_sheet.write('B4', self.current_test.start_time.strftime('%Y-%m-%d %H:%M:%S') if self.current_test else 'Unknown')
+            
+            summary_sheet.write('A5', 'End Time:', label_format)
+            end_time = self.current_test.end_time if self.current_test and self.current_test.end_time else datetime.now()
+            summary_sheet.write('B5', end_time.strftime('%Y-%m-%d %H:%M:%S'))
+            
+            summary_sheet.write('A6', 'Duration:', label_format)
+            if self.current_test:
+                duration = (end_time - self.current_test.start_time).total_seconds()
+                summary_sheet.write('B6', f"{duration:.1f} seconds")
+            
+            summary_sheet.write('A7', 'Status:', label_format)
+            summary_sheet.write('B7', self.status.value.upper())
+            
+            summary_sheet.write('A8', 'Data Points:', label_format)
+            summary_sheet.write('B8', len(self.daq_data))
+            
+            # Channel information
+            summary_sheet.write('A10', 'Monitored Channels:', title_format)
+            enabled_channels = self._get_enabled_channels()
+            for i, channel in enumerate(enabled_channels):
+                summary_sheet.write(f'A{11+i}', f'Channel {channel}:', label_format)
+                # Calculate average current for this channel
+                channel_key = f'{channel}_current'
+                if self.daq_data and channel_key in self.daq_data[0]:
+                    avg_current = sum(data.get(channel_key, 0) for data in self.daq_data) / len(self.daq_data)
+                    summary_sheet.write(f'B{11+i}', f"{avg_current:.3f} A (avg)")
+                else:
+                    summary_sheet.write(f'B{11+i}', "No data")
+            
+            # Auto-adjust column widths
+            summary_sheet.set_column('A:A', 20)
+            summary_sheet.set_column('B:B', 25)
+            
+        except Exception as e:
+            self.log_callback(f"Error creating summary sheet: {e}", "error")
