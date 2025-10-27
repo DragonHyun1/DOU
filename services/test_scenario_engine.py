@@ -493,6 +493,7 @@ class TestScenarioEngine(QObject):
     
     def _step_screen_on_off_with_daq_monitoring(self) -> bool:
         """Execute screen on/off cycle with simultaneous DAQ monitoring"""
+        monitoring_thread = None
         try:
             self.log_callback("Starting Screen On/Off test with DAQ monitoring", "info")
             
@@ -500,68 +501,123 @@ class TestScenarioEngine(QObject):
             self.daq_data = []
             self.monitoring_active = True
             
-            # Get enabled channels and rail names
-            enabled_channels = self._get_enabled_channels()
-            rail_names = self._get_channel_rail_names()
+            # Validate services before starting
+            if not self.adb_service:
+                self.log_callback("ERROR: ADB service not available", "error")
+                return False
             
-            self.log_callback(f"Monitoring {len(enabled_channels)} channels: {enabled_channels}", "info")
-            for channel in enabled_channels:
-                rail_name = rail_names.get(channel, f"Rail_{channel}")
-                self.log_callback(f"  {channel} -> {rail_name}", "info")
+            if not self.daq_service:
+                self.log_callback("ERROR: DAQ service not available", "error")
+                return False
             
-            # Start DAQ monitoring in background
-            self.monitoring_thread = threading.Thread(target=self._daq_monitoring_loop)
-            self.monitoring_thread.daemon = True
-            self.monitoring_thread.start()
-            
-            # Start screen on/off cycle
-            self.log_callback("Starting screen on/off cycle (20 seconds, 2-second intervals)", "info")
-            
-            # Start with screen on
-            self.adb_service.turn_screen_on()
-            time.sleep(1)
-            
-            # Record start time for progress tracking
-            test_start_time = time.time()
-            
-            # Cycle for 20 seconds with 2-second intervals
-            cycles = 10  # 20 seconds / 2 seconds per cycle
-            for i in range(cycles):
-                if self.stop_requested:
-                    break
+            # Get enabled channels and rail names with error handling
+            try:
+                enabled_channels = self._get_enabled_channels_from_monitor()
+                rail_names = self._get_channel_rail_names()
                 
-                # Calculate progress during screen test (0-90%)
-                elapsed = time.time() - test_start_time
-                progress = min(90, int((elapsed / 20.0) * 90))  # 0-90% for screen test
-                if QT_AVAILABLE:
-                    self.progress_updated.emit(progress, f"Screen test cycle {i+1}/{cycles}")
+                if not enabled_channels:
+                    self.log_callback("WARNING: No enabled channels found, using defaults", "warn")
+                    enabled_channels = ['ai0', 'ai1']
+                    rail_names = {'ai0': 'Rail_A', 'ai1': 'Rail_B'}
                 
-                # Turn screen off
-                self.adb_service.turn_screen_off()
-                self.log_callback(f"Screen OFF (cycle {i+1}/{cycles})", "info")
-                time.sleep(1)
+                self.log_callback(f"Monitoring {len(enabled_channels)} channels: {enabled_channels}", "info")
+                for channel in enabled_channels:
+                    rail_name = rail_names.get(channel, f"Rail_{channel}")
+                    self.log_callback(f"  {channel} -> {rail_name}", "info")
+            except Exception as e:
+                self.log_callback(f"Error getting channel info: {e}, using defaults", "warn")
+                enabled_channels = ['ai0', 'ai1']
+                rail_names = {'ai0': 'Rail_A', 'ai1': 'Rail_B'}
+            
+            # Start DAQ monitoring in background with error handling
+            try:
+                monitoring_thread = threading.Thread(target=self._daq_monitoring_loop)
+                monitoring_thread.daemon = True
+                monitoring_thread.start()
+                self.log_callback("DAQ monitoring thread started successfully", "info")
+            except Exception as e:
+                self.log_callback(f"Error starting DAQ monitoring thread: {e}", "error")
+                return False
+            
+            # Start screen on/off cycle with error handling
+            try:
+                self.log_callback("Starting screen on/off cycle (20 seconds, 2-second intervals)", "info")
                 
-                # Turn screen on
+                # Start with screen on
                 self.adb_service.turn_screen_on()
-                self.log_callback(f"Screen ON (cycle {i+1}/{cycles})", "info")
                 time.sleep(1)
+                
+                # Record start time for progress tracking
+                test_start_time = time.time()
+                
+                # Cycle for 20 seconds with 2-second intervals
+                cycles = 10  # 20 seconds / 2 seconds per cycle
+                for i in range(cycles):
+                    if self.stop_requested:
+                        self.log_callback("Test stop requested, breaking cycle", "warn")
+                        break
+                    
+                    try:
+                        # Calculate progress during screen test (0-90%)
+                        elapsed = time.time() - test_start_time
+                        progress = min(90, int((elapsed / 20.0) * 90))  # 0-90% for screen test
+                        if QT_AVAILABLE:
+                            self.progress_updated.emit(progress, f"Screen test cycle {i+1}/{cycles}")
+                        
+                        # Turn screen off
+                        self.adb_service.turn_screen_off()
+                        self.log_callback(f"Screen OFF (cycle {i+1}/{cycles})", "info")
+                        time.sleep(1)
+                        
+                        # Turn screen on
+                        self.adb_service.turn_screen_on()
+                        self.log_callback(f"Screen ON (cycle {i+1}/{cycles})", "info")
+                        time.sleep(1)
+                    except Exception as cycle_error:
+                        self.log_callback(f"Error in screen cycle {i+1}: {cycle_error}", "error")
+                        # Continue with next cycle instead of failing completely
+                        continue
+                
+            except Exception as e:
+                self.log_callback(f"Error in screen control: {e}", "error")
+                # Don't return False here, still try to collect data
             
-            # Stop monitoring
-            self.monitoring_active = False
-            if self.monitoring_thread and self.monitoring_thread.is_alive():
-                self.monitoring_thread.join(timeout=3.0)
+            # Stop monitoring gracefully
+            try:
+                self.monitoring_active = False
+                if monitoring_thread and monitoring_thread.is_alive():
+                    self.log_callback("Waiting for monitoring thread to finish...", "info")
+                    monitoring_thread.join(timeout=5.0)  # Increased timeout
+                    if monitoring_thread.is_alive():
+                        self.log_callback("WARNING: Monitoring thread did not finish in time", "warn")
+            except Exception as e:
+                self.log_callback(f"Error stopping monitoring: {e}", "error")
             
-            data_count = len(self.daq_data)
+            data_count = len(self.daq_data) if hasattr(self, 'daq_data') else 0
             self.log_callback(f"Screen test completed. Collected {data_count} data points", "info")
             
             # Final progress update
-            if QT_AVAILABLE:
-                self.progress_updated.emit(90, "Screen test completed, preparing export")
+            try:
+                if QT_AVAILABLE:
+                    self.progress_updated.emit(90, "Screen test completed, preparing export")
+            except Exception as e:
+                self.log_callback(f"Error updating progress: {e}", "warn")
             
             return True
+            
         except Exception as e:
-            self.monitoring_active = False
-            self.log_callback(f"Error in screen on/off with DAQ monitoring: {e}", "error")
+            self.log_callback(f"CRITICAL ERROR in screen on/off with DAQ monitoring: {e}", "error")
+            import traceback
+            self.log_callback(f"Traceback: {traceback.format_exc()}", "error")
+            
+            # Cleanup on error
+            try:
+                self.monitoring_active = False
+                if monitoring_thread and monitoring_thread.is_alive():
+                    monitoring_thread.join(timeout=2.0)
+            except:
+                pass
+            
             return False
     
     def _step_stop_daq_monitoring(self) -> bool:
@@ -839,16 +895,14 @@ class TestScenarioEngine(QObject):
         """Update progress and emit signal"""
         if self.total_steps > 0:
             # Special progress calculation for screen test
-            if "screen_test" in step_name or self.current_step >= 9:  # screen_test is step 9
+            if "screen_test" in step_name or self.current_step >= 8:  # screen_test is step 8 (0-indexed: step 7)
                 # During screen test, show 0-100% based on screen test progress
                 if "screen_test" in step_name:
                     progress = 0  # Start of screen test
-                elif self.current_step == 10:  # stop_monitoring
-                    progress = 90
-                elif self.current_step == 11:  # save_data
+                elif self.current_step == 9:  # save_data (last step)
                     progress = 100
                 else:
-                    progress = int(((self.current_step - 8) / 3) * 100)  # Steps 9-11 mapped to 0-100%
+                    progress = int(((self.current_step - 7) / 2) * 100)  # Steps 8-9 mapped to 0-100%
             else:
                 # Before screen test, don't show progress or show preparation progress
                 progress = 0
@@ -969,7 +1023,7 @@ class TestScenarioEngine(QObject):
                 return True
             
             # Get enabled channels and rail names
-            enabled_channels = self._get_enabled_channels()
+            enabled_channels = self._get_enabled_channels_from_monitor()
             rail_names = self._get_channel_rail_names()
             
             self.log_callback(f"Creating Excel with format: A1=Time, B1={rail_names}", "info")
