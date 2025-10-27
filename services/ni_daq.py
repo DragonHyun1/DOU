@@ -89,6 +89,7 @@ class NIDAQService(QObject):
     channel_data_updated = pyqtSignal(dict)  # {channel: {'voltage': V, 'current': A}}
     connection_changed = pyqtSignal(bool)  # connected status
     error_occurred = pyqtSignal(str)  # error message
+    current_updated = pyqtSignal(float)  # current value for single channel monitoring
     
     def __init__(self):
         super().__init__()
