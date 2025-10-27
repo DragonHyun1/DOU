@@ -151,9 +151,7 @@ class TestScenarioEngine(QObject):
             TestStep("unlock_screen", 2.0, "unlock_device"),
             TestStep("home_screen", 2.0, "go_to_home"),
             TestStep("stabilize", 20.0, "wait_stabilization"),
-            TestStep("start_monitoring", 1.0, "start_daq_monitoring"),
-            TestStep("screen_test", 20.0, "screen_on_off_cycle"),
-            TestStep("stop_monitoring", 1.0, "stop_daq_monitoring"),
+            TestStep("screen_test_with_daq", 20.0, "screen_on_off_with_daq_monitoring"),  # Combined step
             TestStep("save_data", 2.0, "export_to_excel")
         ]
         
@@ -319,6 +317,8 @@ class TestScenarioEngine(QObject):
                 return self._step_start_daq_monitoring()
             elif step.action == "screen_on_off_cycle":
                 return self._step_screen_on_off_cycle()
+            elif step.action == "screen_on_off_with_daq_monitoring":
+                return self._step_screen_on_off_with_daq_monitoring()
             elif step.action == "stop_daq_monitoring":
                 return self._step_stop_daq_monitoring()
             elif step.action == "export_to_excel":
@@ -489,6 +489,79 @@ class TestScenarioEngine(QObject):
             return True
         except Exception as e:
             self.log_callback(f"Error in screen on/off cycle: {e}", "error")
+            return False
+    
+    def _step_screen_on_off_with_daq_monitoring(self) -> bool:
+        """Execute screen on/off cycle with simultaneous DAQ monitoring"""
+        try:
+            self.log_callback("Starting Screen On/Off test with DAQ monitoring", "info")
+            
+            # Initialize data collection
+            self.daq_data = []
+            self.monitoring_active = True
+            
+            # Get enabled channels and rail names
+            enabled_channels = self._get_enabled_channels()
+            rail_names = self._get_channel_rail_names()
+            
+            self.log_callback(f"Monitoring {len(enabled_channels)} channels: {enabled_channels}", "info")
+            for channel in enabled_channels:
+                rail_name = rail_names.get(channel, f"Rail_{channel}")
+                self.log_callback(f"  {channel} -> {rail_name}", "info")
+            
+            # Start DAQ monitoring in background
+            self.monitoring_thread = threading.Thread(target=self._daq_monitoring_loop)
+            self.monitoring_thread.daemon = True
+            self.monitoring_thread.start()
+            
+            # Start screen on/off cycle
+            self.log_callback("Starting screen on/off cycle (20 seconds, 2-second intervals)", "info")
+            
+            # Start with screen on
+            self.adb_service.turn_screen_on()
+            time.sleep(1)
+            
+            # Record start time for progress tracking
+            test_start_time = time.time()
+            
+            # Cycle for 20 seconds with 2-second intervals
+            cycles = 10  # 20 seconds / 2 seconds per cycle
+            for i in range(cycles):
+                if self.stop_requested:
+                    break
+                
+                # Calculate progress during screen test (0-90%)
+                elapsed = time.time() - test_start_time
+                progress = min(90, int((elapsed / 20.0) * 90))  # 0-90% for screen test
+                if QT_AVAILABLE:
+                    self.progress_updated.emit(progress, f"Screen test cycle {i+1}/{cycles}")
+                
+                # Turn screen off
+                self.adb_service.turn_screen_off()
+                self.log_callback(f"Screen OFF (cycle {i+1}/{cycles})", "info")
+                time.sleep(1)
+                
+                # Turn screen on
+                self.adb_service.turn_screen_on()
+                self.log_callback(f"Screen ON (cycle {i+1}/{cycles})", "info")
+                time.sleep(1)
+            
+            # Stop monitoring
+            self.monitoring_active = False
+            if self.monitoring_thread and self.monitoring_thread.is_alive():
+                self.monitoring_thread.join(timeout=3.0)
+            
+            data_count = len(self.daq_data)
+            self.log_callback(f"Screen test completed. Collected {data_count} data points", "info")
+            
+            # Final progress update
+            if QT_AVAILABLE:
+                self.progress_updated.emit(90, "Screen test completed, preparing export")
+            
+            return True
+        except Exception as e:
+            self.monitoring_active = False
+            self.log_callback(f"Error in screen on/off with DAQ monitoring: {e}", "error")
             return False
     
     def _step_stop_daq_monitoring(self) -> bool:
@@ -765,7 +838,21 @@ class TestScenarioEngine(QObject):
     def _update_progress(self, step_name: str):
         """Update progress and emit signal"""
         if self.total_steps > 0:
-            progress = int((self.current_step / self.total_steps) * 100)
+            # Special progress calculation for screen test
+            if "screen_test" in step_name or self.current_step >= 9:  # screen_test is step 9
+                # During screen test, show 0-100% based on screen test progress
+                if "screen_test" in step_name:
+                    progress = 0  # Start of screen test
+                elif self.current_step == 10:  # stop_monitoring
+                    progress = 90
+                elif self.current_step == 11:  # save_data
+                    progress = 100
+                else:
+                    progress = int(((self.current_step - 8) / 3) * 100)  # Steps 9-11 mapped to 0-100%
+            else:
+                # Before screen test, don't show progress or show preparation progress
+                progress = 0
+            
             if QT_AVAILABLE:
                 self.progress_updated.emit(progress, step_name)
     
@@ -773,6 +860,7 @@ class TestScenarioEngine(QObject):
         """Get enabled channels from multi-channel monitor"""
         if not self.multi_channel_monitor:
             # Return default channels if no monitor available
+            self.log_callback("No multi-channel monitor available, using default channels", "warn")
             return ['ai0', 'ai1']
         
         try:
@@ -780,10 +868,36 @@ class TestScenarioEngine(QObject):
             for channel, config in self.multi_channel_monitor.channel_configs.items():
                 if config.get('enabled', False):
                     enabled_channels.append(channel)
+                    self.log_callback(f"Found enabled channel: {channel} -> {config.get('name', 'Unknown')}", "info")
+            
+            if not enabled_channels:
+                self.log_callback("No enabled channels found in multi-channel monitor, using defaults", "warn")
+                return ['ai0', 'ai1']
+                
             return enabled_channels
         except Exception as e:
             self.log_callback(f"Error getting enabled channels: {e}", "error")
             return ['ai0', 'ai1']
+    
+    def _get_channel_rail_names(self) -> Dict[str, str]:
+        """Get rail names for enabled channels"""
+        if not self.multi_channel_monitor:
+            return {'ai0': 'Rail_A', 'ai1': 'Rail_B'}
+        
+        try:
+            rail_names = {}
+            for channel, config in self.multi_channel_monitor.channel_configs.items():
+                if config.get('enabled', False):
+                    rail_name = config.get('name', f'Rail_{channel}')
+                    rail_names[channel] = rail_name
+            
+            if not rail_names:
+                return {'ai0': 'Rail_A', 'ai1': 'Rail_B'}
+                
+            return rail_names
+        except Exception as e:
+            self.log_callback(f"Error getting rail names: {e}", "error")
+            return {'ai0': 'Rail_A', 'ai1': 'Rail_B'}
     
     def _add_test_summary_sheet(self, writer, workbook):
         """Add test summary sheet to Excel file"""
@@ -848,40 +962,60 @@ class TestScenarioEngine(QObject):
             self.log_callback(f"Error creating summary sheet: {e}", "error")
     
     def _export_to_excel_basic(self, filename: str) -> bool:
-        """Export data to Excel using basic pandas writer (without xlsxwriter)"""
+        """Export data to Excel with custom format (A1=Time, B1=Rail_Name, etc.)"""
         try:
             if not self.daq_data:
                 self.log_callback("No data to export", "warn")
                 return True
             
-            # Create DataFrame
-            df = pd.DataFrame(self.daq_data)
+            # Get enabled channels and rail names
+            enabled_channels = self._get_enabled_channels()
+            rail_names = self._get_channel_rail_names()
             
-            # Use basic Excel writer (openpyxl engine)
-            with pd.ExcelWriter(filename, engine='openpyxl') as writer:
-                # Write main data
-                df.to_excel(writer, sheet_name='Test_Data', index=False)
+            self.log_callback(f"Creating Excel with format: A1=Time, B1={rail_names}", "info")
+            
+            # Create custom formatted data
+            formatted_data = {}
+            
+            # First column: Time (in seconds)
+            formatted_data['Time'] = []
+            for i, data_point in enumerate(self.daq_data):
+                formatted_data['Time'].append(f"{i+1}s")  # 1s, 2s, 3s...
+            
+            # Additional columns: Rail data
+            for channel in enabled_channels:
+                rail_name = rail_names.get(channel, f"Rail_{channel}")
+                formatted_data[rail_name] = []
                 
-                # Create basic summary sheet
+                for data_point in self.daq_data:
+                    current_key = f"{channel}_current"
+                    current_value = data_point.get(current_key, 0.0)
+                    formatted_data[rail_name].append(current_value)
+            
+            # Create DataFrame with custom format
+            df = pd.DataFrame(formatted_data)
+            
+            # Export to Excel
+            with pd.ExcelWriter(filename, engine='openpyxl') as writer:
+                df.to_excel(writer, sheet_name='Test_Results', index=False)
+                
+                # Create summary sheet
                 summary_data = {
-                    'Test Information': [
-                        'Test Name',
-                        'Start Time', 
-                        'Data Points',
-                        'Status'
-                    ],
+                    'Test Information': ['Test Name', 'Start Time', 'Data Points', 'Duration', 'Channels'],
                     'Value': [
                         self.current_test.scenario_name if self.current_test else 'Unknown',
                         self.current_test.start_time.strftime('%Y-%m-%d %H:%M:%S') if self.current_test else 'Unknown',
                         len(self.daq_data),
-                        self.status.value.upper()
+                        f"{len(self.daq_data)} seconds",
+                        ', '.join(rail_names.values())
                     ]
                 }
                 
                 summary_df = pd.DataFrame(summary_data)
                 summary_df.to_excel(writer, sheet_name='Test_Summary', index=False)
             
-            self.log_callback(f"Basic Excel export completed: {filename}", "info")
+            self.log_callback(f"Custom Excel format completed: {filename}", "info")
+            self.log_callback(f"Excel structure: Time column + {len(enabled_channels)} rail columns", "info")
             return True
         except Exception as e:
             self.log_callback(f"Error exporting to Excel (basic): {e}", "error")
