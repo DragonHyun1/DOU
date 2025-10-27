@@ -157,6 +157,31 @@ class TestScenarioEngine(QObject):
         
         self.scenarios["screen_onoff"] = screen_onoff_config
         self.log_callback(f"Registered scenario: {screen_onoff_config.name} (key: screen_onoff)", "info")
+        
+        # Browser Performance Scenario
+        browser_config = TestConfig(
+            name="Browser Performance Test",
+            description="Safari browser + Google search + Pageboost performance test",
+            hvpm_voltage=4.0,
+            stabilization_time=10.0,
+            monitoring_interval=1.0,
+            test_duration=300.0  # 5 minutes
+        )
+        
+        # Define browser test steps
+        browser_config.steps = [
+            TestStep("init_hvpm", 2.0, "set_hvpm_voltage", {"voltage": 4.0}),
+            TestStep("init_adb", 3.0, "setup_adb_device"),
+            TestStep("setup_device", 10.0, "setup_browser_environment"),
+            TestStep("wifi_setup", 15.0, "enable_wifi_connection"),
+            TestStep("browser_test", 60.0, "run_browser_search_test"),
+            TestStep("pageboost_test", 120.0, "run_pageboost_performance"),
+            TestStep("cleanup", 10.0, "cleanup_apps_and_notifications"),
+            TestStep("save_data", 2.0, "export_to_excel")
+        ]
+        
+        self.scenarios["browser_performance"] = browser_config
+        self.log_callback(f"Registered scenario: {browser_config.name} (key: browser_performance)", "info")
         self.log_callback(f"Total scenarios registered: {len(self.scenarios)}", "info")
     
     def get_available_scenarios(self) -> Dict[str, TestConfig]:
@@ -321,6 +346,16 @@ class TestScenarioEngine(QObject):
                 return self._step_screen_on_off_with_daq_monitoring()
             elif step.action == "stop_daq_monitoring":
                 return self._step_stop_daq_monitoring()
+            elif step.action == "setup_browser_environment":
+                return self._step_setup_browser_environment()
+            elif step.action == "enable_wifi_connection":
+                return self._step_enable_wifi_connection()
+            elif step.action == "run_browser_search_test":
+                return self._step_run_browser_search_test()
+            elif step.action == "run_pageboost_performance":
+                return self._step_run_pageboost_performance()
+            elif step.action == "cleanup_apps_and_notifications":
+                return self._step_cleanup_apps_and_notifications()
             elif step.action == "export_to_excel":
                 return self._step_export_to_excel()
             else:
@@ -631,6 +666,250 @@ class TestScenarioEngine(QObject):
                 pass
             
             return False
+    
+    def _step_setup_browser_environment(self) -> bool:
+        """Setup device environment for browser testing"""
+        try:
+            self.log_callback("Setting up browser test environment", "info")
+            
+            if not self.adb_service:
+                self.log_callback("ERROR: ADB service not available", "error")
+                return False
+            
+            # Import lib utilities
+            try:
+                from lib.device import Device
+                from lib.utils import EvalContext, CoordinateCalculator
+                from lib.act_library import ActLibrary
+                
+                # Create device wrapper
+                device = Device(self.adb_service)
+                ctx = EvalContext()
+                act = ActLibrary()
+                
+                # Store for other steps
+                self._browser_device = device
+                self._browser_ctx = ctx
+                self._browser_act = act
+                
+                # Calculate screen coordinates
+                coord_calc = CoordinateCalculator(device)
+                coordinates = coord_calc.get_coordinates()
+                
+                # Store coordinates in context
+                for key, value in coordinates.items():
+                    ctx.set_var(key, str(value), device)
+                
+                self.log_callback(f"Screen size: {coordinates['screen_x']}x{coordinates['screen_y']}", "info")
+                self.log_callback(f"Home button: ({coordinates['home_x']}, {coordinates['home_y']})", "info")
+                
+                # Apply default settings
+                act.default_setting(ctx, device)
+                
+                self.log_callback("Browser environment setup completed", "info")
+                return True
+                
+            except ImportError as e:
+                self.log_callback(f"Error importing lib modules: {e}", "error")
+                return False
+                
+        except Exception as e:
+            self.log_callback(f"Error setting up browser environment: {e}", "error")
+            return False
+    
+    def _step_enable_wifi_connection(self) -> bool:
+        """Enable WiFi and connect to 5GHz network"""
+        try:
+            self.log_callback("Enabling WiFi connection", "info")
+            
+            if not hasattr(self, '_browser_device'):
+                self.log_callback("ERROR: Browser environment not setup", "error")
+                return False
+            
+            device = self._browser_device
+            ctx = self._browser_ctx
+            act = self._browser_act
+            
+            # Enable WiFi
+            device.shell("svc wifi enable")
+            device.sleep(2000)
+            
+            # Try to connect to 5GHz WiFi (using act_library method)
+            try:
+                act.set_wifi_5(ctx, device)
+                self.log_callback("WiFi 5GHz connection attempted", "info")
+            except Exception as e:
+                self.log_callback(f"WiFi connection failed, continuing with available connection: {e}", "warn")
+            
+            # Verify WiFi status
+            wifi_status = device.shell("settings get global wifi_on")
+            self.log_callback(f"WiFi status: {'ON' if wifi_status.strip() == '1' else 'OFF'}", "info")
+            
+            return True
+            
+        except Exception as e:
+            self.log_callback(f"Error enabling WiFi: {e}", "error")
+            return False
+    
+    def _step_run_browser_search_test(self) -> bool:
+        """Run browser search test with Google"""
+        try:
+            self.log_callback("Starting browser search test", "info")
+            
+            if not hasattr(self, '_browser_device'):
+                self.log_callback("ERROR: Browser environment not setup", "error")
+                return False
+            
+            device = self._browser_device
+            ctx = self._browser_ctx
+            act = self._browser_act
+            
+            # Launch Samsung Internet browser
+            self.log_callback("Launching Samsung Internet browser", "info")
+            device.shell("am start -n com.sec.android.app.sbrowser")
+            device.sleep(5000)
+            
+            # Handle initial dialogs
+            self._handle_browser_dialogs(device)
+            
+            # Navigate to Google
+            self._navigate_to_google(device)
+            
+            # Perform search test
+            self._perform_google_search(device, ctx)
+            
+            self.log_callback("Browser search test completed", "info")
+            return True
+            
+        except Exception as e:
+            self.log_callback(f"Error in browser search test: {e}", "error")
+            return False
+    
+    def _step_run_pageboost_performance(self) -> bool:
+        """Run Pageboost performance test (10x browser launches)"""
+        try:
+            self.log_callback("Starting Pageboost performance test", "info")
+            
+            if not hasattr(self, '_browser_device'):
+                self.log_callback("ERROR: Browser environment not setup", "error")
+                return False
+            
+            device = self._browser_device
+            
+            # Run Pageboost: Launch browser 10 times
+            for i in range(10):
+                self.log_callback(f"Pageboost iteration {i+1}/10", "info")
+                
+                # Launch browser
+                device.shell("am start -n com.sec.android.app.sbrowser")
+                device.sleep(1000)
+                
+                # Return to home
+                device.press("home")
+                device.sleep(2000)
+                
+                # Check if test should stop
+                if self.stop_requested:
+                    self.log_callback("Pageboost test stopped by user", "warn")
+                    break
+            
+            self.log_callback("Pageboost performance test completed", "info")
+            return True
+            
+        except Exception as e:
+            self.log_callback(f"Error in Pageboost test: {e}", "error")
+            return False
+    
+    def _step_cleanup_apps_and_notifications(self) -> bool:
+        """Clean up recent apps and notifications"""
+        try:
+            self.log_callback("Cleaning up apps and notifications", "info")
+            
+            if not hasattr(self, '_browser_device'):
+                self.log_callback("ERROR: Browser environment not setup", "error")
+                return False
+            
+            device = self._browser_device
+            ctx = self._browser_ctx
+            act = self._browser_act
+            
+            # Use act_library cleanup method
+            act.recent_noti_clear(ctx, device)
+            
+            self.log_callback("Cleanup completed", "info")
+            return True
+            
+        except Exception as e:
+            self.log_callback(f"Error in cleanup: {e}", "error")
+            return False
+    
+    def _handle_browser_dialogs(self, device):
+        """Handle common browser dialogs"""
+        try:
+            # Handle Continue dialog
+            if device.click({"textMatches": "(?i)Continue"}):
+                device.sleep(1000)
+                self.log_callback("Handled Continue dialog", "info")
+            
+            # Handle Not now dialog
+            if device.click({"textMatches": "(?i)Not now"}):
+                device.sleep(1000)
+                self.log_callback("Handled Not now dialog", "info")
+                
+        except Exception as e:
+            self.log_callback(f"Error handling browser dialogs: {e}", "warn")
+    
+    def _navigate_to_google(self, device):
+        """Navigate to Google search page"""
+        try:
+            # Click address bar
+            device.click({"resourceId": "com.sec.android.app.sbrowser:id/location_bar_edit_text"})
+            device.sleep(2000)
+            
+            # Clear existing text
+            device.click({"textMatches": r"\QClear\E"})
+            device.sleep(500)
+            
+            # Enter Google URL
+            device.type_text("google.com/imghp?hl=en&ogbl")
+            device.sleep(3000)
+            
+            # Press enter
+            device.press("enter")
+            device.sleep(5000)
+            
+            self.log_callback("Navigated to Google", "info")
+            
+        except Exception as e:
+            self.log_callback(f"Error navigating to Google: {e}", "warn")
+    
+    def _perform_google_search(self, device, ctx):
+        """Perform Google search and handle results"""
+        try:
+            # Tap home button (using calculated coordinates)
+            home_x = ctx.get_var("home_x", 540)  # Default center
+            home_y = ctx.get_var("home_y", 2270)  # Default bottom
+            
+            device.tap(int(home_x), int(home_y))
+            device.sleep(1500)
+            
+            # Handle Google onboarding dialogs
+            onboarding_ids = [
+                "com.google.android.googlequicksearchbox:id/omnient_onboarding_continue_button",
+                "com.google.android.googlequicksearchbox:id/omnient_onboarding_complete_btn",
+                "com.google.android.googlequicksearchbox:id/omnient_onboarding_dialog_complete_btn",
+                "com.google.android.googlequicksearchbox:id/omnient_onboarding_tooltip_page_close_button",
+            ]
+            
+            for res_id in onboarding_ids:
+                if device.click({"resourceId": res_id}):
+                    device.sleep(1000)
+                    self.log_callback(f"Handled onboarding dialog: {res_id}", "info")
+            
+            self.log_callback("Google search interaction completed", "info")
+            
+        except Exception as e:
+            self.log_callback(f"Error in Google search: {e}", "warn")
     
     def _step_stop_daq_monitoring(self) -> bool:
         """Stop DAQ monitoring"""
