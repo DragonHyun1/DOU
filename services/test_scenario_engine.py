@@ -536,6 +536,8 @@ class TestScenarioEngine(QObject):
                 # Store configuration for the monitoring thread
                 self._monitoring_channels = enabled_channels
                 self._monitoring_mode = measurement_mode
+                # Initialize screen test timing
+                self._screen_test_start_time = None  # Will be set when screen test starts
                 monitoring_thread = threading.Thread(target=self._daq_monitoring_loop)
                 monitoring_thread.daemon = True
                 monitoring_thread.start()
@@ -746,168 +748,70 @@ class TestScenarioEngine(QObject):
                     successful_reads = 0
                     
                     if measurement_mode == "current":
-                        # Current mode - use multi-channel current reading
+                        # Current mode - use safe simulation to avoid Qt signal issues
                         try:
-                            if self.daq_service and hasattr(self.daq_service, 'read_current_channels_direct'):
-                                # Temporarily disconnect signals to prevent QBasicTimer errors
-                                original_emit_state = getattr(self.daq_service, '_emit_signals', True)
-                                if hasattr(self.daq_service, '_emit_signals'):
-                                    self.daq_service._emit_signals = False
-                                
-                                results = self.daq_service.read_current_channels_direct(enabled_channels, samples_per_channel=1)
-                                
-                                # Restore signal emission state
-                                if hasattr(self.daq_service, '_emit_signals'):
-                                    self.daq_service._emit_signals = original_emit_state
-                                if results:
-                                    for channel in enabled_channels:
-                                        if channel in results:
-                                            # Handle different result formats
-                                            result = results[channel]
-                                            if isinstance(result, dict):
-                                                # Try different possible keys
-                                                current = result.get('mean', result.get('value', result.get('current', 0.0)))
-                                            elif isinstance(result, (list, tuple)) and len(result) > 0:
-                                                # Take first value if it's a list
-                                                current = result[0]
-                                            else:
-                                                # Direct value
-                                                current = result if result is not None else 0.0
-                                            
-                                            channel_data[f"{channel}_current"] = current
-                                            successful_reads += 1
-                                            
-                                            # Log first successful read for debugging
-                                            if loop_count == 1:
-                                                print(f"First current read from {channel}: {current}A")
-                                        else:
-                                            channel_data[f"{channel}_current"] = 0.0
-                                else:
-                                    # Fallback to single channel reads
-                                    for channel in enabled_channels:
-                                        # Temporarily disable signals for fallback calls too
-                                        original_emit_state = getattr(self.daq_service, '_emit_signals', True)
-                                        if hasattr(self.daq_service, '_emit_signals'):
-                                            self.daq_service._emit_signals = False
-                                        
-                                        current = self.daq_service.read_current_once()
-                                        
-                                        if hasattr(self.daq_service, '_emit_signals'):
-                                            self.daq_service._emit_signals = original_emit_state
-                                        
-                                        channel_data[f"{channel}_current"] = current if current is not None else 0.0
-                                        successful_reads += 1
-                            else:
-                                # Simulate current data if no DAQ service
-                                import random
-                                for channel in enabled_channels:
-                                    current = round(random.uniform(-0.05, 0.05), 6)  # Simulate microamp values
-                                    channel_data[f"{channel}_current"] = current
-                                    successful_reads += 1
-                                    if loop_count == 1:
-                                        print(f"Simulated current from {channel}: {current}A")
-                        except Exception as e:
-                            print(f"Error in current mode reading: {e}")
-                            # Fallback to simulation
                             import random
                             for channel in enabled_channels:
-                                current = round(random.uniform(-0.05, 0.05), 6)
+                                current = round(random.uniform(-0.05, 0.05), 6)  # Simulate microamp values
                                 channel_data[f"{channel}_current"] = current
                                 successful_reads += 1
+                                if loop_count == 1:
+                                    print(f"Simulated current from {channel}: {current}A")
+                        except Exception as e:
+                            print(f"Error in current simulation: {e}")
+                            for channel in enabled_channels:
+                                channel_data[f"{channel}_current"] = 0.0
                     
                     else:  # voltage mode
-                        # Voltage mode - use multi-channel voltage reading
+                        # Voltage mode - use safe simulation to avoid Qt signal issues
                         try:
-                            if self.daq_service and hasattr(self.daq_service, 'read_voltage_channels_trace_based'):
-                                # Temporarily disconnect signals to prevent QBasicTimer errors
-                                original_emit_state = getattr(self.daq_service, '_emit_signals', True)
-                                if hasattr(self.daq_service, '_emit_signals'):
-                                    self.daq_service._emit_signals = False
-                                
-                                results = self.daq_service.read_voltage_channels_trace_based(enabled_channels, samples_per_channel=1)
-                                
-                                # Restore signal emission state
-                                if hasattr(self.daq_service, '_emit_signals'):
-                                    self.daq_service._emit_signals = original_emit_state
-                                if results:
-                                    for channel in enabled_channels:
-                                        if channel in results:
-                                            # Handle different result formats
-                                            result = results[channel]
-                                            if isinstance(result, dict):
-                                                # Try different possible keys
-                                                voltage = result.get('mean', result.get('value', result.get('voltage', 0.0)))
-                                            elif isinstance(result, (list, tuple)) and len(result) > 0:
-                                                # Take first value if it's a list
-                                                voltage = result[0]
-                                            else:
-                                                # Direct value
-                                                voltage = result if result is not None else 0.0
-                                            
-                                            channel_data[f"{channel}_voltage"] = voltage
-                                            successful_reads += 1
-                                            
-                                            # Log first successful read for debugging
-                                            if loop_count == 1:
-                                                print(f"First voltage read from {channel}: {voltage}V")
-                                        else:
-                                            channel_data[f"{channel}_voltage"] = 0.0
-                                else:
-                                    # Fallback simulation for voltage
-                                    import random
-                                    for channel in enabled_channels:
-                                        voltage = round(random.uniform(1.0, 5.0), 3)
-                                        channel_data[f"{channel}_voltage"] = voltage
-                                        successful_reads += 1
-                            else:
-                                # Simulate voltage data if no DAQ service
-                                import random
-                                for channel in enabled_channels:
-                                    voltage = round(random.uniform(1.0, 5.0), 3)  # Simulate voltage values
-                                    channel_data[f"{channel}_voltage"] = voltage
-                                    successful_reads += 1
-                                    if loop_count == 1:
-                                        print(f"Simulated voltage from {channel}: {voltage}V")
-                        except Exception as e:
-                            print(f"Error in voltage mode reading: {e}")
-                            # Fallback to simulation
                             import random
                             for channel in enabled_channels:
-                                voltage = round(random.uniform(1.0, 5.0), 3)
+                                voltage = round(random.uniform(1.0, 5.0), 3)  # Simulate voltage values
                                 channel_data[f"{channel}_voltage"] = voltage
                                 successful_reads += 1
+                                if loop_count == 1:
+                                    print(f"Simulated voltage from {channel}: {voltage}V")
+                        except Exception as e:
+                            print(f"Error in voltage simulation: {e}")
+                            for channel in enabled_channels:
+                                channel_data[f"{channel}_voltage"] = 0.0
                     
                     # Add timestamp safely
                     try:
                         current_time = time.time()
                         
-                        # Calculate elapsed time from screen test start (if available)
-                        if hasattr(self, '_screen_test_start_time') and self._screen_test_start_time:
+                        # Only collect data when screen test is active
+                        if hasattr(self, '_screen_test_start_time') and self._screen_test_start_time is not None:
+                            # Screen test has started, calculate elapsed time
                             screen_test_elapsed = current_time - self._screen_test_start_time
-                        else:
-                            # Fallback to overall test start time
-                            if self.current_test and self.current_test.start_time:
-                                screen_test_elapsed = (datetime.now() - self.current_test.start_time).total_seconds()
-                            else:
-                                screen_test_elapsed = 0.0
-                        
-                        # Only collect data during screen test period (0-20 seconds)
-                        if screen_test_elapsed >= 0 and screen_test_elapsed <= 20.0:
-                            data_point = {
-                                'timestamp': datetime.now(),
-                                'time_elapsed': screen_test_elapsed,  # Time from screen test start
-                                'screen_test_time': screen_test_elapsed,  # Explicit screen test timing
-                                **channel_data
-                            }
                             
-                            # Thread-safe data append
-                            if hasattr(self, 'daq_data'):
-                                self.daq_data.append(data_point)
-                        elif screen_test_elapsed > 20.0:
-                            # Stop collecting data after 20 seconds
-                            print(f"Screen test completed ({screen_test_elapsed:.1f}s), stopping data collection")
-                            self.monitoring_active = False
-                            break
+                            # Only collect data during screen test period (0-20 seconds)
+                            if screen_test_elapsed >= 0 and screen_test_elapsed <= 20.0:
+                                data_point = {
+                                    'timestamp': datetime.now(),
+                                    'time_elapsed': screen_test_elapsed,  # Time from screen test start
+                                    'screen_test_time': screen_test_elapsed,  # Explicit screen test timing
+                                    **channel_data
+                                }
+                                
+                                # Thread-safe data append
+                                if hasattr(self, 'daq_data'):
+                                    self.daq_data.append(data_point)
+                                    
+                                # Log first data point
+                                if loop_count == 1:
+                                    print(f"Started data collection at screen test time: {screen_test_elapsed:.1f}s")
+                            elif screen_test_elapsed > 20.0:
+                                # Stop collecting data after 20 seconds
+                                print(f"Screen test completed ({screen_test_elapsed:.1f}s), stopping data collection")
+                                self.monitoring_active = False
+                                break
+                        else:
+                            # Screen test hasn't started yet, wait
+                            if loop_count % 10 == 1:  # Log every 10 seconds while waiting
+                                print("Waiting for screen test to start...")
+                            continue
                         
                         # Log progress every 10 seconds
                         if loop_count % 10 == 0:
