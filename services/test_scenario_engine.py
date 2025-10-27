@@ -510,17 +510,18 @@ class TestScenarioEngine(QObject):
                 self.log_callback("ERROR: DAQ service not available", "error")
                 return False
             
-            # Get enabled channels and rail names with error handling
+            # Get enabled channels, rail names, and measurement mode with error handling
             try:
                 enabled_channels = self._get_enabled_channels_from_monitor()
                 rail_names = self._get_channel_rail_names()
+                measurement_mode = self._get_measurement_mode()
                 
                 if not enabled_channels:
                     self.log_callback("WARNING: No enabled channels found, using defaults", "warn")
                     enabled_channels = ['ai0', 'ai1']
                     rail_names = {'ai0': 'Rail_A', 'ai1': 'Rail_B'}
                 
-                self.log_callback(f"Monitoring {len(enabled_channels)} channels: {enabled_channels}", "info")
+                self.log_callback(f"Monitoring {len(enabled_channels)} channels in {measurement_mode} mode: {enabled_channels}", "info")
                 for channel in enabled_channels:
                     rail_name = rail_names.get(channel, f"Rail_{channel}")
                     self.log_callback(f"  {channel} -> {rail_name}", "info")
@@ -528,11 +529,13 @@ class TestScenarioEngine(QObject):
                 self.log_callback(f"Error getting channel info: {e}, using defaults", "warn")
                 enabled_channels = ['ai0', 'ai1']
                 rail_names = {'ai0': 'Rail_A', 'ai1': 'Rail_B'}
+                measurement_mode = 'current'
             
             # Start DAQ monitoring in background with error handling
             try:
-                # Store enabled channels for the monitoring thread
+                # Store configuration for the monitoring thread
                 self._monitoring_channels = enabled_channels
+                self._monitoring_mode = measurement_mode
                 monitoring_thread = threading.Thread(target=self._daq_monitoring_loop)
                 monitoring_thread.daemon = True
                 monitoring_thread.start()
@@ -719,46 +722,106 @@ class TestScenarioEngine(QObject):
         
         try:
             loop_count = 0
-            # Use pre-stored enabled channels (thread-safe)
+            # Use pre-stored configuration (thread-safe)
             enabled_channels = getattr(self, '_monitoring_channels', ['ai0', 'ai1'])
+            measurement_mode = getattr(self, '_monitoring_mode', 'current')
             
             if not enabled_channels:
                 print("ERROR: No enabled channels found for monitoring!")
                 return
             
-            print(f"Monitoring {len(enabled_channels)} channels: {enabled_channels}")
+            print(f"Monitoring {len(enabled_channels)} channels in {measurement_mode} mode: {enabled_channels}")
             
             while self.monitoring_active and not self.stop_requested:
                 try:
                     loop_count += 1
                     
-                    # Read current from each enabled channel
+                    # Read data from each enabled channel based on mode
                     channel_data = {}
                     successful_reads = 0
                     
-                    for channel in enabled_channels:
+                    if measurement_mode == "current":
+                        # Current mode - use multi-channel current reading
                         try:
-                            # Read current from DAQ service (thread-safe call)
-                            if self.daq_service:
-                                current = self.daq_service.read_current_once()
-                                channel_data[f"{channel}_current"] = current
-                                successful_reads += 1
-                                
-                                # Log first successful read for debugging
-                                if loop_count == 1:
-                                    print(f"First read from {channel}: {current}A")
+                            if self.daq_service and hasattr(self.daq_service, 'read_current_channels_direct'):
+                                results = self.daq_service.read_current_channels_direct(enabled_channels, samples_per_channel=1)
+                                if results:
+                                    for channel in enabled_channels:
+                                        if channel in results:
+                                            current = results[channel]['mean'] if isinstance(results[channel], dict) else results[channel]
+                                            channel_data[f"{channel}_current"] = current
+                                            successful_reads += 1
+                                            
+                                            # Log first successful read for debugging
+                                            if loop_count == 1:
+                                                print(f"First current read from {channel}: {current}A")
+                                        else:
+                                            channel_data[f"{channel}_current"] = 0.0
+                                else:
+                                    # Fallback to single channel reads
+                                    for channel in enabled_channels:
+                                        current = self.daq_service.read_current_once()
+                                        channel_data[f"{channel}_current"] = current if current is not None else 0.0
+                                        successful_reads += 1
                             else:
-                                # Simulate data if no DAQ service
+                                # Simulate current data if no DAQ service
                                 import random
-                                current = round(random.uniform(0.1, 0.3), 3)
+                                for channel in enabled_channels:
+                                    current = round(random.uniform(-0.05, 0.05), 6)  # Simulate microamp values
+                                    channel_data[f"{channel}_current"] = current
+                                    successful_reads += 1
+                                    if loop_count == 1:
+                                        print(f"Simulated current from {channel}: {current}A")
+                        except Exception as e:
+                            print(f"Error in current mode reading: {e}")
+                            # Fallback to simulation
+                            import random
+                            for channel in enabled_channels:
+                                current = round(random.uniform(-0.05, 0.05), 6)
                                 channel_data[f"{channel}_current"] = current
                                 successful_reads += 1
-                                
+                    
+                    else:  # voltage mode
+                        # Voltage mode - use multi-channel voltage reading
+                        try:
+                            if self.daq_service and hasattr(self.daq_service, 'read_voltage_channels_trace_based'):
+                                results = self.daq_service.read_voltage_channels_trace_based(enabled_channels, samples_per_channel=1)
+                                if results:
+                                    for channel in enabled_channels:
+                                        if channel in results:
+                                            voltage = results[channel]['mean'] if isinstance(results[channel], dict) else results[channel]
+                                            channel_data[f"{channel}_voltage"] = voltage
+                                            successful_reads += 1
+                                            
+                                            # Log first successful read for debugging
+                                            if loop_count == 1:
+                                                print(f"First voltage read from {channel}: {voltage}V")
+                                        else:
+                                            channel_data[f"{channel}_voltage"] = 0.0
+                                else:
+                                    # Fallback simulation for voltage
+                                    import random
+                                    for channel in enabled_channels:
+                                        voltage = round(random.uniform(1.0, 5.0), 3)
+                                        channel_data[f"{channel}_voltage"] = voltage
+                                        successful_reads += 1
+                            else:
+                                # Simulate voltage data if no DAQ service
+                                import random
+                                for channel in enabled_channels:
+                                    voltage = round(random.uniform(1.0, 5.0), 3)  # Simulate voltage values
+                                    channel_data[f"{channel}_voltage"] = voltage
+                                    successful_reads += 1
+                                    if loop_count == 1:
+                                        print(f"Simulated voltage from {channel}: {voltage}V")
                         except Exception as e:
-                            # Log error but don't crash the monitoring loop
-                            if loop_count % 10 == 1:  # Log every 10th error to avoid spam
-                                print(f"Error reading channel {channel}: {e}")
-                            channel_data[f"{channel}_current"] = 0.0
+                            print(f"Error in voltage mode reading: {e}")
+                            # Fallback to simulation
+                            import random
+                            for channel in enabled_channels:
+                                voltage = round(random.uniform(1.0, 5.0), 3)
+                                channel_data[f"{channel}_voltage"] = voltage
+                                successful_reads += 1
                     
                     # Add timestamp safely
                     try:
@@ -968,6 +1031,18 @@ class TestScenarioEngine(QObject):
             self.log_callback(f"Error getting rail names: {e}", "error")
             return {'ai0': 'Rail_A', 'ai1': 'Rail_B'}
     
+    def _get_measurement_mode(self) -> str:
+        """Get current measurement mode from multi-channel monitor"""
+        if not self.multi_channel_monitor:
+            return "current"  # Default to current mode
+        
+        try:
+            is_current_mode = self.multi_channel_monitor.current_mode_rb.isChecked()
+            return "current" if is_current_mode else "voltage"
+        except Exception as e:
+            self.log_callback(f"Error getting measurement mode: {e}", "warn")
+            return "current"  # Default fallback
+    
     def _add_test_summary_sheet(self, writer, workbook):
         """Add test summary sheet to Excel file"""
         try:
@@ -1037,11 +1112,12 @@ class TestScenarioEngine(QObject):
                 self.log_callback("No data to export", "warn")
                 return True
             
-            # Get enabled channels and rail names
+            # Get enabled channels, rail names, and measurement mode
             enabled_channels = self._get_enabled_channels_from_monitor()
             rail_names = self._get_channel_rail_names()
+            measurement_mode = getattr(self, '_monitoring_mode', 'current')
             
-            self.log_callback(f"Creating Excel with format: A1=Time, B1={rail_names}", "info")
+            self.log_callback(f"Creating Excel with format: A1=Time, B1={rail_names} ({measurement_mode} mode)", "info")
             
             # Create custom formatted data
             formatted_data = {}
@@ -1051,15 +1127,22 @@ class TestScenarioEngine(QObject):
             for i, data_point in enumerate(self.daq_data):
                 formatted_data['Time'].append(f"{i+1}s")  # 1s, 2s, 3s...
             
-            # Additional columns: Rail data
+            # Additional columns: Rail data based on measurement mode
             for channel in enabled_channels:
                 rail_name = rail_names.get(channel, f"Rail_{channel}")
-                formatted_data[rail_name] = []
+                
+                if measurement_mode == "current":
+                    column_name = f"{rail_name} (A)"  # Current in Amperes
+                    data_key = f"{channel}_current"
+                else:
+                    column_name = f"{rail_name} (V)"  # Voltage in Volts
+                    data_key = f"{channel}_voltage"
+                
+                formatted_data[column_name] = []
                 
                 for data_point in self.daq_data:
-                    current_key = f"{channel}_current"
-                    current_value = data_point.get(current_key, 0.0)
-                    formatted_data[rail_name].append(current_value)
+                    value = data_point.get(data_key, 0.0)
+                    formatted_data[column_name].append(value)
             
             # Create DataFrame with custom format
             df = pd.DataFrame(formatted_data)
