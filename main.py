@@ -1002,22 +1002,50 @@ class MainWindow(QtWidgets.QMainWindow):
 
     # ---------- 로그 ----------
     def _log(self, msg: str, level: str = "info"):
-        """Enhanced logging with better formatting"""
-        timestamp = time.strftime("%H:%M:%S")
-        formatted_msg = f"[{timestamp}] {msg}"
-        
-        item = QtWidgets.QListWidgetItem(formatted_msg)
-        
-        # Set colors based on level
-        color = theme.get_status_color(level)
-        item.setForeground(QColor(color))
-        
-        self.ui.log_LW.addItem(item)
-        self.ui.log_LW.scrollToBottom()
-        
-        # Also update status bar for important messages
-        if level in ['error', 'warn']:
-            self.ui.statusbar.showMessage(msg, 3000)
+        """Enhanced logging with better formatting and stability"""
+        try:
+            timestamp = time.strftime("%H:%M:%S")
+            formatted_msg = f"[{timestamp}] {msg}"
+            
+            # Limit log entries to prevent memory issues
+            if self.ui.log_LW.count() > 1000:
+                # Remove oldest entries when limit reached
+                for i in range(100):  # Remove 100 oldest entries
+                    item = self.ui.log_LW.takeItem(0)
+                    if item:
+                        del item
+            
+            item = QtWidgets.QListWidgetItem(formatted_msg)
+            
+            # Set colors based on level
+            try:
+                color = theme.get_status_color(level)
+                item.setForeground(QColor(color))
+            except Exception:
+                # Fallback color if theme fails
+                default_colors = {
+                    'error': '#ff6b6b',
+                    'warn': '#ffa726', 
+                    'success': '#4caf50',
+                    'info': '#ffffff'
+                }
+                color = default_colors.get(level, '#ffffff')
+                item.setForeground(QColor(color))
+            
+            self.ui.log_LW.addItem(item)
+            self.ui.log_LW.scrollToBottom()
+            
+            # Also update status bar for important messages
+            if level in ['error', 'warn']:
+                try:
+                    self.ui.statusbar.showMessage(msg, 3000)
+                except Exception:
+                    pass  # Ignore status bar errors
+                    
+        except Exception as e:
+            # Fallback logging to console if UI logging fails
+            print(f"[{level.upper()}] {msg}")
+            print(f"Logging error: {e}")
 
     # ---------- Graph ----------
     def start_graph(self):
@@ -1884,7 +1912,32 @@ class MainWindow(QtWidgets.QMainWindow):
         
         event.accept()
 
+def handle_exception(exc_type, exc_value, exc_traceback):
+    """Global exception handler"""
+    if issubclass(exc_type, KeyboardInterrupt):
+        sys.__excepthook__(exc_type, exc_value, exc_traceback)
+        return
+    
+    import traceback
+    error_msg = ''.join(traceback.format_exception(exc_type, exc_value, exc_traceback))
+    print(f"[CRITICAL ERROR] Uncaught exception: {error_msg}")
+    
+    # Try to show error dialog if possible
+    try:
+        from PyQt6 import QtWidgets
+        msg = QtWidgets.QMessageBox()
+        msg.setIcon(QtWidgets.QMessageBox.Icon.Critical)
+        msg.setWindowTitle("Critical Error")
+        msg.setText("An unexpected error occurred.")
+        msg.setDetailedText(error_msg)
+        msg.exec()
+    except Exception:
+        pass  # If GUI fails, just print to console
+
 def main():
+    # Set global exception handler
+    sys.excepthook = handle_exception
+    
     app = QtWidgets.QApplication(sys.argv)
     app.setApplicationName("HVPM Monitor")
     app.setApplicationVersion("3.2")
@@ -1899,10 +1952,17 @@ def main():
         geometry = screen.availableGeometry()
         print(f"[System] Screen: {geometry.width()}x{geometry.height()}, DPI: {dpi:.1f}")
     
-    w = MainWindow()
-    w.show()
-    
-    sys.exit(app.exec())
+    try:
+        w = MainWindow()
+        w.show()
+        
+        print("[System] Application started successfully")
+        sys.exit(app.exec())
+    except Exception as e:
+        print(f"[CRITICAL] Failed to start application: {e}")
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()
