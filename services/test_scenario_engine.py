@@ -744,11 +744,31 @@ class TestScenarioEngine(QObject):
                         # Current mode - use multi-channel current reading
                         try:
                             if self.daq_service and hasattr(self.daq_service, 'read_current_channels_direct'):
+                                # Temporarily disconnect signals to prevent QBasicTimer errors
+                                original_emit_state = getattr(self.daq_service, '_emit_signals', True)
+                                if hasattr(self.daq_service, '_emit_signals'):
+                                    self.daq_service._emit_signals = False
+                                
                                 results = self.daq_service.read_current_channels_direct(enabled_channels, samples_per_channel=1)
+                                
+                                # Restore signal emission state
+                                if hasattr(self.daq_service, '_emit_signals'):
+                                    self.daq_service._emit_signals = original_emit_state
                                 if results:
                                     for channel in enabled_channels:
                                         if channel in results:
-                                            current = results[channel]['mean'] if isinstance(results[channel], dict) else results[channel]
+                                            # Handle different result formats
+                                            result = results[channel]
+                                            if isinstance(result, dict):
+                                                # Try different possible keys
+                                                current = result.get('mean', result.get('value', result.get('current', 0.0)))
+                                            elif isinstance(result, (list, tuple)) and len(result) > 0:
+                                                # Take first value if it's a list
+                                                current = result[0]
+                                            else:
+                                                # Direct value
+                                                current = result if result is not None else 0.0
+                                            
                                             channel_data[f"{channel}_current"] = current
                                             successful_reads += 1
                                             
@@ -760,7 +780,16 @@ class TestScenarioEngine(QObject):
                                 else:
                                     # Fallback to single channel reads
                                     for channel in enabled_channels:
+                                        # Temporarily disable signals for fallback calls too
+                                        original_emit_state = getattr(self.daq_service, '_emit_signals', True)
+                                        if hasattr(self.daq_service, '_emit_signals'):
+                                            self.daq_service._emit_signals = False
+                                        
                                         current = self.daq_service.read_current_once()
+                                        
+                                        if hasattr(self.daq_service, '_emit_signals'):
+                                            self.daq_service._emit_signals = original_emit_state
+                                        
                                         channel_data[f"{channel}_current"] = current if current is not None else 0.0
                                         successful_reads += 1
                             else:
@@ -785,11 +814,31 @@ class TestScenarioEngine(QObject):
                         # Voltage mode - use multi-channel voltage reading
                         try:
                             if self.daq_service and hasattr(self.daq_service, 'read_voltage_channels_trace_based'):
+                                # Temporarily disconnect signals to prevent QBasicTimer errors
+                                original_emit_state = getattr(self.daq_service, '_emit_signals', True)
+                                if hasattr(self.daq_service, '_emit_signals'):
+                                    self.daq_service._emit_signals = False
+                                
                                 results = self.daq_service.read_voltage_channels_trace_based(enabled_channels, samples_per_channel=1)
+                                
+                                # Restore signal emission state
+                                if hasattr(self.daq_service, '_emit_signals'):
+                                    self.daq_service._emit_signals = original_emit_state
                                 if results:
                                     for channel in enabled_channels:
                                         if channel in results:
-                                            voltage = results[channel]['mean'] if isinstance(results[channel], dict) else results[channel]
+                                            # Handle different result formats
+                                            result = results[channel]
+                                            if isinstance(result, dict):
+                                                # Try different possible keys
+                                                voltage = result.get('mean', result.get('value', result.get('voltage', 0.0)))
+                                            elif isinstance(result, (list, tuple)) and len(result) > 0:
+                                                # Take first value if it's a list
+                                                voltage = result[0]
+                                            else:
+                                                # Direct value
+                                                voltage = result if result is not None else 0.0
+                                            
                                             channel_data[f"{channel}_voltage"] = voltage
                                             successful_reads += 1
                                             
