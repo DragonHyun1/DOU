@@ -1536,14 +1536,11 @@ class MainWindow(QtWidgets.QMainWindow):
             # Update status bar
             self.ui.statusbar.showMessage("Auto Test Completed Successfully", 5000)
             
-            # Ask user if they want to save detailed results
-            reply = QtWidgets.QMessageBox.question(
+            # Show simple completion message (no save dialog - results already auto-saved)
+            QtWidgets.QMessageBox.information(
                 self, "Test Complete", 
-                f"Automated test completed successfully!\n\n{message}\n\nWould you like to save detailed test results?",
-                QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No
+                f"Automated test completed successfully!\n\n{message}\n\nResults have been automatically saved to Excel."
             )
-            if reply == QtWidgets.QMessageBox.StandardButton.Yes:
-                self._export_test_results()
         else:
             if hasattr(self.ui, 'testStatus_LB') and self.ui.testStatus_LB:
                 self.ui.testStatus_LB.setText("Test failed")

@@ -552,8 +552,9 @@ class TestScenarioEngine(QObject):
                 self.adb_service.turn_screen_on()
                 time.sleep(1)
                 
-                # Record start time for progress tracking
+                # Record start time for progress tracking AND data collection timing
                 test_start_time = time.time()
+                self._screen_test_start_time = test_start_time  # Store for DAQ timing
                 
                 # Cycle for 20 seconds with 2-second intervals
                 cycles = 10  # 20 seconds / 2 seconds per cycle
@@ -582,6 +583,10 @@ class TestScenarioEngine(QObject):
                         self.log_callback(f"Error in screen cycle {i+1}: {cycle_error}", "error")
                         # Continue with next cycle instead of failing completely
                         continue
+                
+                # Mark screen test end time
+                self._screen_test_end_time = time.time()
+                self.log_callback(f"Screen test duration: {self._screen_test_end_time - test_start_time:.1f} seconds", "info")
                 
             except Exception as e:
                 self.log_callback(f"Error in screen control: {e}", "error")
@@ -874,20 +879,35 @@ class TestScenarioEngine(QObject):
                     
                     # Add timestamp safely
                     try:
-                        if self.current_test and self.current_test.start_time:
-                            time_elapsed = (datetime.now() - self.current_test.start_time).total_seconds()
-                        else:
-                            time_elapsed = 0.0
-                            
-                        data_point = {
-                            'timestamp': datetime.now(),
-                            'time_elapsed': time_elapsed,
-                            **channel_data
-                        }
+                        current_time = time.time()
                         
-                        # Thread-safe data append
-                        if hasattr(self, 'daq_data'):
-                            self.daq_data.append(data_point)
+                        # Calculate elapsed time from screen test start (if available)
+                        if hasattr(self, '_screen_test_start_time') and self._screen_test_start_time:
+                            screen_test_elapsed = current_time - self._screen_test_start_time
+                        else:
+                            # Fallback to overall test start time
+                            if self.current_test and self.current_test.start_time:
+                                screen_test_elapsed = (datetime.now() - self.current_test.start_time).total_seconds()
+                            else:
+                                screen_test_elapsed = 0.0
+                        
+                        # Only collect data during screen test period (0-20 seconds)
+                        if screen_test_elapsed >= 0 and screen_test_elapsed <= 20.0:
+                            data_point = {
+                                'timestamp': datetime.now(),
+                                'time_elapsed': screen_test_elapsed,  # Time from screen test start
+                                'screen_test_time': screen_test_elapsed,  # Explicit screen test timing
+                                **channel_data
+                            }
+                            
+                            # Thread-safe data append
+                            if hasattr(self, 'daq_data'):
+                                self.daq_data.append(data_point)
+                        elif screen_test_elapsed > 20.0:
+                            # Stop collecting data after 20 seconds
+                            print(f"Screen test completed ({screen_test_elapsed:.1f}s), stopping data collection")
+                            self.monitoring_active = False
+                            break
                         
                         # Log progress every 10 seconds
                         if loop_count % 10 == 0:
@@ -1171,10 +1191,12 @@ class TestScenarioEngine(QObject):
             # Create custom formatted data
             formatted_data = {}
             
-            # First column: Time (in seconds)
+            # First column: Time (in seconds from screen test start)
             formatted_data['Time'] = []
-            for i, data_point in enumerate(self.daq_data):
-                formatted_data['Time'].append(f"{i+1}s")  # 1s, 2s, 3s...
+            for data_point in self.daq_data:
+                # Use screen_test_time if available, otherwise use time_elapsed
+                screen_time = data_point.get('screen_test_time', data_point.get('time_elapsed', 0.0))
+                formatted_data['Time'].append(f"{screen_time:.1f}s")  # 0.0s, 1.0s, 2.0s...
             
             # Additional columns: Rail data based on measurement mode
             for channel in enabled_channels:
