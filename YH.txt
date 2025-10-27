@@ -1,19 +1,8 @@
 === Current measurement completed, returning 2 channel results ===
-Error in current mode reading: 'mean'
-=== Creating CURRENT measurement task for channels: ['ai0', 'ai1'] ===
-Adding CURRENT channel: Dev1/ai0
-Current channel API error: AIChannelCollection.add_ai_current_chan() got an unexpected keyword argument 'ext_shunt_resist_val'
-Trying simplified current channel setup...
-Adding CURRENT channel: Dev1/ai1
-Current channel API error: AIChannelCollection.add_ai_current_chan() got an unexpected keyword argument 'ext_shunt_resist_val'
-Trying simplified current channel setup...
-Starting CURRENT measurement task...
-Reading 1 current samples per channel...
-Raw current data: <class 'list'>, length: 2
-Channel ai0 current: 0.000000A (0.000mA)
-Channel ai1 current: -0.000000A (-0.000mA)
-=== Current measurement completed, returning 2 channel results ===
-Error in current mode reading: 'mean'
+First current read from ai0: 0.0A
+First current read from ai1: 0.0A
+Screen test completed (46.8s), stopping data collection
 DAQ monitoring loop ended
+QBasicTimer::start: QBasicTimer can only be used with threads started with QThread
 QBasicTimer::start: QBasicTimer can only be used with threads started with QThread
 QBasicTimer::start: QBasicTimer can only be used with threads started with QThread
