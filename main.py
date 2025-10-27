@@ -130,6 +130,10 @@ class MainWindow(QtWidgets.QMainWindow):
         # Initialize voltage configuration from settings
         self._on_voltage_config_changed()
         
+        # Reload test scenarios after full initialization
+        self._log("Reloading test scenarios after full UI initialization...", "info")
+        self.setup_auto_test_ui()
+        
         # Apply adaptive sizing to UI elements
         self._apply_adaptive_ui_sizing()
         
@@ -498,12 +502,20 @@ class MainWindow(QtWidgets.QMainWindow):
     def setup_auto_test_ui(self):
         """Setup auto test UI components"""
         # Check if auto test UI elements exist
-        if not hasattr(self.ui, 'testScenario_CB') or not self.ui.testScenario_CB:
-            self._log("WARNING: Auto test UI elements not found - auto test features disabled", "warn")
-            return
+        try:
+            combo_box = getattr(self.ui, 'testScenario_CB', None)
+            if combo_box is None:
+                self._log("WARNING: testScenario_CB not found in UI - auto test features disabled", "warn")
+                return
             
-        # Clear existing scenarios and load from test scenario engine
-        self.ui.testScenario_CB.clear()
+            self._log(f"Setting up auto test UI. Current combo items: {combo_box.count()}", "info")
+                
+            # Clear existing scenarios and load from test scenario engine
+            combo_box.clear()
+            
+        except Exception as e:
+            self._log(f"ERROR: Failed to access testScenario_CB: {e}", "error")
+            return
         
         # Load available scenarios from test scenario engine
         try:
@@ -513,31 +525,34 @@ class MainWindow(QtWidgets.QMainWindow):
             
             if scenarios:
                 for scenario_key, scenario_config in scenarios.items():
-                    self.ui.testScenario_CB.addItem(scenario_config.name, scenario_key)
+                    combo_box.addItem(scenario_config.name, scenario_key)
                     self._log(f"Added scenario: {scenario_config.name} (key: {scenario_key})", "info")
                 self._log(f"Successfully loaded {len(scenarios)} test scenarios", "info")
             else:
-                self.ui.testScenario_CB.addItem("No test scenarios available")
+                combo_box.addItem("No test scenarios available")
                 self._log("No test scenarios available", "warn")
         except Exception as e:
             import traceback
             self._log(f"Error loading test scenarios: {e}", "error")
             self._log(f"Traceback: {traceback.format_exc()}", "error")
-            self.ui.testScenario_CB.addItem("Error loading scenarios")
+            combo_box.addItem("Error loading scenarios")
         
         # Enable combo box
-        self.ui.testScenario_CB.setEnabled(True)
+        combo_box.setEnabled(True)
         
         # Connect scenario selection change
-        if hasattr(self.ui, 'testScenario_CB') and self.ui.testScenario_CB:
-            self.ui.testScenario_CB.currentIndexChanged.connect(self._on_scenario_changed)
+        try:
+            combo_box.currentIndexChanged.connect(self._on_scenario_changed)
+            self._log("Connected scenario selection change handler", "info")
+        except Exception as e:
+            self._log(f"Error connecting scenario change handler: {e}", "error")
         
         # Debug: Check combo box contents
-        combo_count = self.ui.testScenario_CB.count()
+        combo_count = combo_box.count()
         self._log(f"Final combo box item count: {combo_count}", "info")
         for i in range(combo_count):
-            item_text = self.ui.testScenario_CB.itemText(i)
-            item_data = self.ui.testScenario_CB.itemData(i)
+            item_text = combo_box.itemText(i)
+            item_data = combo_box.itemData(i)
             self._log(f"  [{i}] Text: '{item_text}', Data: {item_data}", "info")
 
     def _update_groupbox_colors(self, hvpm_connected: bool, ni_connected: bool):
