@@ -507,16 +507,22 @@ class MainWindow(QtWidgets.QMainWindow):
         
         # Load available scenarios from test scenario engine
         try:
+            self._log("Attempting to load test scenarios...", "info")
             scenarios = self.test_scenario_engine.get_available_scenarios()
+            self._log(f"Retrieved scenarios: {list(scenarios.keys()) if scenarios else 'None'}", "info")
+            
             if scenarios:
                 for scenario_key, scenario_config in scenarios.items():
                     self.ui.testScenario_CB.addItem(scenario_config.name, scenario_key)
-                self._log(f"Loaded {len(scenarios)} test scenarios", "info")
+                    self._log(f"Added scenario: {scenario_config.name} (key: {scenario_key})", "info")
+                self._log(f"Successfully loaded {len(scenarios)} test scenarios", "info")
             else:
                 self.ui.testScenario_CB.addItem("No test scenarios available")
                 self._log("No test scenarios available", "warn")
         except Exception as e:
+            import traceback
             self._log(f"Error loading test scenarios: {e}", "error")
+            self._log(f"Traceback: {traceback.format_exc()}", "error")
             self.ui.testScenario_CB.addItem("Error loading scenarios")
         
         # Enable combo box
@@ -525,6 +531,14 @@ class MainWindow(QtWidgets.QMainWindow):
         # Connect scenario selection change
         if hasattr(self.ui, 'testScenario_CB') and self.ui.testScenario_CB:
             self.ui.testScenario_CB.currentIndexChanged.connect(self._on_scenario_changed)
+        
+        # Debug: Check combo box contents
+        combo_count = self.ui.testScenario_CB.count()
+        self._log(f"Final combo box item count: {combo_count}", "info")
+        for i in range(combo_count):
+            item_text = self.ui.testScenario_CB.itemText(i)
+            item_data = self.ui.testScenario_CB.itemData(i)
+            self._log(f"  [{i}] Text: '{item_text}', Data: {item_data}", "info")
 
     def _update_groupbox_colors(self, hvpm_connected: bool, ni_connected: bool):
         """Update GroupBox title colors based on connection status"""

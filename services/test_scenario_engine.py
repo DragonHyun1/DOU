@@ -107,6 +107,8 @@ class TestScenarioEngine:
     
     def _register_builtin_scenarios(self):
         """Register built-in test scenarios"""
+        self.log_callback("Registering built-in test scenarios...", "info")
+        
         # Screen On/Off Scenario
         screen_onoff_config = TestConfig(
             name="Screen On/Off",
@@ -133,9 +135,14 @@ class TestScenarioEngine:
         ]
         
         self.scenarios["screen_onoff"] = screen_onoff_config
+        self.log_callback(f"Registered scenario: {screen_onoff_config.name} (key: screen_onoff)", "info")
+        self.log_callback(f"Total scenarios registered: {len(self.scenarios)}", "info")
     
     def get_available_scenarios(self) -> Dict[str, TestConfig]:
         """Get all available test scenarios"""
+        self.log_callback(f"get_available_scenarios called, returning {len(self.scenarios)} scenarios", "info")
+        for key, config in self.scenarios.items():
+            self.log_callback(f"  Available: {key} -> {config.name}", "info")
         return self.scenarios.copy()
     
     def start_test(self, scenario_name: str) -> bool:
