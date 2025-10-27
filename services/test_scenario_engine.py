@@ -427,22 +427,37 @@ class TestScenarioEngine(QObject):
     def _step_start_daq_monitoring(self) -> bool:
         """Start DAQ monitoring"""
         if not self.daq_service:
-            self.log_callback("DAQ service not available", "error")
+            self.log_callback("ERROR: DAQ service not available", "error")
             return False
         
         try:
+            # Initialize data collection
             self.daq_data = []
             self.monitoring_active = True
+            
+            # Check DAQ service connection
+            if hasattr(self.daq_service, 'is_connected') and not self.daq_service.is_connected():
+                self.log_callback("WARNING: DAQ service not connected, monitoring may not work", "warn")
+            
+            # Get enabled channels for monitoring
+            enabled_channels = self._get_enabled_channels()
+            self.log_callback(f"DAQ monitoring channels: {enabled_channels}", "info")
+            
+            if not enabled_channels:
+                self.log_callback("WARNING: No enabled channels found, using default channels", "warn")
+                enabled_channels = ['ai0', 'ai1']  # Default fallback
             
             # Start monitoring in separate thread
             self.monitoring_thread = threading.Thread(target=self._daq_monitoring_loop)
             self.monitoring_thread.daemon = True
             self.monitoring_thread.start()
             
-            self.log_callback("DAQ monitoring started", "info")
+            self.log_callback(f"DAQ monitoring started successfully with {len(enabled_channels)} channels", "info")
             return True
         except Exception as e:
-            self.log_callback(f"Error starting DAQ monitoring: {e}", "error")
+            self.log_callback(f"ERROR starting DAQ monitoring: {e}", "error")
+            import traceback
+            self.log_callback(f"DAQ monitoring error details: {traceback.format_exc()}", "error")
             return False
     
     def _step_screen_on_off_cycle(self) -> bool:
@@ -479,13 +494,26 @@ class TestScenarioEngine(QObject):
     def _step_stop_daq_monitoring(self) -> bool:
         """Stop DAQ monitoring"""
         try:
+            self.log_callback("Stopping DAQ monitoring...", "info")
             self.monitoring_active = False
             
             # Wait for monitoring thread to finish
             if self.monitoring_thread and self.monitoring_thread.is_alive():
+                self.log_callback("Waiting for monitoring thread to finish...", "info")
                 self.monitoring_thread.join(timeout=3.0)
+                if self.monitoring_thread.is_alive():
+                    self.log_callback("WARNING: Monitoring thread did not finish in time", "warn")
             
-            self.log_callback(f"DAQ monitoring stopped. Collected {len(self.daq_data)} data points", "info")
+            data_count = len(self.daq_data) if self.daq_data else 0
+            self.log_callback(f"DAQ monitoring stopped. Collected {data_count} data points", "info")
+            
+            # Log sample data for debugging
+            if self.daq_data and len(self.daq_data) > 0:
+                sample_data = self.daq_data[0]
+                self.log_callback(f"Sample data point: {sample_data}", "info")
+            else:
+                self.log_callback("WARNING: No data was collected during monitoring!", "warn")
+            
             return True
         except Exception as e:
             self.log_callback(f"Error stopping DAQ monitoring: {e}", "error")
@@ -494,30 +522,63 @@ class TestScenarioEngine(QObject):
     def _step_export_to_excel(self) -> bool:
         """Export DAQ data to Excel"""
         try:
-            if not self.daq_data:
-                self.log_callback("No DAQ data to export", "warn")
-                return True
+            self.log_callback("Starting Excel export...", "info")
+            
+            # Check if we have data to export
+            data_count = len(self.daq_data) if self.daq_data else 0
+            self.log_callback(f"Preparing to export {data_count} data points", "info")
+            
+            if not self.daq_data or data_count == 0:
+                self.log_callback("ERROR: No DAQ data collected to export!", "error")
+                self.log_callback("This means DAQ monitoring did not collect any data during the test", "error")
+                
+                # Create empty file with error message
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                filename = f"screen_onoff_test_{timestamp}_NO_DATA.txt"
+                try:
+                    with open(filename, 'w') as f:
+                        f.write("No DAQ data was collected during the test.\n")
+                        f.write("Possible causes:\n")
+                        f.write("- DAQ service not connected\n")
+                        f.write("- No enabled channels configured\n")
+                        f.write("- DAQ monitoring thread failed\n")
+                    self.log_callback(f"Created error report: {filename}", "info")
+                except Exception as e:
+                    self.log_callback(f"Could not create error report: {e}", "error")
+                
+                return False  # Return False to indicate failure
+            
+            # Log data structure for debugging
+            if self.daq_data:
+                sample = self.daq_data[0]
+                self.log_callback(f"Data structure: {list(sample.keys())}", "info")
             
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = f"screen_onoff_test_{timestamp}.xlsx"
             
+            self.log_callback(f"Exporting to file: {filename}", "info")
+            
             if PANDAS_AVAILABLE:
                 if XLSXWRITER_AVAILABLE:
+                    self.log_callback("Using enhanced Excel export (xlsxwriter)", "info")
                     success = self._export_to_excel_pandas(filename)
                 else:
-                    # Use basic pandas Excel writer without xlsxwriter
+                    self.log_callback("Using basic Excel export (openpyxl)", "info")
                     success = self._export_to_excel_basic(filename)
             else:
+                self.log_callback("Using CSV fallback export", "info")
                 success = self._export_to_csv_fallback(filename.replace('.xlsx', '.csv'))
             
             if success:
-                self.log_callback(f"Test data exported to {filename}", "info")
+                self.log_callback(f"SUCCESS: Test data exported to {filename}", "success")
             else:
-                self.log_callback("Failed to export test data", "error")
+                self.log_callback("FAILED: Could not export test data", "error")
             
             return success
         except Exception as e:
-            self.log_callback(f"Error exporting data: {e}", "error")
+            self.log_callback(f"CRITICAL ERROR in Excel export: {e}", "error")
+            import traceback
+            self.log_callback(f"Export error details: {traceback.format_exc()}", "error")
             return False
     
     def _daq_monitoring_loop(self):
@@ -536,11 +597,19 @@ class TestScenarioEngine(QObject):
                     if enabled_channels:
                         # Read current from each enabled channel
                         channel_data = {}
+                        successful_reads = 0
+                        
                         for channel in enabled_channels:
                             try:
                                 # Read current from DAQ service
                                 current = self._read_channel_current(channel)
                                 channel_data[f"{channel}_current"] = current
+                                successful_reads += 1
+                                
+                                # Log first successful read for debugging
+                                if loop_count == 1:
+                                    self.log_callback(f"First read from {channel}: {current}A", "info")
+                                    
                             except Exception as e:
                                 # Log error but don't crash the monitoring loop
                                 if loop_count % 10 == 1:  # Log every 10th error to avoid spam
@@ -561,8 +630,16 @@ class TestScenarioEngine(QObject):
                             }
                             
                             self.daq_data.append(data_point)
+                            
+                            # Log progress every 10 seconds
+                            if loop_count % 10 == 0:
+                                self.log_callback(f"DAQ monitoring: {len(self.daq_data)} points collected, {successful_reads}/{len(enabled_channels)} channels OK", "info")
+                                
                         except Exception as e:
                             self.log_callback(f"Error creating data point: {e}", "error")
+                    else:
+                        if loop_count == 1:
+                            self.log_callback("ERROR: No enabled channels found for monitoring!", "error")
                     
                     # Safe sleep
                     try:
