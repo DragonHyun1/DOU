@@ -1,5 +1,18 @@
-요청 : 퍼센트는 screen test 시작할때 기준으로 시작하면 됨
-screen on or off 동작이 수행중과 별개로 1초마다 DAQ enable 되어있는 전류 긁어오기만 하면 됨
-enable 되어있는 ch이 A,B,C가 있다면
-엑셀에 A1 cell에는 time, B1부터 A에 저장된 rail name, C1은 B에 저장된 rail name으로 넣은 다음,
-A1 밑에는 시간 초(1s, 2s ..)로 나오고 각 초별로 측정된 결과를 각 rail별대로 밑으로 쭉 뽑아내는 방식을 원해 
+QObject: Cannot create children for a parent that is in a different thread.
+(Parent is QStatusBar(0x18013b970d0), parent's thread is QThread(0x1802f65e770), current thread is QThread(0x1801413b030)
+QObject::startTimer: Timers can only be used with threads started with QThread
+QBasicTimer::start: QBasicTimer can only be used with threads started with QThread
+QBasicTimer::start: QBasicTimer can only be used with threads started with QThread
+QObject: Cannot create children for a parent that is in a different thread.
+(Parent is QStatusBar(0x18013b970d0), parent's thread is QThread(0x1802f65e770), current thread is QThread(0x1801371bdd0)
+QObject::startTimer: Timers can only be used with threads started with QThread
+QObject::startTimer: Timers can only be used with threads started with QThread
+QObject::startTimer: Timers can only be used with threads started with QThread
+QObject: Cannot create children for a parent that is in a different thread.
+(Parent is QStatusBar(0x18013b970d0), parent's thread is QThread(0x1802f65e770), current thread is QThread(0x1801371bdd0)
+QObject::startTimer: Timers can only be used with threads started with QThread
+QBasicTimer::start: QBasicTimer can only be used with threads started with QThread
+QBasicTimer::start: QBasicTimer can only be used with threads started with QThread
+QObject::startTimer: Timers can only be used with threads started with QThread
+QObject::startTimer: Timers can only be used with threads started with QThread
+QObject::startTimer: Timers can only be used with threads started with QThread
