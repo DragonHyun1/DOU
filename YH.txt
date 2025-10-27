@@ -1,18 +1,6 @@
-QObject: Cannot create children for a parent that is in a different thread.
-(Parent is QStatusBar(0x18013b970d0), parent's thread is QThread(0x1802f65e770), current thread is QThread(0x1801413b030)
-QObject::startTimer: Timers can only be used with threads started with QThread
 QBasicTimer::start: QBasicTimer can only be used with threads started with QThread
 QBasicTimer::start: QBasicTimer can only be used with threads started with QThread
-QObject: Cannot create children for a parent that is in a different thread.
-(Parent is QStatusBar(0x18013b970d0), parent's thread is QThread(0x1802f65e770), current thread is QThread(0x1801371bdd0)
-QObject::startTimer: Timers can only be used with threads started with QThread
-QObject::startTimer: Timers can only be used with threads started with QThread
-QObject::startTimer: Timers can only be used with threads started with QThread
-QObject: Cannot create children for a parent that is in a different thread.
-(Parent is QStatusBar(0x18013b970d0), parent's thread is QThread(0x1802f65e770), current thread is QThread(0x1801371bdd0)
-QObject::startTimer: Timers can only be used with threads started with QThread
 QBasicTimer::start: QBasicTimer can only be used with threads started with QThread
 QBasicTimer::start: QBasicTimer can only be used with threads started with QThread
-QObject::startTimer: Timers can only be used with threads started with QThread
-QObject::startTimer: Timers can only be used with threads started with QThread
-QObject::startTimer: Timers can only be used with threads started with QThread
+QBasicTimer::start: QBasicTimer can only be used with threads started with QThread
+QBasicTimer::start: QBasicTimer can only be used with threads started with QThread
