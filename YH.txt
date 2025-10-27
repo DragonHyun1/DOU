@@ -1,13 +1,14 @@
+No real devices found by system
+
 === FINAL DEVICE LIST ===
-Total devices: 1
-  1. Dev1 (Real - USB-6289)
+Total devices: 0
 Traceback (most recent call last):
-  File "d:\PCT\Tool\DOU_0926\main.py", line 1835, in <module>
+  File "d:\PCT\Tool\DOU_0926\main.py", line 1838, in <module>
     main()
-  File "d:\PCT\Tool\DOU_0926\main.py", line 1829, in main
+  File "d:\PCT\Tool\DOU_0926\main.py", line 1832, in main
     w = MainWindow()
   File "d:\PCT\Tool\DOU_0926\main.py", line 128, in __init__
     self._on_voltage_config_changed()
-  File "d:\PCT\Tool\DOU_0926\main.py", line 1261, in _on_voltage_config_changed
-    self.auto_test_service.set_voltages(voltages)
-TypeError: AutoTestService.set_voltages() missing 1 required positional argument: 'test_voltage'
+  File "d:\PCT\Tool\DOU_0926\main.py", line 1262, in _on_voltage_config_changed
+    self.test_config['stabilzation_voltage'],
+KeyError: 'stabilzation_voltage'
