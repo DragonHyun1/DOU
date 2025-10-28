@@ -201,6 +201,17 @@ class TestScenarioEngine(QObject):
             self.log_callback(f"Unknown scenario: {scenario_name}", "error")
             return False
         
+        # Reset state for new test (stability improvement)
+        try:
+            self._screen_test_start_time = None
+            if hasattr(self, '_screen_test_started'):
+                self._screen_test_started.clear()
+            self.monitoring_active = False
+            self.daq_data = []
+            self.log_callback("Test state reset for new execution", "info")
+        except Exception as e:
+            self.log_callback(f"Warning: Error resetting test state: {e}", "warn")
+        
         scenario = self.scenarios[scenario_name]
         self.current_test = TestResult(
             scenario_name=scenario_name,
@@ -571,8 +582,11 @@ class TestScenarioEngine(QObject):
                 # Store configuration for the monitoring thread
                 self._monitoring_channels = enabled_channels
                 self._monitoring_mode = measurement_mode
-                # Initialize screen test timing
-                self._screen_test_start_time = None  # Will be set when screen test starts
+                # Initialize screen test timing with thread-safe event
+                self._screen_test_start_time = None
+                self._screen_test_started = threading.Event()  # Thread-safe synchronization
+                self._monitoring_timeout = time.time() + 60.0  # 60 second timeout
+                
                 monitoring_thread = threading.Thread(target=self._daq_monitoring_loop)
                 monitoring_thread.daemon = True
                 monitoring_thread.start()
@@ -592,6 +606,11 @@ class TestScenarioEngine(QObject):
                 # Record start time for progress tracking AND data collection timing
                 test_start_time = time.time()
                 self._screen_test_start_time = test_start_time  # Store for DAQ timing
+                
+                # Signal DAQ monitoring thread that screen test has started
+                if hasattr(self, '_screen_test_started'):
+                    self._screen_test_started.set()
+                    self.log_callback("Screen test start signal sent to DAQ monitoring", "info")
                 
                 # Cycle for 20 seconds with 2-second intervals
                 cycles = 10  # 20 seconds / 2 seconds per cycle
@@ -632,11 +651,21 @@ class TestScenarioEngine(QObject):
             # Stop monitoring gracefully
             try:
                 self.monitoring_active = False
+                
+                # Clear the screen test event to stop waiting
+                if hasattr(self, '_screen_test_started'):
+                    self._screen_test_started.set()  # Wake up waiting thread
+                
                 if monitoring_thread and monitoring_thread.is_alive():
                     self.log_callback("Waiting for monitoring thread to finish...", "info")
                     monitoring_thread.join(timeout=5.0)  # Increased timeout
                     if monitoring_thread.is_alive():
                         self.log_callback("WARNING: Monitoring thread did not finish in time", "warn")
+                        # Force cleanup
+                        try:
+                            monitoring_thread._stop()
+                        except:
+                            pass
             except Exception as e:
                 self.log_callback(f"Error stopping monitoring: {e}", "error")
             
@@ -657,13 +686,26 @@ class TestScenarioEngine(QObject):
             import traceback
             self.log_callback(f"Traceback: {traceback.format_exc()}", "error")
             
-            # Cleanup on error
+            # Comprehensive cleanup on error
             try:
                 self.monitoring_active = False
-                if monitoring_thread and monitoring_thread.is_alive():
+                
+                # Wake up any waiting threads
+                if hasattr(self, '_screen_test_started'):
+                    self._screen_test_started.set()
+                
+                # Force stop monitoring thread
+                if 'monitoring_thread' in locals() and monitoring_thread and monitoring_thread.is_alive():
+                    self.log_callback("Force stopping monitoring thread due to error", "warn")
                     monitoring_thread.join(timeout=2.0)
-            except:
-                pass
+                    
+                # Reset screen test state
+                self._screen_test_start_time = None
+                if hasattr(self, '_screen_test_started'):
+                    self._screen_test_started.clear()
+                    
+            except Exception as cleanup_error:
+                self.log_callback(f"Error during cleanup: {cleanup_error}", "error")
             
             return False
     
@@ -1067,36 +1109,47 @@ class TestScenarioEngine(QObject):
                     try:
                         current_time = time.time()
                         
-                        # Only collect data when screen test is active
-                        if hasattr(self, '_screen_test_start_time') and self._screen_test_start_time is not None:
+                        # Check if screen test has started using thread-safe event
+                        if hasattr(self, '_screen_test_started') and self._screen_test_started.is_set():
                             # Screen test has started, calculate elapsed time
-                            screen_test_elapsed = current_time - self._screen_test_start_time
-                            
-                            # Only collect data during screen test period (0-20 seconds)
-                            if screen_test_elapsed >= 0 and screen_test_elapsed <= 20.0:
-                                data_point = {
-                                    'timestamp': datetime.now(),
-                                    'time_elapsed': screen_test_elapsed,  # Time from screen test start
-                                    'screen_test_time': screen_test_elapsed,  # Explicit screen test timing
-                                    **channel_data
-                                }
+                            if hasattr(self, '_screen_test_start_time') and self._screen_test_start_time is not None:
+                                screen_test_elapsed = current_time - self._screen_test_start_time
                                 
-                                # Thread-safe data append
-                                if hasattr(self, 'daq_data'):
-                                    self.daq_data.append(data_point)
+                                # Only collect data during screen test period (0-20 seconds)
+                                if screen_test_elapsed >= 0 and screen_test_elapsed <= 20.0:
+                                    data_point = {
+                                        'timestamp': datetime.now(),
+                                        'time_elapsed': screen_test_elapsed,  # Time from screen test start
+                                        'screen_test_time': screen_test_elapsed,  # Explicit screen test timing
+                                        **channel_data
+                                    }
                                     
-                                # Log first data point
-                                if loop_count == 1:
-                                    print(f"Started data collection at screen test time: {screen_test_elapsed:.1f}s")
-                            elif screen_test_elapsed > 20.0:
-                                # Stop collecting data after 20 seconds
-                                print(f"Screen test completed ({screen_test_elapsed:.1f}s), stopping data collection")
+                                    # Thread-safe data append
+                                    if hasattr(self, 'daq_data'):
+                                        self.daq_data.append(data_point)
+                                        
+                                    # Log first data point
+                                    if loop_count == 1:
+                                        print(f"Started data collection at screen test time: {screen_test_elapsed:.1f}s")
+                                elif screen_test_elapsed > 20.0:
+                                    # Stop collecting data after 20 seconds
+                                    print(f"Screen test completed ({screen_test_elapsed:.1f}s), stopping data collection")
+                                    self.monitoring_active = False
+                                    break
+                            else:
+                                # Event is set but start time not available yet, wait a bit
+                                continue
+                        else:
+                            # Screen test hasn't started yet, check timeout
+                            if hasattr(self, '_monitoring_timeout') and current_time > self._monitoring_timeout:
+                                print("ERROR: Timeout waiting for screen test to start (60s), stopping monitoring")
                                 self.monitoring_active = False
                                 break
-                        else:
-                            # Screen test hasn't started yet, wait
-                            if loop_count % 10 == 1:  # Log every 10 seconds while waiting
-                                print("Waiting for screen test to start...")
+                            
+                            # Wait for screen test to start
+                            if loop_count % 5 == 1:  # Log every 5 seconds while waiting
+                                remaining_time = getattr(self, '_monitoring_timeout', current_time + 60) - current_time
+                                print(f"Waiting for screen test to start... ({remaining_time:.0f}s timeout remaining)")
                             continue
                         
                         # Log progress every 10 seconds
