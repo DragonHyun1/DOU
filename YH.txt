@@ -1,3 +1,39 @@
-[14:06:55] Test PASSED: Test completed successfully
+#!/usr/bin/env python3
+# file: hvpm_auto_data.py
+# 목적: USB PASSTHROUGH 자동 차단 후 데이터 전송만 수행
 
-[14:06:57] Test Started: Screen On/Off
+from hvpm import HVPMClient, HVPMError
+import time
+
+API_KEY = "YOUR_API_KEY"          # ← 실제 API‑KEY 로 교체
+DATA_TO_SEND = b'PING\n'          # 예시: 간단 문자열 전송
+
+def main():
+    client = HVPMClient(transport="usb")
+    try:
+        client.open()
+        client.auth(token=API_KEY)
+
+        # ----- USB PASSTHROUGH 자동 차단 -----
+        client.send({"cmd": "usb_passthrough", "params": {"mode": "auto"}})
+
+        # 현재 전원 상태 확인 (디버그용)
+        st = client.send({"cmd": "status"})
+        print("[INFO] usb_power =", st.get("usb_power"))   # OFF 가 나와야 함
+
+        # ----- 데이터 전송 (예: CDC/RAW) -----
+        # 아래 함수는 SDK에 따라 다를 수 있음. 예시로 raw_send 사용.
+        client.send_raw(DATA_TO_SEND)          # raw 바이트 전송
+        time.sleep(0.1)                        # 잠깐 대기
+
+        # 응답 수신 (예시: 256바이트까지)
+        resp = client.recv_raw(max_len=256)
+        print("[RECV] ", resp.decode(errors='ignore'))
+
+    except HVPMError as e:
+        print("[ERROR] code:", e.code, "msg:", e.msg)
+    finally:
+        client.close()
+
+if __name__ == "__main__":
+    main()
