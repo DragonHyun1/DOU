@@ -1406,11 +1406,10 @@ class MainWindow(QtWidgets.QMainWindow):
             if success:
                 self._log(f"Test scenario started: {scenario_name}", "info")
                 
-                # Update UI state
-                if hasattr(self.ui, 'startAutoTest_PB') and self.ui.startAutoTest_PB:
-                    self.ui.startAutoTest_PB.setEnabled(False)
-                if hasattr(self.ui, 'stopAutoTest_PB') and self.ui.stopAutoTest_PB:
-                    self.ui.stopAutoTest_PB.setEnabled(True)
+                # Disable all UI controls except Stop button during test
+                self._set_ui_test_mode(True)
+                
+                # Update test status display
                 if hasattr(self.ui, 'testProgress_PB') and self.ui.testProgress_PB:
                     self.ui.testProgress_PB.setValue(0)
                 if hasattr(self.ui, 'testStatus_LB') and self.ui.testStatus_LB:
@@ -1456,11 +1455,10 @@ class MainWindow(QtWidgets.QMainWindow):
             else:
                 self._log("Failed to stop test scenario", "error")
             
-            # Update UI state
-            if hasattr(self.ui, 'startAutoTest_PB') and self.ui.startAutoTest_PB:
-                self.ui.startAutoTest_PB.setEnabled(True)
-            if hasattr(self.ui, 'stopAutoTest_PB') and self.ui.stopAutoTest_PB:
-                self.ui.stopAutoTest_PB.setEnabled(False)
+            # Re-enable all UI controls after test stop
+            self._set_ui_test_mode(False)
+            
+            # Update test status
             if hasattr(self.ui, 'testProgress_PB') and self.ui.testProgress_PB:
                 self.ui.testProgress_PB.setValue(0)
             if hasattr(self.ui, 'testStatus_LB') and self.ui.testStatus_LB:
@@ -1518,7 +1516,8 @@ class MainWindow(QtWidgets.QMainWindow):
             engine_running = self.test_scenario_engine.is_running()
             self._log(f"Test engine status: {engine_status.value}, is_running: {engine_running}", "info")
         
-        self._update_auto_test_buttons()
+        # Re-enable all UI controls after test completion
+        self._set_ui_test_mode(False)
         
         # Update test results display
         if hasattr(self.ui, 'testResults_TE') and self.ui.testResults_TE:
@@ -1612,8 +1611,8 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.ui.autoTestGroupBox.setTitle("Auto Test")
                 self._log("autoTestGroupBox title reset to 'Auto Test'", "info")
             
-            # Update button states to initial configuration
-            self._update_auto_test_buttons()
+            # Re-enable all UI controls and update button states
+            self._set_ui_test_mode(False)
             
             # Force UI refresh
             QtWidgets.QApplication.processEvents()
@@ -1622,6 +1621,78 @@ class MainWindow(QtWidgets.QMainWindow):
             
         except Exception as e:
             self._log(f"Error resetting UI to initial state: {e}", "error")
+
+    def _set_ui_test_mode(self, test_running: bool):
+        """Set UI controls state during test execution"""
+        try:
+            self._log(f"Setting UI test mode: test_running={test_running}", "info")
+            
+            # Auto Test buttons
+            if hasattr(self.ui, 'startAutoTest_PB') and self.ui.startAutoTest_PB:
+                self.ui.startAutoTest_PB.setEnabled(not test_running)
+                self._log(f"startAutoTest_PB enabled: {not test_running}", "debug")
+                
+            if hasattr(self.ui, 'stopAutoTest_PB') and self.ui.stopAutoTest_PB:
+                self.ui.stopAutoTest_PB.setEnabled(test_running)
+                self._log(f"stopAutoTest_PB enabled: {test_running}", "debug")
+            
+            # Test scenario selection
+            if hasattr(self.ui, 'testScenario_CB') and self.ui.testScenario_CB:
+                self.ui.testScenario_CB.setEnabled(not test_running)
+            
+            # HVPM controls
+            hvpm_controls = [
+                'hvpmVolt_LE', 'setVolt_PB', 'readVoltCurrent_PB', 
+                'hvpmOn_PB', 'hvpmOff_PB'
+            ]
+            for control_name in hvpm_controls:
+                if hasattr(self.ui, control_name):
+                    control = getattr(self.ui, control_name)
+                    if control:
+                        control.setEnabled(not test_running)
+            
+            # ADB controls
+            adb_controls = [
+                'comport_CB', 'refreshADB_PB'
+            ]
+            for control_name in adb_controls:
+                if hasattr(self.ui, control_name):
+                    control = getattr(self.ui, control_name)
+                    if control:
+                        control.setEnabled(not test_running)
+            
+            # NI DAQ controls
+            daq_controls = [
+                'daqDevice_CB', 'daqChannel_CB', 'refreshNI_PB',
+                'startDAQ_PB', 'stopDAQ_PB', 'measurementMode_CB'
+            ]
+            for control_name in daq_controls:
+                if hasattr(self.ui, control_name):
+                    control = getattr(self.ui, control_name)
+                    if control:
+                        control.setEnabled(not test_running)
+            
+            # Multi-channel monitor controls
+            if hasattr(self, 'multi_channel_monitor') and self.multi_channel_monitor:
+                try:
+                    # Disable multi-channel monitor controls during test
+                    for i in range(8):  # Assuming 8 channels
+                        checkbox_name = f'channel_{i}_checkbox'
+                        if hasattr(self.multi_channel_monitor, checkbox_name):
+                            checkbox = getattr(self.multi_channel_monitor, checkbox_name)
+                            if checkbox:
+                                checkbox.setEnabled(not test_running)
+                except Exception as e:
+                    self._log(f"Error setting multi-channel monitor state: {e}", "debug")
+            
+            # Menu actions (if any)
+            if hasattr(self.ui, 'menubar') and self.ui.menubar:
+                self.ui.menubar.setEnabled(not test_running)
+            
+            self._log(f"UI test mode set successfully: test_running={test_running}", "info")
+            
+        except Exception as e:
+            self._log(f"Error setting UI test mode: {e}", "error")
 
     def _save_test_results(self, success: bool, message: str):
         """Save test results to file"""
