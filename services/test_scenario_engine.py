@@ -368,7 +368,7 @@ class TestScenarioEngine(QObject):
             elif step.action == "cleanup_apps_and_notifications":
                 return self._step_cleanup_apps_and_notifications()
             elif step.action == "export_to_excel":
-                return self._step_export_to_excel()
+                return self._step_export_to_csv()
             else:
                 self.log_callback(f"Unknown step action: {step.action}", "error")
                 return False
@@ -985,34 +985,19 @@ class TestScenarioEngine(QObject):
             self.log_callback(f"Error stopping DAQ monitoring: {e}", "error")
             return False
     
-    def _step_export_to_excel(self) -> bool:
-        """Export DAQ data to Excel"""
+    def _step_export_to_csv(self) -> bool:
+        """Export DAQ data to CSV (fast and simple)"""
         try:
-            self.log_callback("Starting Excel export...", "info")
+            self.log_callback("Starting CSV export...", "info")
             
             # Check if we have data to export
             data_count = len(self.daq_data) if self.daq_data else 0
             self.log_callback(f"Preparing to export {data_count} data points", "info")
             
             if not self.daq_data or data_count == 0:
-                self.log_callback("ERROR: No DAQ data collected to export!", "error")
-                self.log_callback("This means DAQ monitoring did not collect any data during the test", "error")
-                
-                # Create empty file with error message
-                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                filename = f"screen_onoff_test_{timestamp}_NO_DATA.txt"
-                try:
-                    with open(filename, 'w') as f:
-                        f.write("No DAQ data was collected during the test.\n")
-                        f.write("Possible causes:\n")
-                        f.write("- DAQ service not connected\n")
-                        f.write("- No enabled channels configured\n")
-                        f.write("- DAQ monitoring thread failed\n")
-                    self.log_callback(f"Created error report: {filename}", "info")
-                except Exception as e:
-                    self.log_callback(f"Could not create error report: {e}", "error")
-                
-                return False  # Return False to indicate failure
+                self.log_callback("WARNING: No DAQ data collected to export!", "warn")
+                self.log_callback("This means DAQ monitoring did not collect any data during the test", "warn")
+                return False  # Return False to indicate no data
             
             # Log data structure for debugging
             if self.daq_data:
@@ -1027,20 +1012,12 @@ class TestScenarioEngine(QObject):
                 self.log_callback(f"Created directory: {results_dir}", "info")
             
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"{results_dir}/screen_onoff_test_{timestamp}.xlsx"
+            filename = f"{results_dir}/screen_onoff_test_{timestamp}.csv"
             
-            self.log_callback(f"Exporting to file: {filename}", "info")
+            self.log_callback(f"Exporting to CSV file: {filename}", "info")
             
-            if PANDAS_AVAILABLE:
-                if XLSXWRITER_AVAILABLE:
-                    self.log_callback("Using enhanced Excel export (xlsxwriter)", "info")
-                    success = self._export_to_excel_pandas(filename)
-                else:
-                    self.log_callback("Using basic Excel export (openpyxl)", "info")
-                    success = self._export_to_excel_basic(filename)
-            else:
-                self.log_callback("Using CSV fallback export", "info")
-                success = self._export_to_csv_fallback(filename.replace('.xlsx', '.csv'))
+            # Always use CSV export (fast and reliable)
+            success = self._export_to_csv_fallback(filename)
             
             if success:
                 self.log_callback(f"SUCCESS: Test data exported to {filename}", "success")
@@ -1049,7 +1026,7 @@ class TestScenarioEngine(QObject):
             
             return success
         except Exception as e:
-            self.log_callback(f"CRITICAL ERROR in Excel export: {e}", "error")
+            self.log_callback(f"CRITICAL ERROR in CSV export: {e}", "error")
             import traceback
             self.log_callback(f"Export error details: {traceback.format_exc()}", "error")
             return False
