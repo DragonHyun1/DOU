@@ -1534,7 +1534,7 @@ class MainWindow(QtWidgets.QMainWindow):
         if test_result and test_result.daq_data:
             self._log(f"Test completed with {len(test_result.daq_data)} data points", "info")
         
-        # Force UI state reset regardless of success/failure
+        # Show temporary completion status first
         if hasattr(self.ui, 'testProgress_PB') and self.ui.testProgress_PB:
             self.ui.testProgress_PB.setValue(100 if success else 0)
         
@@ -1569,8 +1569,8 @@ class MainWindow(QtWidgets.QMainWindow):
             
             QtWidgets.QMessageBox.warning(self, "Test Failed", f"Automated test failed:\n\n{message}")
         
-        # Force UI refresh after dialog
-        self._force_ui_refresh()
+        # Reset UI to initial state after dialog (with delay)
+        QTimer.singleShot(1000, self._reset_ui_to_initial_state)
     
     def _force_ui_refresh(self):
         """Force UI refresh to ensure state changes are visible"""
@@ -1590,6 +1590,38 @@ class MainWindow(QtWidgets.QMainWindow):
             self._log("UI refresh completed", "debug")
         except Exception as e:
             self._log(f"Error during UI refresh: {e}", "error")
+
+    def _reset_ui_to_initial_state(self):
+        """Reset UI to initial state after test completion"""
+        try:
+            self._log("Resetting UI to initial state", "info")
+            
+            # Reset testStatus_LB to original "Ready" state
+            if hasattr(self.ui, 'testStatus_LB') and self.ui.testStatus_LB:
+                self.ui.testStatus_LB.setText("Ready")
+                self.ui.testStatus_LB.setStyleSheet("")  # Remove custom styling
+                self._log("testStatus_LB reset to 'Ready'", "info")
+            
+            # Reset progress bar to 0
+            if hasattr(self.ui, 'testProgress_PB') and self.ui.testProgress_PB:
+                self.ui.testProgress_PB.setValue(0)
+                self._log("testProgress_PB reset to 0", "info")
+            
+            # Reset Auto Test group box title
+            if hasattr(self.ui, 'autoTestGroupBox') and self.ui.autoTestGroupBox:
+                self.ui.autoTestGroupBox.setTitle("Auto Test")
+                self._log("autoTestGroupBox title reset to 'Auto Test'", "info")
+            
+            # Update button states to initial configuration
+            self._update_auto_test_buttons()
+            
+            # Force UI refresh
+            QtWidgets.QApplication.processEvents()
+            
+            self._log("UI reset to initial state completed", "info")
+            
+        except Exception as e:
+            self._log(f"Error resetting UI to initial state: {e}", "error")
 
     def _save_test_results(self, success: bool, message: str):
         """Save test results to file"""
