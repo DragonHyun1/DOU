@@ -1257,19 +1257,30 @@ class TestScenarioEngine(QObject):
                 self.log_callback(f"Created directory: {results_dir}", "info")
             
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"{results_dir}/screen_onoff_test_{timestamp}.csv"
+            csv_filename = f"{results_dir}/screen_onoff_test_{timestamp}.csv"
+            excel_filename = f"{results_dir}/screen_onoff_test_{timestamp}.xlsx"
             
-            self.log_callback(f"Exporting to CSV file: {filename}", "info")
+            self.log_callback(f"Exporting to CSV file: {csv_filename}", "info")
+            self.log_callback(f"Exporting to Excel file: {excel_filename}", "info")
             
-            # Always use CSV export (fast and reliable)
-            success = self._export_to_csv_fallback(filename)
+            # Export to CSV (fast and reliable)
+            csv_success = self._export_to_csv_fallback(csv_filename)
             
-            if success:
-                self.log_callback(f"SUCCESS: Test data exported to {filename}", "success")
+            # Export to Excel with enhanced formatting
+            excel_success = self._export_to_excel_basic(excel_filename)
+            
+            if csv_success:
+                self.log_callback(f"SUCCESS: Test data exported to {csv_filename}", "success")
             else:
-                self.log_callback("FAILED: Could not export test data", "error")
+                self.log_callback("FAILED: Could not export CSV data", "error")
+                
+            if excel_success:
+                self.log_callback(f"SUCCESS: Test data exported to {excel_filename}", "success")
+            else:
+                self.log_callback("FAILED: Could not export Excel data", "error")
             
-            return success
+            # Return success if at least one export succeeded
+            return csv_success or excel_success
         except Exception as e:
             self.log_callback(f"CRITICAL ERROR in CSV export: {e}", "error")
             import traceback
@@ -1528,14 +1539,52 @@ class TestScenarioEngine(QObject):
             return 0.0
     
     def _export_to_excel_pandas(self, filename: str) -> bool:
-        """Export data to Excel using pandas with enhanced formatting"""
+        """Export data to Excel using pandas with enhanced formatting and Power rail names"""
         try:
             if not self.daq_data:
                 self.log_callback("No data to export", "warn")
                 return True
             
-            # Create DataFrame
+            # Get enabled channels, rail names, and measurement mode
+            enabled_channels = self._get_enabled_channels_from_monitor()
+            rail_names = self._get_channel_rail_names()
+            measurement_mode = getattr(self, '_monitoring_mode', 'current')
+            
+            # Create column mapping from original names to Power rail names
+            column_mapping = {}
+            
+            # Add timestamp columns
+            if 'timestamp' in self.daq_data[0]:
+                column_mapping['timestamp'] = 'Timestamp'
+            if 'time_elapsed' in self.daq_data[0]:
+                column_mapping['time_elapsed'] = 'Time_Elapsed(s)'
+            if 'screen_test_time' in self.daq_data[0]:
+                column_mapping['screen_test_time'] = 'Screen_Test_Time(s)'
+            
+            # Add channel columns with Power rail names
+            for channel in enabled_channels:
+                rail_name = rail_names.get(channel, f"Rail_{channel}")
+                
+                if measurement_mode == "current":
+                    original_key = f"{channel}_current"
+                    new_key = f"{rail_name}_Current(A)"
+                else:
+                    original_key = f"{channel}_voltage"
+                    new_key = f"{rail_name}_Voltage(V)"
+                
+                if original_key in self.daq_data[0]:
+                    column_mapping[original_key] = new_key
+            
+            # Add any other columns that weren't mapped
+            for key in self.daq_data[0].keys():
+                if key not in column_mapping:
+                    column_mapping[key] = key
+            
+            # Create DataFrame with original data
             df = pd.DataFrame(self.daq_data)
+            
+            # Rename columns using the mapping
+            df = df.rename(columns=column_mapping)
             
             # Create Excel writer with xlsxwriter engine for formatting
             with pd.ExcelWriter(filename, engine='xlsxwriter') as writer:
@@ -1567,26 +1616,70 @@ class TestScenarioEngine(QObject):
                 # Add test summary sheet
                 self._add_test_summary_sheet(writer, workbook)
                 
-            self.log_callback(f"Enhanced Excel export completed: {filename}", "info")
+            self.log_callback(f"Enhanced Excel export completed with Power rail names: {list(rail_names.values())}", "info")
             return True
         except Exception as e:
             self.log_callback(f"Error exporting to Excel: {e}", "error")
             return False
     
     def _export_to_csv_fallback(self, filename: str) -> bool:
-        """Export data to CSV as fallback"""
+        """Export data to CSV as fallback with Power rail names"""
         try:
             import csv
             
             if not self.daq_data:
                 return True
             
+            # Get enabled channels, rail names, and measurement mode
+            enabled_channels = self._get_enabled_channels_from_monitor()
+            rail_names = self._get_channel_rail_names()
+            measurement_mode = getattr(self, '_monitoring_mode', 'current')
+            
+            # Create column mapping from original names to Power rail names
+            column_mapping = {}
+            
+            # Add timestamp columns
+            if 'timestamp' in self.daq_data[0]:
+                column_mapping['timestamp'] = 'Timestamp'
+            if 'time_elapsed' in self.daq_data[0]:
+                column_mapping['time_elapsed'] = 'Time_Elapsed(s)'
+            if 'screen_test_time' in self.daq_data[0]:
+                column_mapping['screen_test_time'] = 'Screen_Test_Time(s)'
+            
+            # Add channel columns with Power rail names
+            for channel in enabled_channels:
+                rail_name = rail_names.get(channel, f"Rail_{channel}")
+                
+                if measurement_mode == "current":
+                    original_key = f"{channel}_current"
+                    new_key = f"{rail_name}_Current(A)"
+                else:
+                    original_key = f"{channel}_voltage"
+                    new_key = f"{rail_name}_Voltage(V)"
+                
+                if original_key in self.daq_data[0]:
+                    column_mapping[original_key] = new_key
+            
+            # Add any other columns that weren't mapped
+            for key in self.daq_data[0].keys():
+                if key not in column_mapping:
+                    column_mapping[key] = key
+            
             with open(filename, 'w', newline='') as csvfile:
-                fieldnames = self.daq_data[0].keys()
+                # Use new column names as fieldnames
+                fieldnames = list(column_mapping.values())
                 writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
                 writer.writeheader()
-                writer.writerows(self.daq_data)
+                
+                # Write data with renamed columns
+                for row in self.daq_data:
+                    new_row = {}
+                    for original_key, new_key in column_mapping.items():
+                        if original_key in row:
+                            new_row[new_key] = row[original_key]
+                    writer.writerow(new_row)
             
+            self.log_callback(f"CSV export completed with Power rail names: {list(rail_names.values())}", "info")
             return True
         except Exception as e:
             self.log_callback(f"Error exporting to CSV: {e}", "error")
@@ -1820,6 +1913,8 @@ class TestScenarioEngine(QObject):
     def _export_to_excel_basic(self, filename: str) -> bool:
         """Export data to Excel with custom format (A1=Time, B1=Rail_Name, etc.)"""
         try:
+            import pandas as pd
+            
             if not self.daq_data:
                 self.log_callback("No data to export", "warn")
                 return True
