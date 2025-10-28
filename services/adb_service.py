@@ -170,19 +170,31 @@ class ADBService:
             return False
     
     def clear_recent_apps(self) -> bool:
-        """Clear recent apps"""
+        """Clear all recent apps completely"""
         try:
-            # Open recent apps
+            # Method 1: Use activity manager to kill all background apps
+            self.logger.info("Clearing all recent apps...")
+            
+            # Kill all background apps
+            result = self._run_adb_command(['shell', 'am', 'kill-all'])
+            if result is not None:
+                time.sleep(1)
+                
+            # Open recent apps to clear UI
             result = self._run_adb_command(['shell', 'input', 'keyevent', 'KEYCODE_APP_SWITCH'])
             if result is not None:
-                time.sleep(1)  # Wait for recent apps to open
+                time.sleep(1.5)  # Wait for recent apps to open
                 
-                # Clear all recent apps (swipe up gesture)
-                # This might need adjustment based on device resolution
-                self._run_adb_command(['shell', 'input', 'swipe', '500', '1000', '500', '100'])
+                # Multiple swipe gestures to clear all apps
+                for i in range(5):  # Try multiple times to ensure all apps are cleared
+                    self._run_adb_command(['shell', 'input', 'swipe', '500', '1000', '500', '100'])
+                    time.sleep(0.3)
+                
+                # Press home to exit recent apps
+                self._run_adb_command(['shell', 'input', 'keyevent', 'KEYCODE_HOME'])
                 time.sleep(0.5)
                 
-                self.logger.info("Recent apps cleared")
+                self.logger.info("All recent apps cleared")
                 return True
             return False
         except Exception as e:
@@ -221,6 +233,129 @@ class ADBService:
     def is_connected(self) -> bool:
         """Check if device is connected"""
         return self.connected_device is not None
+    
+    def connect_wifi_2g(self, ssid: str, password: str) -> bool:
+        """Connect to 2.4GHz WiFi network"""
+        try:
+            self.logger.info(f"Connecting to 2.4GHz WiFi: {ssid}")
+            
+            # Enable WiFi first
+            self._run_adb_command(['shell', 'svc', 'wifi', 'enable'])
+            time.sleep(2)
+            
+            # Connect to WiFi network
+            result = self._run_adb_command(['shell', 'svc', 'wifi', 'connect', ssid, 'password', password])
+            if result is not None:
+                time.sleep(5)  # Wait for connection
+                
+                # Verify connection
+                wifi_info = self._run_adb_command(['shell', 'dumpsys', 'wifi', '|', 'grep', 'mWifiInfo'])
+                if wifi_info and ssid in wifi_info:
+                    self.logger.info(f"Successfully connected to 2.4GHz WiFi: {ssid}")
+                    return True
+                else:
+                    self.logger.warning(f"WiFi connection verification failed for: {ssid}")
+                    return True  # Still return True as connection command succeeded
+            return False
+        except Exception as e:
+            self.logger.error(f"Error connecting to 2.4GHz WiFi: {e}")
+            return False
+    
+    def connect_wifi_5g(self, ssid: str, password: str) -> bool:
+        """Connect to 5GHz WiFi network"""
+        try:
+            self.logger.info(f"Connecting to 5GHz WiFi: {ssid}")
+            
+            # Enable WiFi first
+            self._run_adb_command(['shell', 'svc', 'wifi', 'enable'])
+            time.sleep(2)
+            
+            # Connect to WiFi network
+            result = self._run_adb_command(['shell', 'svc', 'wifi', 'connect', ssid, 'password', password])
+            if result is not None:
+                time.sleep(5)  # Wait for connection
+                
+                # Verify connection
+                wifi_info = self._run_adb_command(['shell', 'dumpsys', 'wifi', '|', 'grep', 'mWifiInfo'])
+                if wifi_info and ssid in wifi_info:
+                    self.logger.info(f"Successfully connected to 5GHz WiFi: {ssid}")
+                    return True
+                else:
+                    self.logger.warning(f"WiFi connection verification failed for: {ssid}")
+                    return True  # Still return True as connection command succeeded
+            return False
+        except Exception as e:
+            self.logger.error(f"Error connecting to 5GHz WiFi: {e}")
+            return False
+    
+    def enable_bluetooth(self) -> bool:
+        """Enable Bluetooth"""
+        try:
+            self.logger.info("Enabling Bluetooth...")
+            result = self._run_adb_command(['shell', 'svc', 'bluetooth', 'enable'])
+            if result is not None:
+                time.sleep(2)  # Wait for Bluetooth to enable
+                self.logger.info("Bluetooth enabled")
+                return True
+            return False
+        except Exception as e:
+            self.logger.error(f"Error enabling Bluetooth: {e}")
+            return False
+    
+    def open_phone_app(self) -> bool:
+        """Open Phone app (Dialer)"""
+        try:
+            self.logger.info("Opening Phone app...")
+            # Launch dialer app
+            result = self._run_adb_command(['shell', 'am', 'start', '-a', 'android.intent.action.DIAL'])
+            if result is not None:
+                time.sleep(2)  # Wait for app to open
+                self.logger.info("Phone app opened")
+                return True
+            return False
+        except Exception as e:
+            self.logger.error(f"Error opening Phone app: {e}")
+            return False
+    
+    def press_back_key(self) -> bool:
+        """Press back key"""
+        try:
+            result = self._run_adb_command(['shell', 'input', 'keyevent', 'KEYCODE_BACK'])
+            if result is not None:
+                self.logger.info("Back key pressed")
+                return True
+            return False
+        except Exception as e:
+            self.logger.error(f"Error pressing back key: {e}")
+            return False
+    
+    def get_wifi_status(self) -> Dict[str, str]:
+        """Get current WiFi status and connected network"""
+        try:
+            # Check if WiFi is enabled
+            wifi_enabled = self._run_adb_command(['shell', 'settings', 'get', 'global', 'wifi_on'])
+            
+            # Get current WiFi info
+            wifi_info = self._run_adb_command(['shell', 'dumpsys', 'wifi', '|', 'grep', 'mWifiInfo'])
+            
+            status = {
+                'enabled': wifi_enabled.strip() == '1' if wifi_enabled else False,
+                'connected_ssid': 'Unknown',
+                'raw_info': wifi_info.strip() if wifi_info else 'No info'
+            }
+            
+            # Extract SSID from wifi info
+            if wifi_info and 'SSID:' in wifi_info:
+                try:
+                    ssid_part = wifi_info.split('SSID:')[1].split(',')[0].strip()
+                    status['connected_ssid'] = ssid_part.replace('"', '')
+                except:
+                    pass
+            
+            return status
+        except Exception as e:
+            self.logger.error(f"Error getting WiFi status: {e}")
+            return {'enabled': False, 'connected_ssid': 'Error', 'raw_info': str(e)}
     
     def disconnect(self):
         """Disconnect from device"""

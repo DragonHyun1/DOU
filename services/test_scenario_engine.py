@@ -182,6 +182,38 @@ class TestScenarioEngine(QObject):
         
         self.scenarios["browser_performance"] = browser_config
         self.log_callback(f"Registered scenario: {browser_config.name} (key: browser_performance)", "info")
+        
+        # Phone App Test Scenario
+        phone_app_config = TestConfig(
+            name="Phone App Power Test",
+            description="Test power consumption during Phone app usage with init mode setup",
+            test_duration=10.0,  # Phone app test duration
+            stabilization_time=10.0
+        )
+        
+        phone_app_config.steps = [
+            # Init Mode Setup
+            TestStep("init_hvpm", 2.0, "set_hvpm_voltage", {"voltage": 4.0}),
+            TestStep("init_adb", 3.0, "setup_adb_device"),
+            TestStep("init_flight_mode", 2.0, "enable_flight_mode"),
+            TestStep("init_wifi_2g", 8.0, "connect_wifi_2g"),
+            TestStep("init_bluetooth", 3.0, "enable_bluetooth"),
+            TestStep("init_clear_apps", 5.0, "clear_all_recent_apps"),
+            TestStep("unlock_screen", 2.0, "unlock_device"),
+            TestStep("go_home", 2.0, "go_to_home"),
+            
+            # Stabilization
+            TestStep("stabilize", 10.0, "wait_stabilization"),
+            
+            # Phone App Test with DAQ monitoring
+            TestStep("phone_app_test", 10.0, "phone_app_test_with_daq"),
+            
+            # Export results
+            TestStep("save_data", 2.0, "export_to_excel")
+        ]
+        
+        self.scenarios["phone_app_test"] = phone_app_config
+        self.log_callback(f"Registered scenario: {phone_app_config.name} (key: phone_app_test)", "info")
         self.log_callback(f"Total scenarios registered: {len(self.scenarios)}", "info")
     
     def get_available_scenarios(self) -> Dict[str, TestConfig]:
@@ -614,6 +646,14 @@ class TestScenarioEngine(QObject):
                 return self._step_cleanup_apps_and_notifications()
             elif step.action == "export_to_excel":
                 return self._step_export_to_csv()
+            elif step.action == "connect_wifi_2g":
+                return self._step_connect_wifi_2g()
+            elif step.action == "enable_bluetooth":
+                return self._step_enable_bluetooth()
+            elif step.action == "clear_all_recent_apps":
+                return self._step_clear_all_recent_apps()
+            elif step.action == "phone_app_test_with_daq":
+                return self._step_phone_app_test_with_daq()
             else:
                 self.log_callback(f"Unknown step action: {step.action}", "error")
                 return False
@@ -2101,3 +2141,142 @@ class TestScenarioEngine(QObject):
             # Fallback to CSV if Excel fails
             csv_filename = filename.replace('.xlsx', '.csv')
             return self._export_to_csv_fallback(csv_filename)
+    
+    def _step_connect_wifi_2g(self) -> bool:
+        """Connect to 2.4GHz WiFi network"""
+        try:
+            # TODO: WiFi 설정 정보를 UI나 설정 파일에서 가져오도록 개선 필요
+            # 현재는 기본값 사용
+            wifi_ssid = "MyWiFi_2G"  # 사용자가 설정해야 할 값
+            wifi_password = "password123"  # 사용자가 설정해야 할 값
+            
+            self.log_callback(f"Connecting to 2.4GHz WiFi: {wifi_ssid}", "info")
+            
+            if not self.adb_service:
+                self.log_callback("ADB service not available", "error")
+                return False
+            
+            success = self.adb_service.connect_wifi_2g(wifi_ssid, wifi_password)
+            if success:
+                # Verify connection
+                wifi_status = self.adb_service.get_wifi_status()
+                self.log_callback(f"WiFi Status: {wifi_status}", "info")
+                self.log_callback("2.4GHz WiFi connection completed", "info")
+            else:
+                self.log_callback("Failed to connect to 2.4GHz WiFi", "error")
+            
+            return success
+        except Exception as e:
+            self.log_callback(f"Error connecting to 2.4GHz WiFi: {e}", "error")
+            return False
+    
+    def _step_enable_bluetooth(self) -> bool:
+        """Enable Bluetooth"""
+        try:
+            self.log_callback("Enabling Bluetooth", "info")
+            
+            if not self.adb_service:
+                self.log_callback("ADB service not available", "error")
+                return False
+            
+            success = self.adb_service.enable_bluetooth()
+            if success:
+                self.log_callback("Bluetooth enabled successfully", "info")
+            else:
+                self.log_callback("Failed to enable Bluetooth", "error")
+            
+            return success
+        except Exception as e:
+            self.log_callback(f"Error enabling Bluetooth: {e}", "error")
+            return False
+    
+    def _step_clear_all_recent_apps(self) -> bool:
+        """Clear all recent apps completely"""
+        try:
+            self.log_callback("Clearing all recent apps", "info")
+            
+            if not self.adb_service:
+                self.log_callback("ADB service not available", "error")
+                return False
+            
+            success = self.adb_service.clear_recent_apps()
+            if success:
+                self.log_callback("All recent apps cleared successfully", "info")
+            else:
+                self.log_callback("Failed to clear all recent apps", "error")
+            
+            return success
+        except Exception as e:
+            self.log_callback(f"Error clearing all recent apps: {e}", "error")
+            return False
+    
+    def _step_phone_app_test_with_daq(self) -> bool:
+        """Execute Phone app test with DAQ monitoring"""
+        try:
+            self.log_callback("Starting Phone app test with DAQ monitoring", "info")
+            
+            if not self.adb_service:
+                self.log_callback("ADB service not available", "error")
+                return False
+            
+            # Start DAQ monitoring
+            self.log_callback("Starting DAQ monitoring for Phone app test", "info")
+            if not self._start_daq_monitoring():
+                self.log_callback("Failed to start DAQ monitoring", "error")
+                return False
+            
+            # Wait a moment for DAQ to stabilize
+            time.sleep(1)
+            
+            # Execute Phone app test sequence
+            self.log_callback("=== Phone App Test Sequence Started ===", "info")
+            
+            # 0초: LCD ON 및 Phone app 열기
+            self.log_callback("Step 1: Turn on LCD and open Phone app", "info")
+            if not self.adb_service.turn_screen_on():
+                self.log_callback("Failed to turn screen on", "error")
+            
+            time.sleep(0.5)
+            
+            if not self.adb_service.open_phone_app():
+                self.log_callback("Failed to open Phone app", "error")
+            
+            # 5초 대기
+            self.log_callback("Waiting 5 seconds in Phone app...", "info")
+            time.sleep(5)
+            
+            # 5초: Back key 눌러서 홈 화면으로 이동
+            self.log_callback("Step 2: Press back key to go to home screen", "info")
+            if not self.adb_service.press_back_key():
+                self.log_callback("Failed to press back key", "error")
+            
+            time.sleep(0.5)
+            
+            # 홈 화면으로 확실히 이동
+            if not self.adb_service.press_home_key():
+                self.log_callback("Failed to press home key", "error")
+            
+            # 5초 더 대기 (총 10초)
+            self.log_callback("Waiting 5 more seconds on home screen...", "info")
+            time.sleep(5)
+            
+            self.log_callback("=== Phone App Test Sequence Completed ===", "info")
+            
+            # Stop DAQ monitoring
+            self.log_callback("Stopping DAQ monitoring", "info")
+            self._stop_daq_monitoring()
+            
+            # Wait for DAQ to finish
+            time.sleep(2)
+            
+            self.log_callback("Phone app test with DAQ monitoring completed", "info")
+            return True
+            
+        except Exception as e:
+            self.log_callback(f"Error in Phone app test: {e}", "error")
+            # Ensure DAQ monitoring is stopped
+            try:
+                self._stop_daq_monitoring()
+            except:
+                pass
+            return False
