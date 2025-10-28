@@ -1,39 +1,10 @@
-#!/usr/bin/env python3
-# file: hvpm_auto_data.py
-# 목적: USB PASSTHROUGH 자동 차단 후 데이터 전송만 수행
+2G로 커넥팅 되었다고 하는데 와이파이는 켜졌는데 0_WIFIFW_RAX40_2nd_2G에 연결은 안되었어
+내가 직접 연결하려고 보니 비밀번호 입력하라고 되어있던데 직접 입력하고 연결은 또 되거든
+너 비밀번호 입력하고 접속했던거 맞아?
+[18:02:40] Connecting to 2.4GHz WiFi: 0_WIFIFW_RAX40_2nd_2G
+[18:02:50] WiFi Status: {'enabled': False, 'connected_ssid': '<unknown ssid>', 'raw_info': 'mWifiInfo SSID: <unknown ssid>, BSSID: <none>, MAC: 02:00:00:00:00:00, IP: null, Security type: -1, Supplicant state: DISCONNECTED, Wi-Fi standard: unknown, RSSI: -127, Link speed: -1Mbps, Tx Link speed: -1Mbps, Max Supported Tx Link speed: -1Mbps, Rx Link speed: -1Mbps, Max Supported Rx Link speed: -1Mbps, Frequency: -1MHz, Net ID: -1, Metered hint: false, score: 0, isUsable: true, CarrierMerged: false, SubscriptionId: -1, IsPrimary: 0, Trusted: false, Restricted: false, Ephemeral: false, OEM paid: false, OEM private: false, OSU AP: false, FQDN: <none>, Provider friendly name: <none>, Requesting package name: <none><none>MLO Information: , Is TID-To-Link negotiation supported by the AP: false, AP MLD Address: <none>, AP MLO Link Id: <none>, AP MLO Affiliated links: <none>, Vendor Data: <none>\nmWifiInfo SSID: <unknown ssid>, BSSID: <none>, MAC: 02:00:00:00:00:00, IP: null, Security type: -1, Supplicant state: DISCONNECTED, Wi-Fi standard: unknown, RSSI: -127, Link speed: -1Mbps, Tx Link speed: -1Mbps, Max Supported Tx Link speed: -1Mbps, Rx Link speed: -1Mbps, Max Supported Rx Link speed: -1Mbps, Frequency: -1MHz, Net ID: -1, Metered hint: false, score: 0, isUsable: true, CarrierMerged: false, SubscriptionId: -1, IsPrimary: 0, Trusted: false, Restricted: false, Ephemeral: false, OEM paid: false, OEM private: false, OSU AP: false, FQDN: <none>, Provider friendly name: <none>, Requesting package name: <none><none>MLO Information: , Is TID-To-Link negotiation supported by the AP: false, AP MLD Address: <none>, AP MLO Link Id: <none>, AP MLO Affiliated links: <none>, Vendor Data: <none>\nmWifiInfo SSID: <unknown ssid>, BSSID: <none>, MAC: 02:00:00:00:00:00, IP: null, Security type: -1, Supplicant state: DISCONNECTED, Wi-Fi standard: 11ax, RSSI: -127, Link speed: -1Mbps, Tx Link speed: -1Mbps, Max Supported Tx Link speed: -1Mbps, Rx Link speed: -1Mbps, Max Supported Rx Link speed: -1Mbps, Frequency: -1MHz, Net ID: -1, Metered hint: false, score: 0, isUsable: true, CarrierMerged: false, SubscriptionId: -1, IsPrimary: 0, Trusted: false, Restricted: false, Ephemeral: false, OEM paid: false, OEM private: false, OSU AP: false, FQDN: <none>, Provider friendly name: <none>, Requesting package name: <none><none>MLO Information: , Is TID-To-Link negotiation supported by the AP: false, AP MLD Address: <none>, AP MLO Link Id: <none>, AP MLO Affiliated links: <none>, Vendor Data: <none>'}
+[18:02:50] 2.4GHz WiFi connection completed
 
-from hvpm import HVPMClient, HVPMError
-import time
-
-API_KEY = "YOUR_API_KEY"          # ← 실제 API‑KEY 로 교체
-DATA_TO_SEND = b'PING\n'          # 예시: 간단 문자열 전송
-
-def main():
-    client = HVPMClient(transport="usb")
-    try:
-        client.open()
-        client.auth(token=API_KEY)
-
-        # ----- USB PASSTHROUGH 자동 차단 -----
-        client.send({"cmd": "usb_passthrough", "params": {"mode": "auto"}})
-
-        # 현재 전원 상태 확인 (디버그용)
-        st = client.send({"cmd": "status"})
-        print("[INFO] usb_power =", st.get("usb_power"))   # OFF 가 나와야 함
-
-        # ----- 데이터 전송 (예: CDC/RAW) -----
-        # 아래 함수는 SDK에 따라 다를 수 있음. 예시로 raw_send 사용.
-        client.send_raw(DATA_TO_SEND)          # raw 바이트 전송
-        time.sleep(0.1)                        # 잠깐 대기
-
-        # 응답 수신 (예시: 256바이트까지)
-        resp = client.recv_raw(max_len=256)
-        print("[RECV] ", resp.decode(errors='ignore'))
-
-    except HVPMError as e:
-        print("[ERROR] code:", e.code, "msg:", e.msg)
-    finally:
-        client.close()
-
-if __name__ == "__main__":
-    main()
+"Phone"을 못 찾아서 fail된거야?
+[18:03:33] Error in Phone app test: 'TestScenarioEngine' object has no attribute '_start_daq_monitoring'
+[18:03:33] Test failed at step: phone_app_test
