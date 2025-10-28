@@ -1,137 +1,137 @@
-# HVPM Monitor - 반응형 UI 개선 가이드
+# HVPM Monitor - Responsive UI Improvement Guide
 
-## 🎯 **개선 완료 사항**
+## 🎯 **Completed Improvements**
 
-### ✅ **주요 해결된 문제들**
-1. **텍스트 크기 잘림 현상 해결**
-   - DPI 인식 자동 스케일링 시스템 구현
-   - 모든 폰트 크기가 화면 DPI에 따라 자동 조정
-   - 고해상도/저해상도 디스플레이 모두 지원
+### ✅ **Major Resolved Issues**
+1. **Text Size Clipping Issue Resolved**
+   - DPI-aware automatic scaling system implemented
+   - All font sizes automatically adjusted according to screen DPI
+   - Support for both high-resolution and low-resolution displays
 
-2. **위젯 크기 불일치 해결**
-   - 화면 크기에 따른 적응형 레이아웃 시스템
-   - 고정 크기 제거 및 유연한 크기 조정
-   - 최소/최대 크기 제한을 통한 안정성 확보
+2. **Widget Size Inconsistency Resolved**
+   - Adaptive layout system based on screen size
+   - Removed fixed sizes and implemented flexible sizing
+   - Stability ensured through minimum/maximum size limits
 
-3. **다양한 PC 환경 호환성**
-   - 800x600부터 4K 해상도까지 지원
-   - Windows/Linux/macOS 크로스 플랫폼 호환
-   - 다양한 DPI 설정 (96~240 DPI) 자동 대응
+3. **Various PC Environment Compatibility**
+   - Support from 800x600 to 4K resolution
+   - Windows/Linux/macOS cross-platform compatibility
+   - Automatic response to various DPI settings (96~240 DPI)
 
-## 🔧 **구현된 기술적 개선사항**
+## 🔧 **Implemented Technical Improvements**
 
-### 1. **적응형 UI 시스템** (`services/adaptive_ui.py`)
+### 1. **Adaptive UI System** (`services/adaptive_ui.py`)
 ```python
-# DPI 기반 자동 스케일링
-scale_factor = screen_dpi / 96  # 표준 DPI 대비 비율
+# DPI-based automatic scaling
+scale_factor = screen_dpi / 96  # Ratio compared to standard DPI
 scaled_font_size = base_font_size * scale_factor
 scaled_widget_size = base_size * scale_factor
 ```
 
-**주요 기능:**
-- 🎯 **DPI 인식**: 화면 DPI 자동 감지 및 스케일 팩터 계산
-- 📏 **크기 조정**: 위젯, 폰트, 여백 등 모든 UI 요소 자동 스케일링
-- 📱 **반응형 크기**: 화면 크기의 비율로 창 크기 결정
-- 🔒 **안전 범위**: 0.8~2.5배 스케일링 제한으로 극단적 크기 방지
+**Key Features:**
+- 🎯 **DPI Recognition**: Automatic screen DPI detection and scale factor calculation
+- 📏 **Size Adjustment**: Automatic scaling of all UI elements including widgets, fonts, margins
+- 📱 **Responsive Size**: Window size determined by screen size ratio
+- 🔒 **Safe Range**: 0.8~2.5x scaling limits to prevent extreme sizes
 
-### 2. **반응형 레이아웃 관리자** (`services/responsive_layout.py`)
+### 2. **Responsive Layout Manager** (`services/responsive_layout.py`)
 ```python
-# 화면 크기 기반 위젯 크기 조정
+# Widget size adjustment based on screen size
 screen_width = get_screen_width()
-widget_width = screen_width * width_ratio  # 비율 기반 크기
+widget_width = screen_width * width_ratio  # Ratio-based sizing
 ```
 
-**주요 기능:**
-- 🎨 **유연한 레이아웃**: 화면 크기에 따른 위젯 비율 조정
-- 📦 **그룹박스 관리**: 각 섹션별 최적 크기 비율 적용
-- 🔘 **버튼 최적화**: 터치/클릭하기 적절한 크기 보장
-- 📋 **콤보박스 조정**: 텍스트 잘림 방지를 위한 동적 크기
+**Key Features:**
+- 🎨 **Flexible Layout**: Widget ratio adjustment according to screen size
+- 📦 **GroupBox Management**: Optimal size ratio application for each section
+- 🔘 **Button Optimization**: Ensuring appropriate size for touch/click
+- 📋 **ComboBox Adjustment**: Dynamic sizing to prevent text clipping
 
-### 3. **향상된 테마 시스템** (`services/theme.py`)
+### 3. **Enhanced Theme System** (`services/theme.py`)
 ```python
-# 적응형 스타일시트 생성
+# Adaptive stylesheet generation
 font_size = adaptive_ui.get_scaled_font_size(base_size)
 padding = adaptive_ui.get_scaled_value(base_padding)
 ```
 
-**주요 기능:**
-- 🎨 **동적 스타일**: DPI에 따른 폰트/여백 자동 조정
-- 🌈 **일관된 색상**: 모든 화면에서 동일한 시각적 경험
-- 📐 **비례 디자인**: 모든 UI 요소의 비율 유지
-- ⚡ **성능 최적화**: 스타일시트 중앙 관리로 메모리 효율성
+**Key Features:**
+- 🎨 **Dynamic Styling**: Automatic font/margin adjustment according to DPI
+- 🌈 **Consistent Colors**: Same visual experience across all screens
+- 📐 **Proportional Design**: Maintaining ratios of all UI elements
+- ⚡ **Performance Optimization**: Memory efficiency through centralized stylesheet management
 
-## 📊 **개선 전후 비교**
+## 📊 **Before/After Comparison**
 
-| 항목 | 개선 전 | 개선 후 |
-|------|---------|---------|
-| **폰트 크기** | 고정 8pt~16pt | DPI 기반 자동 조정 |
-| **위젯 크기** | 절대값 고정 (120px 등) | 화면 비율 기반 동적 |
-| **창 크기** | 1159x790 고정 | 화면의 85% 자동 조정 |
-| **최소 크기** | 1000x600 | 800x500 (더 유연) |
-| **DPI 지원** | 미지원 | 96~240 DPI 자동 대응 |
-| **레이아웃** | 고정 레이아웃 | 반응형 적응 레이아웃 |
+| Item | Before | After |
+|------|--------|-------|
+| **Font Size** | Fixed 8pt~16pt | DPI-based automatic adjustment |
+| **Widget Size** | Fixed absolute values (120px etc.) | Dynamic based on screen ratio |
+| **Window Size** | Fixed 1159x790 | 85% of screen automatic adjustment |
+| **Minimum Size** | 1000x600 | 800x500 (more flexible) |
+| **DPI Support** | Not supported | 96~240 DPI automatic response |
+| **Layout** | Fixed layout | Responsive adaptive layout |
 
-## 🚀 **사용법 및 테스트**
+## 🚀 **Usage and Testing**
 
-### 1. **시스템 테스트**
+### 1. **System Testing**
 ```bash
-# 적응형 UI 시스템 테스트
+# Test adaptive UI system
 python3 run_adaptive_test.py
 ```
 
-### 2. **애플리케이션 실행**
+### 2. **Application Execution**
 ```bash
-# 개선된 UI로 애플리케이션 실행
+# Run application with improved UI
 python3 main.py
 ```
 
-### 3. **다양한 환경에서 테스트**
-- **고해상도 디스플레이** (4K, 5K): 텍스트가 너무 작지 않은지 확인
-- **저해상도 디스플레이** (1366x768): UI가 잘리지 않는지 확인  
-- **다양한 DPI 설정**: Windows 디스플레이 배율 100%~200% 테스트
-- **창 크기 조정**: 최소 크기부터 전체 화면까지 테스트
+### 3. **Testing in Various Environments**
+- **High-resolution displays** (4K, 5K): Verify text is not too small
+- **Low-resolution displays** (1366x768): Verify UI is not clipped  
+- **Various DPI settings**: Test Windows display scaling 100%~200%
+- **Window resizing**: Test from minimum size to full screen
 
-## 🔍 **주요 변경 파일들**
+## 🔍 **Key Changed Files**
 
-### 새로 추가된 파일:
-- `services/adaptive_ui.py` - 적응형 UI 핵심 시스템
-- `services/responsive_layout.py` - 반응형 레이아웃 관리자
-- `run_adaptive_test.py` - 시스템 테스트 스크립트
-- `UI_RESPONSIVE_GUIDE.md` - 이 가이드 문서
+### Newly Added Files:
+- `services/adaptive_ui.py` - Adaptive UI core system
+- `services/responsive_layout.py` - Responsive layout manager
+- `run_adaptive_test.py` - System test script
+- `UI_RESPONSIVE_GUIDE.md` - This guide document
 
-### 수정된 파일:
-- `main.py` - 적응형 UI 시스템 통합
-- `services/theme.py` - DPI 기반 동적 스타일링
-- `ui/main_ui.ui` - 고정 크기 제거 및 유연성 개선
-- `generated/main_ui.py` - UI 코드 재생성
+### Modified Files:
+- `main.py` - Adaptive UI system integration
+- `services/theme.py` - DPI-based dynamic styling
+- `ui/main_ui.ui` - Fixed size removal and flexibility improvement
+- `generated/main_ui.py` - UI code regeneration
 
-## 📋 **향후 개선 계획**
+## 📋 **Future Improvement Plans**
 
-### 단기 계획:
-- [ ] 터치스크린 환경 최적화
-- [ ] 다국어 지원 시 텍스트 길이 대응
-- [ ] 접근성 개선 (고대비, 큰 텍스트)
+### Short-term Plans:
+- [ ] Touchscreen environment optimization
+- [ ] Text length handling for multi-language support
+- [ ] Accessibility improvements (high contrast, large text)
 
-### 장기 계획:
-- [ ] 사용자 정의 UI 스케일링
-- [ ] 테마 전환 애니메이션
-- [ ] 모바일/태블릿 지원
+### Long-term Plans:
+- [ ] User-customizable UI scaling
+- [ ] Theme transition animations
+- [ ] Mobile/tablet support
 
-## ⚠️ **주의사항**
+## ⚠️ **Precautions**
 
-1. **PyQt6 의존성**: 실제 실행 시 PyQt6가 필요합니다
-2. **시스템 요구사항**: 최소 800x500 해상도 권장
-3. **성능**: 매우 높은 DPI(300+ DPI)에서는 성능 영향 가능
-4. **호환성**: 일부 구형 시스템에서는 DPI 감지가 부정확할 수 있음
+1. **PyQt6 Dependency**: PyQt6 is required for actual execution
+2. **System Requirements**: Minimum 800x500 resolution recommended
+3. **Performance**: Performance impact possible at very high DPI (300+ DPI)
+4. **Compatibility**: DPI detection may be inaccurate on some legacy systems
 
-## 🎉 **결과**
+## 🎉 **Results**
 
-이제 HVPM Monitor는 다음과 같은 환경에서 완벽하게 작동합니다:
+HVPM Monitor now works perfectly in the following environments:
 
-- ✅ **노트북** (1366x768, 1920x1080)
-- ✅ **데스크톱** (1920x1080, 2560x1440) 
-- ✅ **고해상도** (4K, 5K 디스플레이)
-- ✅ **다양한 DPI** (100%~200% 스케일링)
-- ✅ **다양한 OS** (Windows, Linux, macOS)
+- ✅ **Laptops** (1366x768, 1920x1080)
+- ✅ **Desktops** (1920x1080, 2560x1440) 
+- ✅ **High-resolution** (4K, 5K displays)
+- ✅ **Various DPI** (100%~200% scaling)
+- ✅ **Various OS** (Windows, Linux, macOS)
 
-**모든 PC 환경에서 텍스트 잘림이나 위젯 크기 문제 없이 일관된 사용자 경험을 제공합니다!** 🎯
+**Provides consistent user experience across all PC environments without text clipping or widget sizing issues!** 🎯

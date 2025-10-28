@@ -59,15 +59,15 @@ class ActLibrary:
         dev.click({"textMatches": "(?i)Turn on location"})
 
     # -------------------------------------------------
-    # 배터리 기본 설정 (battary_default_setting) – default_setting 와 동일
+    # Battery basic settings (battary_default_setting) - same as default_setting
     # -------------------------------------------------
     battary_default_setting = default_setting
 
     # -------------------------------------------------
-    # 화면 크기 계산 (screen_size_check)
+    # Screen size calculation (screen_size_check)
     # -------------------------------------------------
     def screen_size_check(self, ctx: EvalContext, dev: Device):
-        ctx.set_var("blank", '" "', dev)                # 문자열 빈칸
+        ctx.set_var("blank", '" "', dev)                # String blank space
         size_check = dev.shell("wm size | grep Override || wm size | grep Physical")
         ctx.set_var("size_Check", size_check, dev)
 
@@ -79,7 +79,7 @@ class ActLibrary:
         ctx.set_var("screen_x", "[get {split_sz} 0]", dev)
         ctx.set_var("screen_y", "[get {split_sz} 1]", dev)
 
-        # 파생 좌표
+        # Derived coordinates
         ctx.set_var("center_x", "{screen_x} * 0.5", dev)
         ctx.set_var("center_y", "{screen_y} * 0.5", dev)
         ctx.set_var("right_x", "{screen_x} * 0.75", dev)
@@ -92,7 +92,7 @@ class ActLibrary:
         ctx.set_var("x_right_landscape", "{screen_y} - {screen_y} / 6", dev)
 
     # -------------------------------------------------
-    # 조도(밝기) 파일 읽기 (indoor_500 / indoor_default / outdoor_2300 / hbm_5000 / hbm_20000)
+    # Brightness file reading (indoor_500 / indoor_default / outdoor_2300 / hbm_5000 / hbm_20000)
     # -------------------------------------------------
     def _set_brightness_from_file(self, ctx: EvalContext, dev: Device, path: str):
         ctx.set_var("indoor", f"[doshell cat {path}]", dev)
@@ -114,7 +114,7 @@ class ActLibrary:
         self._set_brightness_from_file(ctx, dev, "/sdcard/hbm.txt")
 
     # -------------------------------------------------
-    # Wi‑Fi 설정 (set_wifi_2_4, set_b_wifi_2_4, set_wifi_5, set_b_wifi_5)
+    # Wi-Fi settings (set_wifi_2_4, set_b_wifi_2_4, set_wifi_5, set_b_wifi_5)
     # -------------------------------------------------
     def set_wifi_2_4(self, ctx: EvalContext, dev: Device):
         ctx.set_var("wifi_2_4", "[doshell cat /sdcard/wifi2.txt]", dev)
@@ -133,7 +133,7 @@ class ActLibrary:
         )
         dev.sleep(5000)
         self._log_current_wifi(ctx, dev)
-        # unknown_ssid 체크
+        # unknown_ssid check
         if ctx.vars.get("get_now_wifi") == "<unknown_ssid>":
             dev.shell("svc wifi disable")
             dev.sleep(1000)
@@ -168,18 +168,18 @@ class ActLibrary:
             dev.sleep(5000)
 
     # -------------------------------------------------
-    # 현재 Wi‑Fi 정보 파싱 (공통 메서드)
+    # Current Wi-Fi information parsing (common method)
     # -------------------------------------------------
     def _log_current_wifi(self, ctx: EvalContext, dev: Device):
         raw = dev.shell("dumpsys wifi | grep mWifiInfo")
-        # 같은 로직을 DSL 이 그대로 풀어주면 된다.
+        # DSL can unfold the same logic as is.
         cleaned = raw.replace(" ", "_")
         parts = cleaned.split(",_")
         parts = [p.split(":_")[-1] for p in parts]
-        ctx.vars["set_now_wifi"] = parts[1]  # SSID 위치 예시
+        ctx.vars["set_now_wifi"] = parts[1]  # SSID position example
 
     # -------------------------------------------------
-    # 디바이스 모델·화면 회전 체크 (set_test_screen, set_rotation_screen_check_fold)
+    # Device model and screen rotation check (set_test_screen, set_rotation_screen_check_fold)
     # -------------------------------------------------
     def set_test_screen(self, ctx: EvalContext, dev: Device):
         ctx.set_var(
@@ -199,7 +199,7 @@ class ActLibrary:
             dev.rotation("on")
 
     def set_rotation_screen_check_fold(self, ctx: EvalContext, dev: Device):
-        # 동일 로직, 다만 fold 상황에서는 1 로 회전
+        # Same logic, but rotate to 1 in fold situation
         ctx.set_var("model", "[doshell getprop ro.product.model]", dev)
         ctx.set_var("Q7M", '"SM-F968N"', dev)
         cond = (
@@ -214,7 +214,7 @@ class ActLibrary:
             dev.rotation("on")
 
     # -------------------------------------------------
-    # TSP / ACL 체크 (check_tsp_acl)
+    # TSP / ACL check (check_tsp_acl)
     # -------------------------------------------------
     def check_tsp_acl(self, ctx: EvalContext, dev: Device):
         ctx.set_var("tsp_on", "[{tsp_on_check}]", dev)
@@ -223,7 +223,7 @@ class ActLibrary:
         ctx.set_var("gallery_acl", "[{gallery_acl_check}]", dev)
 
     # -------------------------------------------------
-    # 최근 알림·앱 정리 (recent_noti_clear)
+    # Recent notification and app cleanup (recent_noti_clear)
     # -------------------------------------------------
     def recent_noti_clear(self, ctx: EvalContext, dev: Device):
         dev.press("app_switch")
@@ -237,7 +237,7 @@ class ActLibrary:
         dev.press("home")
 
     # -------------------------------------------------
-    # 기타 포인터·스크롤·패턴 등 (아래는 몇 가지 예시)
+    # Other pointer, scroll, pattern, etc. (below are some examples)
     # -------------------------------------------------
     def home_point(self, ctx: EvalContext, dev: Device):
         dev.sleep(1000)
@@ -247,9 +247,9 @@ class ActLibrary:
         dev.sleep(500)
 
         if "OPEN" in ctx.vars["OPEN_OR_CLOSE"]:
-            # Launcher 가 있으면 UI 좌표 반환, 없으면 screen_size_check 이용
+            # If Launcher exists, return UI coordinates, otherwise use screen_size_check
             if dev.click({"desc": "Home", "pkg": "com.sec.android.app.launcher"}):
-                # UI 객체 좌표 직접 가져오기 (예시)
+                # Direct UI object coordinate retrieval (example)
                 pass
             elif dev.click({"desc": "Home", "pkg": "com.android.systemui"}):
                 pass
@@ -258,10 +258,10 @@ class ActLibrary:
                 ctx.vars["RESERVED_X"] = ctx.vars["center_x"]
                 ctx.vars["RESERVED_Y"] = ctx.vars["screen_y"] - 70
         else:
-            # CLOSE 상태도 동일 로직
+            # CLOSE state also same logic
             ...
 
         ctx.vars["home_x"] = ctx.vars["RESERVED_X"]
         ctx.vars["home_y"] = ctx.vars["RESERVED_Y"]
 
-    # (다른 포인터·스크롤·패턴 함수도 같은 방식으로 구현)
+    # (Other pointer, scroll, pattern functions implemented in the same way)

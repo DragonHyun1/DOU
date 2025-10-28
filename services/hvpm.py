@@ -182,7 +182,7 @@ class HvpmService:
 
             self._set_status("Connected ✅", True)
             if log_callback:
-                self._log = log_callback  # 선택: 내부 저장
+                self._log = log_callback  # Optional: internal storage
                 log_callback(f"[HVPM] Connected, serial={shown}", "info")
 
         except Exception as e:
@@ -229,7 +229,7 @@ class HvpmService:
             return None
         ch = sampleEngine.channels
 
-        # 스트림 미사용: 1회 캡처
+        # No streaming: single capture
         self._enable_voltage_minimal()
         try:
             if warmup_ms and warmup_ms > 0:
@@ -309,7 +309,7 @@ class HvpmService:
             return False
         v = max(0.0, min(5.5, v))
 
-        # 0V → 출력 끄기
+        # 0V → turn off output
         if v <= 0.0:
             try:
                 if hasattr(self.pm, "setVout"):
@@ -323,10 +323,10 @@ class HvpmService:
                 if log_callback: log_callback(f"[HVPM ERR34] setVout(0) failed: {e}", "error")
                 return False
 
-        # ★ 핵심: 전압을 올리기 전에 리밋을 '최대치'로
+        # ★ Key: Set limits to 'maximum' before raising voltage
         self._set_limits_max(log_callback=log_callback)
 
-        # (선택) 필요 시 USB 역급전 차단/램핑 로직을 여기 추가 가능
+        # (Optional) USB reverse power blocking/ramping logic can be added here if needed
         try:
             if hasattr(self.pm, "setVout"):
                 self.pm.setVout(v)
