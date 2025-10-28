@@ -63,13 +63,13 @@ class PrecondLibrary:
     def wifi_set(self, ctx: EvalContext, dev: Device):
         ctx.set_var("blank", '" "', dev)
 
-        # 2.4 GHz SSID 추출
+        # 2.4 GHz SSID extraction
         find_2_4 = dev.shell('dumpsys wifi | grep "^SSID:.*2.4.*"')
         split_2_4 = ctx.resolve(f"[split {find_2_4} {ctx.vars['blank']}]", dev)
         ctx.vars["wifi_2_4"] = ctx.resolve("[get {split_2_4} 1]", dev)
         dev.shell(f'echo {ctx.vars["wifi_2_4"]} > /sdcard/wifi2.txt')
 
-        # 5 GHz SSID 추출
+        # 5 GHz SSID extraction
         find_5 = dev.shell('dumpsys wifi | grep "^SSID:.*5.*"')
         split_5 = ctx.resolve(f"[split {find_5} {ctx.vars['blank']}]", dev)
         ctx.vars["wifi_5"] = ctx.resolve("[get {split_5} 1]", dev)

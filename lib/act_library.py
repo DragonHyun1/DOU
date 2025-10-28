@@ -33,7 +33,7 @@ class ActLibrary:
         )
         dev.sleep(500)
 
-        # “Show available devices on share panel” 체크 여부
+        # “Show available devices on share panel” check
         if dev.click({"textMatches": r"\QShow available devices on share panel\E"}):
             dev.log("share-panel option ON")
         dev.sleep(500)
@@ -71,7 +71,7 @@ class ActLibrary:
         size_check = dev.shell("wm size | grep Override || wm size | grep Physical")
         ctx.set_var("size_Check", size_check, dev)
 
-        # “1234x5678” 형태 → split → get
+        # “1234x5678” format → split → get
         split = ctx.resolve("[split {size_Check} {blank}]", dev)
         get_size = ctx.resolve("[get {split} 2]", dev)
         split_sz = ctx.resolve("[split {get_size} x]", dev)
