@@ -630,6 +630,14 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def _update_auto_test_buttons(self):
         """Update auto test button states"""
+        # Don't update if test is running (let _set_ui_test_mode handle it)
+        try:
+            if hasattr(self, 'test_scenario_engine') and self.test_scenario_engine.is_running():
+                self._log("Skipping _update_auto_test_buttons - test is running", "debug")
+                return
+        except Exception:
+            pass
+            
         # Check if auto test UI elements exist and are not None
         try:
             start_button = getattr(self.ui, 'startAutoTest_PB', None)
@@ -1407,7 +1415,9 @@ class MainWindow(QtWidgets.QMainWindow):
                 self._log(f"Test scenario started: {scenario_name}", "info")
                 
                 # Disable all UI controls except Stop button during test
+                self._log("=== SETTING UI TEST MODE: TRUE ===", "info")
                 self._set_ui_test_mode(True)
+                self._log("=== UI TEST MODE SET COMPLETE ===", "info")
                 
                 # Update test status display
                 if hasattr(self.ui, 'testProgress_PB') and self.ui.testProgress_PB:
@@ -1627,14 +1637,24 @@ class MainWindow(QtWidgets.QMainWindow):
         try:
             self._log(f"Setting UI test mode: test_running={test_running}", "info")
             
-            # Auto Test buttons
+            # Auto Test buttons - Force state change
             if hasattr(self.ui, 'startAutoTest_PB') and self.ui.startAutoTest_PB:
                 self.ui.startAutoTest_PB.setEnabled(not test_running)
-                self._log(f"startAutoTest_PB enabled: {not test_running}", "debug")
+                # Force repaint to ensure visual update
+                self.ui.startAutoTest_PB.repaint()
+                self._log(f"*** startAutoTest_PB enabled: {not test_running} ***", "info")
                 
             if hasattr(self.ui, 'stopAutoTest_PB') and self.ui.stopAutoTest_PB:
                 self.ui.stopAutoTest_PB.setEnabled(test_running)
-                self._log(f"stopAutoTest_PB enabled: {test_running}", "debug")
+                # Force repaint to ensure visual update
+                self.ui.stopAutoTest_PB.repaint()
+                self._log(f"*** stopAutoTest_PB enabled: {test_running} ***", "info")
+                
+                # Additional styling for emphasis during test
+                if test_running:
+                    self.ui.stopAutoTest_PB.setStyleSheet("QPushButton { background-color: #f44336; color: white; font-weight: bold; }")
+                else:
+                    self.ui.stopAutoTest_PB.setStyleSheet("")  # Reset to default
             
             # Test scenario selection
             if hasattr(self.ui, 'testScenario_CB') and self.ui.testScenario_CB:
@@ -1688,6 +1708,10 @@ class MainWindow(QtWidgets.QMainWindow):
             # Menu actions (if any)
             if hasattr(self.ui, 'menubar') and self.ui.menubar:
                 self.ui.menubar.setEnabled(not test_running)
+            
+            # Force Qt to process all pending events and repaint
+            QtWidgets.QApplication.processEvents()
+            QtWidgets.QApplication.processEvents()  # Call twice to ensure processing
             
             self._log(f"UI test mode set successfully: test_running={test_running}", "info")
             
