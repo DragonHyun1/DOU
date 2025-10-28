@@ -651,8 +651,12 @@ class MainWindow(QtWidgets.QMainWindow):
                 
             try:
                 test_running = bool(hasattr(self, 'test_scenario_engine') and self.test_scenario_engine.is_running())
-            except Exception:
+                if hasattr(self, 'test_scenario_engine'):
+                    engine_status = self.test_scenario_engine.get_status()
+                    self._log(f"_update_auto_test_buttons: engine_status={engine_status.value}, test_running={test_running}", "debug")
+            except Exception as e:
                 test_running = False
+                self._log(f"Error checking test running status: {e}", "debug")
             
             can_start = hvpm_connected and adb_connected and not test_running
             
@@ -1506,6 +1510,14 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def _on_auto_test_completed(self, success: bool, message: str):
         """Handle auto test completion"""
+        self._log(f"_on_auto_test_completed called: success={success}, message={message}", "info")
+        
+        # Check test engine status before updating
+        if hasattr(self, 'test_scenario_engine'):
+            engine_status = self.test_scenario_engine.get_status()
+            engine_running = self.test_scenario_engine.is_running()
+            self._log(f"Test engine status: {engine_status.value}, is_running: {engine_running}", "info")
+        
         self._update_auto_test_buttons()
         
         # Update test results display
@@ -1522,39 +1534,63 @@ class MainWindow(QtWidgets.QMainWindow):
         if test_result and test_result.daq_data:
             self._log(f"Test completed with {len(test_result.daq_data)} data points", "info")
         
-        if success:
-            if hasattr(self.ui, 'testProgress_PB') and self.ui.testProgress_PB:
-                self.ui.testProgress_PB.setValue(100)
-            if hasattr(self.ui, 'testStatus_LB') and self.ui.testStatus_LB:
+        # Force UI state reset regardless of success/failure
+        if hasattr(self.ui, 'testProgress_PB') and self.ui.testProgress_PB:
+            self.ui.testProgress_PB.setValue(100 if success else 0)
+        
+        if hasattr(self.ui, 'testStatus_LB') and self.ui.testStatus_LB:
+            if success:
                 self.ui.testStatus_LB.setText("Test completed successfully")
                 self.ui.testStatus_LB.setStyleSheet("font-size: 11pt; color: #4CAF50; font-weight: bold;")
-            
-            # Update Auto Test group box title
-            if hasattr(self.ui, 'autoTestGroupBox') and self.ui.autoTestGroupBox:
+            else:
+                self.ui.testStatus_LB.setText("Test failed")
+                self.ui.testStatus_LB.setStyleSheet("font-size: 11pt; color: #F44336; font-weight: bold;")
+        
+        # Force Auto Test group box title update
+        if hasattr(self.ui, 'autoTestGroupBox') and self.ui.autoTestGroupBox:
+            if success:
                 self.ui.autoTestGroupBox.setTitle("Auto Test - COMPLETED")
-            
-            # Update status bar
+            else:
+                self.ui.autoTestGroupBox.setTitle("Auto Test - FAILED")
+            self._log(f"Auto Test GroupBox title updated to: {self.ui.autoTestGroupBox.title()}", "info")
+        
+        # Update status bar and show completion message
+        if success:
             self.ui.statusbar.showMessage("Auto Test Completed Successfully", 5000)
             
             # Show simple completion message (no save dialog - results already auto-saved)
             QtWidgets.QMessageBox.information(
                 self, "Test Complete", 
-                f"Automated test completed successfully!\n\n{message}\n\nResults have been automatically saved to Excel."
+                f"Automated test completed successfully!\n\n{message}\n\nResults have been automatically saved to CSV."
             )
         else:
-            if hasattr(self.ui, 'testStatus_LB') and self.ui.testStatus_LB:
-                self.ui.testStatus_LB.setText("Test failed")
-                self.ui.testStatus_LB.setStyleSheet("font-size: 11pt; color: #f44336; font-weight: bold;")
-            
-            # Update Auto Test group box title
-            if hasattr(self.ui, 'autoTestGroupBox') and self.ui.autoTestGroupBox:
-                self.ui.autoTestGroupBox.setTitle("Auto Test - FAILED")
-            
             # Update status bar
             self.ui.statusbar.showMessage("Auto Test Failed", 5000)
             
             QtWidgets.QMessageBox.warning(self, "Test Failed", f"Automated test failed:\n\n{message}")
+        
+        # Force UI refresh after dialog
+        self._force_ui_refresh()
     
+    def _force_ui_refresh(self):
+        """Force UI refresh to ensure state changes are visible"""
+        try:
+            # Process all pending Qt events
+            QtWidgets.QApplication.processEvents()
+            
+            # Force button state update
+            self._update_auto_test_buttons()
+            
+            # Force repaint of UI elements
+            if hasattr(self.ui, 'autoTestGroupBox') and self.ui.autoTestGroupBox:
+                self.ui.autoTestGroupBox.repaint()
+            if hasattr(self.ui, 'testStatus_LB') and self.ui.testStatus_LB:
+                self.ui.testStatus_LB.repaint()
+                
+            self._log("UI refresh completed", "debug")
+        except Exception as e:
+            self._log(f"Error during UI refresh: {e}", "error")
+
     def _save_test_results(self, success: bool, message: str):
         """Save test results to file"""
         try:
