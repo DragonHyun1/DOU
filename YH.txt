@@ -1,15 +1,2 @@
-Waiting for screen test to start... (58s timeout remaining)
-Waiting for screen test to start... (58s timeout remaining)
-Waiting for screen test to start... (58s timeout remaining)
-Waiting for screen test to start... (58s timeout remaining)
-Waiting for screen test to start... (58s timeout remaining)
-Waiting for screen test to start... (58s timeout remaining)
-Waiting for screen test to start... (58s timeout remaining)
-Waiting for screen test to start... (58s timeout remaining)
-DAQ monitoring: 9 points collected, 2/2 channels OK
 QBasicTimer::start: QBasicTimer can only be used with threads started with QThread
 QBasicTimer::start: QBasicTimer can only be used with threads started with QThread
-QBasicTimer::start: QBasicTimer can only be used with threads started with QThread
-QBasicTimer::start: QBasicTimer can only be used with threads started with QThread
-Screen test completed (25.6s), stopping data collection
-DAQ monitoring loop ended
