@@ -361,44 +361,66 @@ class TestScenarioEngine(QObject):
                 measurement_mode = 'current'
             
             # Start screen test with integrated DAQ monitoring
-            start_time = time.time()
-            cycles = 10  # 20 seconds / 2 seconds per cycle
+            test_duration = 20.0  # 20 seconds total
+            data_interval = 1.0   # 1 second intervals
+            screen_interval = 2.0 # Screen changes every 2 seconds
             
             self.log_callback("Starting screen on/off cycle with integrated DAQ monitoring", "info")
+            self.log_callback(f"Test duration: {test_duration}s, Data interval: {data_interval}s", "info")
             
             # Start with screen on
             self.adb_service.turn_screen_on()
-            time.sleep(0.5)
             
-            for cycle in range(cycles):
+            start_time = time.time()
+            last_screen_change = 0
+            screen_state = True  # True = ON, False = OFF
+            data_point_count = 0
+            
+            # Main test loop with precise timing
+            while True:
+                current_time = time.time()
+                elapsed_time = current_time - start_time
+                
+                # Check if test duration completed
+                if elapsed_time >= test_duration:
+                    break
+                    
                 if self.stop_requested:
                     self.log_callback("Test stop requested, breaking cycle", "warn")
                     break
                 
                 try:
-                    # 1. Collect DAQ data point
-                    elapsed_time = time.time() - start_time
-                    data_point = self._collect_daq_data_point(enabled_channels, measurement_mode, elapsed_time)
-                    if data_point:
-                        self.daq_data.append(data_point)
+                    # 1. Collect DAQ data at 1-second intervals
+                    if elapsed_time >= data_point_count * data_interval:
+                        data_point = self._collect_daq_data_point(enabled_channels, measurement_mode, elapsed_time)
+                        if data_point:
+                            self.daq_data.append(data_point)
+                            data_point_count += 1
+                            self.log_callback(f"Data point {data_point_count}: {elapsed_time:.1f}s", "debug")
                     
-                    # 2. Update progress
-                    progress = int((cycle / cycles) * 90)  # 0-90% for screen test
-                    self._update_progress_safe(f"Screen test cycle {cycle+1}/{cycles}")
+                    # 2. Screen control every 2 seconds
+                    screen_cycle_time = int(elapsed_time / screen_interval)
+                    if screen_cycle_time > last_screen_change:
+                        screen_state = not screen_state
+                        if screen_state:
+                            self.adb_service.turn_screen_on()
+                            self.log_callback(f"Screen ON at {elapsed_time:.1f}s", "info")
+                        else:
+                            self.adb_service.turn_screen_off()
+                            self.log_callback(f"Screen OFF at {elapsed_time:.1f}s", "info")
+                        last_screen_change = screen_cycle_time
                     
-                    # 3. Screen control (alternating on/off every cycle)
-                    if cycle % 2 == 0:
-                        self.adb_service.turn_screen_off()
-                        self.log_callback(f"Screen OFF (cycle {cycle+1}/{cycles})", "info")
-                    else:
-                        self.adb_service.turn_screen_on()
-                        self.log_callback(f"Screen ON (cycle {cycle+1}/{cycles})", "info")
+                    # 3. Update progress (pure test progress only)
+                    test_progress = int((elapsed_time / test_duration) * 100)
+                    self._update_test_progress_only(test_progress, f"Screen Test: {elapsed_time:.1f}s / {test_duration}s")
                     
-                    # 4. Wait for next cycle (2 seconds total per cycle)
-                    time.sleep(1.5)  # Already slept 0.5s for DAQ, so 1.5s more
+                    # 4. Process Qt events to keep UI responsive and small sleep
+                    self._process_qt_events()
+                    time.sleep(0.1)
                     
                 except Exception as cycle_error:
-                    self.log_callback(f"Error in screen cycle {cycle+1}: {cycle_error}", "error")
+                    self.log_callback(f"Error in test loop at {elapsed_time:.1f}s: {cycle_error}", "error")
+                    time.sleep(0.1)
                     continue
             
             # Final data collection
@@ -442,11 +464,11 @@ class TestScenarioEngine(QObject):
                     value = round(random.uniform(1.0, 5.0), 3)
                     channel_data[f"{channel}_voltage"] = value
             
-            # Create data point
+            # Create data point with precise timing
             data_point = {
                 'timestamp': datetime.now(),
-                'time_elapsed': elapsed_time,
-                'screen_test_time': elapsed_time,
+                'time_elapsed': round(elapsed_time, 1),  # Round to 1 decimal place
+                'screen_test_time': round(elapsed_time, 1),
                 **channel_data
             }
             
@@ -1578,6 +1600,32 @@ class TestScenarioEngine(QObject):
             except Exception as e:
                 # Ignore Qt signal errors in threads
                 pass
+
+    def _update_test_progress_only(self, test_progress: int, status: str):
+        """Update progress for pure test execution only (no setup steps)"""
+        # Clamp progress to 0-100
+        test_progress = max(0, min(100, test_progress))
+        
+        # Use log for detailed progress
+        self.log_callback(f"Test Progress: {test_progress}% - {status}", "info")
+        
+        # Emit Qt signal safely (only for pure test progress)
+        try:
+            if QT_AVAILABLE and not threading.current_thread().daemon:
+                self.progress_updated.emit(test_progress, f"Screen Test: {test_progress}%")
+        except Exception as e:
+            # Ignore Qt signal errors
+            pass
+
+    def _process_qt_events(self):
+        """Process Qt events to keep UI responsive during long operations"""
+        try:
+            if QT_AVAILABLE:
+                from PyQt6.QtCore import QCoreApplication
+                QCoreApplication.processEvents()
+        except Exception as e:
+            # Ignore Qt event processing errors
+            pass
 
     def _update_progress(self, step_name: str):
         """Update progress and emit signal"""
