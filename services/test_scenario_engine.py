@@ -2145,10 +2145,9 @@ class TestScenarioEngine(QObject):
     def _step_connect_wifi_2g(self) -> bool:
         """Connect to 2.4GHz WiFi network"""
         try:
-            # TODO: WiFi 설정 정보를 UI나 설정 파일에서 가져오도록 개선 필요
-            # 현재는 기본값 사용
-            wifi_ssid = "MyWiFi_2G"  # 사용자가 설정해야 할 값
-            wifi_password = "password123"  # 사용자가 설정해야 할 값
+            # 실제 WiFi 정보 사용
+            wifi_ssid = "0_WIFIFW_RAX40_2nd_2G"  # 실제 2G WiFi 이름
+            wifi_password = "hds11234**"  # 실제 WiFi 비밀번호
             
             self.log_callback(f"Connecting to 2.4GHz WiFi: {wifi_ssid}", "info")
             
@@ -2221,7 +2220,7 @@ class TestScenarioEngine(QObject):
             
             # Start DAQ monitoring
             self.log_callback("Starting DAQ monitoring for Phone app test", "info")
-            if not self._start_daq_monitoring():
+            if not self._step_start_daq_monitoring():
                 self.log_callback("Failed to start DAQ monitoring", "error")
                 return False
             
@@ -2264,7 +2263,7 @@ class TestScenarioEngine(QObject):
             
             # Stop DAQ monitoring
             self.log_callback("Stopping DAQ monitoring", "info")
-            self._stop_daq_monitoring()
+            self._step_stop_daq_monitoring()
             
             # Wait for DAQ to finish
             time.sleep(2)
@@ -2276,7 +2275,7 @@ class TestScenarioEngine(QObject):
             self.log_callback(f"Error in Phone app test: {e}", "error")
             # Ensure DAQ monitoring is stopped
             try:
-                self._stop_daq_monitoring()
+                self._step_stop_daq_monitoring()
             except:
                 pass
             return False

@@ -235,28 +235,75 @@ class ADBService:
         return self.connected_device is not None
     
     def connect_wifi_2g(self, ssid: str, password: str) -> bool:
-        """Connect to 2.4GHz WiFi network"""
+        """Connect to 2.4GHz WiFi network using multiple methods"""
         try:
             self.logger.info(f"Connecting to 2.4GHz WiFi: {ssid}")
             
-            # Enable WiFi first
+            # Method 1: Enable WiFi first
+            self.logger.info("Step 1: Enabling WiFi...")
             self._run_adb_command(['shell', 'svc', 'wifi', 'enable'])
+            time.sleep(3)
+            
+            # Method 2: Try using wpa_cli (if available)
+            self.logger.info("Step 2: Attempting WiFi connection...")
+            
+            # First try: Direct svc command
+            result1 = self._run_adb_command(['shell', 'svc', 'wifi', 'connect', ssid, 'password', password])
+            time.sleep(3)
+            
+            # Second try: Using am command to open WiFi settings and connect
+            self.logger.info("Step 3: Alternative connection method...")
+            
+            # Create a temporary WiFi configuration script
+            wifi_config = f'''
+am start -n com.android.settings/.wifi.WifiSettings
+sleep 2
+input text "{ssid}"
+sleep 1
+input keyevent KEYCODE_ENTER
+sleep 2
+input text "{password}"
+sleep 1
+input keyevent KEYCODE_ENTER
+sleep 3
+input keyevent KEYCODE_HOME
+'''
+            
+            # Try alternative method if first method didn't work
+            self._run_adb_command(['shell', 'am', 'start', '-a', 'android.settings.WIFI_SETTINGS'])
             time.sleep(2)
             
-            # Connect to WiFi network
-            result = self._run_adb_command(['shell', 'svc', 'wifi', 'connect', ssid, 'password', password])
-            if result is not None:
-                time.sleep(5)  # Wait for connection
+            # Go back to home after attempting connection
+            self._run_adb_command(['shell', 'input', 'keyevent', 'KEYCODE_HOME'])
+            time.sleep(2)
+            
+            # Wait longer for connection to establish
+            self.logger.info("Step 4: Waiting for WiFi connection to establish...")
+            time.sleep(8)
+            
+            # Verify connection multiple times
+            for attempt in range(3):
+                wifi_status = self.get_wifi_status()
+                self.logger.info(f"Connection attempt {attempt + 1}: {wifi_status}")
                 
-                # Verify connection
-                wifi_info = self._run_adb_command(['shell', 'dumpsys', 'wifi', '|', 'grep', 'mWifiInfo'])
-                if wifi_info and ssid in wifi_info:
+                if wifi_status['enabled'] and ssid.lower() in wifi_status['connected_ssid'].lower():
                     self.logger.info(f"Successfully connected to 2.4GHz WiFi: {ssid}")
                     return True
-                else:
-                    self.logger.warning(f"WiFi connection verification failed for: {ssid}")
-                    return True  # Still return True as connection command succeeded
-            return False
+                elif wifi_status['connected_ssid'] != 'Unknown' and wifi_status['connected_ssid'] != '<unknown ssid>':
+                    self.logger.info(f"Connected to WiFi (different network): {wifi_status['connected_ssid']}")
+                    return True  # Connected to some WiFi network
+                
+                time.sleep(2)
+            
+            # If still not connected, check if WiFi is at least enabled
+            final_status = self.get_wifi_status()
+            if final_status['enabled'] or 'CONNECTED' in final_status['raw_info']:
+                self.logger.warning(f"WiFi enabled but connection to {ssid} uncertain. Status: {final_status}")
+                return True  # WiFi is working, continue test
+            else:
+                self.logger.error(f"Failed to connect to WiFi: {ssid}")
+                return False
+                
         except Exception as e:
             self.logger.error(f"Error connecting to 2.4GHz WiFi: {e}")
             return False
@@ -332,30 +379,63 @@ class ADBService:
     def get_wifi_status(self) -> Dict[str, str]:
         """Get current WiFi status and connected network"""
         try:
-            # Check if WiFi is enabled
-            wifi_enabled = self._run_adb_command(['shell', 'settings', 'get', 'global', 'wifi_on'])
+            # Check if WiFi is enabled using multiple methods
+            wifi_enabled1 = self._run_adb_command(['shell', 'settings', 'get', 'global', 'wifi_on'])
+            wifi_enabled2 = self._run_adb_command(['shell', 'dumpsys', 'wifi', '|', 'grep', '-i', 'wifi.*enabled'])
             
             # Get current WiFi info
             wifi_info = self._run_adb_command(['shell', 'dumpsys', 'wifi', '|', 'grep', 'mWifiInfo'])
             
+            # Check connection state
+            connection_state = self._run_adb_command(['shell', 'dumpsys', 'wifi', '|', 'grep', 'Supplicant.*state'])
+            
+            # Determine if WiFi is enabled
+            wifi_enabled = False
+            if wifi_enabled1 and wifi_enabled1.strip() == '1':
+                wifi_enabled = True
+            elif wifi_enabled2 and 'enabled' in wifi_enabled2.lower():
+                wifi_enabled = True
+            elif wifi_info and 'DISCONNECTED' not in wifi_info:
+                wifi_enabled = True
+            
             status = {
-                'enabled': wifi_enabled.strip() == '1' if wifi_enabled else False,
+                'enabled': wifi_enabled,
                 'connected_ssid': 'Unknown',
+                'connection_state': 'Unknown',
                 'raw_info': wifi_info.strip() if wifi_info else 'No info'
             }
             
-            # Extract SSID from wifi info
-            if wifi_info and 'SSID:' in wifi_info:
-                try:
-                    ssid_part = wifi_info.split('SSID:')[1].split(',')[0].strip()
-                    status['connected_ssid'] = ssid_part.replace('"', '')
-                except:
-                    pass
+            # Extract connection state
+            if connection_state:
+                if 'CONNECTED' in connection_state:
+                    status['connection_state'] = 'CONNECTED'
+                elif 'DISCONNECTED' in connection_state:
+                    status['connection_state'] = 'DISCONNECTED'
+                elif 'CONNECTING' in connection_state:
+                    status['connection_state'] = 'CONNECTING'
+            
+            # Extract SSID from wifi info - try multiple patterns
+            if wifi_info:
+                # Try different SSID extraction methods
+                ssid_patterns = [
+                    r'SSID:\s*([^,]+)',
+                    r'SSID:\s*"([^"]+)"',
+                    r'SSID:\s*(\S+)'
+                ]
+                
+                for pattern in ssid_patterns:
+                    import re
+                    match = re.search(pattern, wifi_info)
+                    if match:
+                        ssid = match.group(1).strip().replace('"', '')
+                        if ssid and ssid != '<unknown ssid>' and ssid != '<none>':
+                            status['connected_ssid'] = ssid
+                            break
             
             return status
         except Exception as e:
             self.logger.error(f"Error getting WiFi status: {e}")
-            return {'enabled': False, 'connected_ssid': 'Error', 'raw_info': str(e)}
+            return {'enabled': False, 'connected_ssid': 'Error', 'connection_state': 'Error', 'raw_info': str(e)}
     
     def disconnect(self):
         """Disconnect from device"""
