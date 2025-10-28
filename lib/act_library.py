@@ -35,13 +35,13 @@ class ActLibrary:
 
         # “Show available devices on share panel” 체크 여부
         if dev.click({"textMatches": r"\QShow available devices on share panel\E"}):
-            dev.log("share‑panel 옵션 ON")
+            dev.log("share-panel option ON")
         dev.sleep(500)
 
         dev.shell("am start -n com.android.settings")
         dev.press("home")
         dev.shell("settings put system brightness_mode 0")
-        # indoor_500 은 아래 함수 호출 (밝기 파일 읽기)
+        # indoor_500 calls function below (brightness file reading)
         self.indoor_500(ctx, dev)
 
         dev.shell("settings put system debug_aod_brightness 95")

@@ -813,7 +813,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 else:
                     self._log(f"ERROR: Failed to connect to {device}/{channel}", "error")
                     self._log("   Check device connections and drivers", "error")
-                    # 연결 실패 시에도 상태 업데이트 (버튼 색상 유지)
+                    # Update status even on connection failure (maintain button color)
                     self._update_ni_status()
             else:
                 if "No devices found" in device:
@@ -823,7 +823,7 @@ class MainWindow(QtWidgets.QMainWindow):
                     self._log("ERROR: NI DAQ system error detected", "error")
                 else:
                     self._log("ERROR: Invalid device selection", "error")
-                # 잘못된 선택 시에도 상태 업데이트
+                # Update status even on incorrect selection
                 self._update_ni_status()
     
     def toggle_monitoring(self):
@@ -906,7 +906,7 @@ class MainWindow(QtWidgets.QMainWindow):
         else:
             # Start monitoring
             if self.ni_service.is_connected():
-                # 충돌 경고 표시 (독립적이지만 동시 사용 시 알림)
+                # Display conflict warning (independent but notify when used simultaneously)
                 if self._graphActive and self._show_conflict_warning:
                     self._log("INFO: HVPM and NI DAQ monitoring running independently", "info")
                     self._log("NOTE: Both systems can run simultaneously", "info")

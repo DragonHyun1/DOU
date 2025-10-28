@@ -79,13 +79,13 @@ class PrecondLibrary:
     # TSP / ACL branching (tsp_acl)
     # -------------------------------------------------
     def tsp_acl(self, ctx: EvalContext, dev: Device):
-        # model_check 를 먼저 실행해서 ctx.vars["result"] 를 만든다
+        # First execute model_check to create ctx.vars["result"]
         from .act_library import ActLibrary
 
         act = ActLibrary()
-        act.model_check(ctx, dev)          # <-- 이 함수는 아래에 구현합니다.
+        act.model_check(ctx, dev)          # <-- This function is implemented below.
 
-        # result 에 따라 파일에 명령어를 남긴다
+        # Leave commands in files according to result
         result = ctx.vars["result"]
         if result == "fold_sub":
             ctx.vars["tsp_on"] = 'doshell echo fix_active_mode,1 > sys/class/sec/tsp2/cmd'
@@ -113,7 +113,7 @@ class PrecondLibrary:
             ctx.vars["acl"] = 'doshell echo 1 > /sys/class/lcd/panel/adaptive_control'
             ctx.vars["gallery_acl"] = 'doshell echo 0 > /sys/class/lcd/panel/adaptive_control'
 
-        # 최종 파일에 기록 (스크립트가 뒤에서 읽는다)
+        # Record in final files (scripts read later)
         dev.shell(f'echo "{ctx.vars["tsp_on"]}" > /sdcard/tsp_on.txt')
         dev.shell(f'echo "{ctx.vars["tsp_off"]}" > /sdcard/tsp_off.txt')
         dev.shell(f'echo "{ctx.vars["acl"]}" > /sdcard/acl.txt')
