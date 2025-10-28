@@ -67,12 +67,12 @@ class HvpmService:
 
     def _set_limits_max(self, log_callback=None):
         """
-        초기 부팅/전압 올릴 때 보호동작 방지용 '최대값' 적용.
+        Apply 'maximum values' to prevent protection operation during initial boot/voltage increase.
         - time: 255 ms
         - power-up current limit: 15.625 A
         - run-time current limit: 16.625 A
-        SDK 0.1.88에서 함수명이 다를 수 있어 여러 이름을 순차 시도.
-        단위도 ms / µs, A / mA / µA 모두 대응.
+        Function names may differ in SDK 0.1.88, so try multiple names sequentially.
+        Support all units: ms / µs, A / mA / µA.
         """
         if not self.pm:
             if log_callback: log_callback("[HVPM] no device for _set_limits_max", "warn")
@@ -124,22 +124,22 @@ class HvpmService:
     # === END PATCH ===
 
     def refresh_ports(self, log_callback=None):
-        """장비 재탐색 + UI 갱신. 장비가 꺼져있으면 즉시 Not Connected 처리."""
-        # 콤보 클리어 & 안전 종료
+        """Device re-detection + UI update. If device is off, immediately handle as Not Connected."""
+        # Clear combo & safe shutdown
         try:
             self.combo.clear()
         except Exception:
             pass
         self._safe_close()
 
-        # 재연결 시도
+        # Attempt reconnection
         try:
             self.pm = HVPM.Monsoon()
-            # 장비가 꺼져있으면 여기서 예외가 나거나 내부 USB 에러가 납니다.
+            # If device is off, exception or internal USB error occurs here.
             self.pm.setup_usb()
 
             self.engine = sampleEngine.SampleEngine(self.pm)
-            # 노이즈 차단
+            # Block noise
             try:
                 if hasattr(self.engine, "ConsoleOutput"):
                     self.engine.ConsoleOutput(False)
@@ -151,13 +151,13 @@ class HvpmService:
             except Exception:
                 pass
 
-            # 필수 채널만 활성
+            # Activate only essential channels
             ch = sampleEngine.channels
             for c in (ch.MainCurrent, ch.MainVoltage):
                 try: self.engine.enableChannel(c)
                 except Exception: pass
 
-            # 짧은 프로브(장치가 실제로 응답하는지 확인)
+            # Short probe (check if device actually responds)
             probe_ok = False
             try:
                 self.engine.startSampling(20)
@@ -167,10 +167,10 @@ class HvpmService:
                 probe_ok = False
 
             if not probe_ok:
-                # 프로브 실패 → 연결 실패로 간주
+                # Probe failure → consider as connection failure
                 raise RuntimeError("probe failed (no samples)")
 
-            # 시리얼 표시
+            # Display serial
             self.serialno = (self.pm.getSerialNumber()
                             if hasattr(self.pm, "getSerialNumber")
                             else getattr(self.pm, "serialno", None))
@@ -186,7 +186,7 @@ class HvpmService:
                 log_callback(f"[HVPM] Connected, serial={shown}", "info")
 
         except Exception as e:
-            # 연결 실패 경로: UI를 바로 Not Connected로
+            # Connection failure path: Set UI directly to Not Connected
             try:
                 self.combo.addItem("-")
             except Exception:

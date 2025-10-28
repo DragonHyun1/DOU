@@ -3,12 +3,12 @@ import subprocess
 
 def list_devices():
     """
-    연결된 ADB 디바이스 리스트 반환.
-    정상적으로 연결된 디바이스만 추출.
+    Return list of connected ADB devices.
+    Extract only properly connected devices.
     """
     try:
         result = subprocess.check_output(["adb", "devices"], text=True)
-        lines = result.strip().splitlines()[1:]  # 첫 줄은 'List of devices attached'
+        lines = result.strip().splitlines()[1:]  # First line is 'List of devices attached'
         devices = [line.split()[0] for line in lines if "\tdevice" in line]
         return devices if devices else []
     except Exception as e:
@@ -18,7 +18,7 @@ def list_devices():
 
 def run_command(device: str, command: str) -> str:
     """
-    특정 디바이스에서 ADB 명령 실행 후 결과 문자열 반환.
+    Execute ADB command on specific device and return result string.
     """
     if not device or device == "-":
         return "No device selected"
@@ -35,7 +35,7 @@ def run_command(device: str, command: str) -> str:
 
 
 def install_apk(device: str, apk_path: str) -> str:
-    """특정 디바이스에 APK 설치"""
+    """Install APK on specific device"""
     if not device or device == "-":
         return "No device selected"
     try:
@@ -49,7 +49,7 @@ def install_apk(device: str, apk_path: str) -> str:
 
 
 def reboot_device(device: str, mode: str = None) -> str:
-    """디바이스 재부팅 (일반/bootloader/recovery)"""
+    """Reboot device (normal/bootloader/recovery)"""
     if not device or device == "-":
         return "No device selected"
     try:
@@ -63,7 +63,7 @@ def reboot_device(device: str, mode: str = None) -> str:
 
 
 def push_file(device: str, local_path: str, remote_path: str) -> str:
-    """로컬 → 디바이스 파일 전송"""
+    """Transfer file from local to device"""
     if not device or device == "-":
         return "No device selected"
     try:
@@ -77,7 +77,7 @@ def push_file(device: str, local_path: str, remote_path: str) -> str:
 
 
 def pull_file(device: str, remote_path: str, local_path: str) -> str:
-    """디바이스 → 로컬 파일 가져오기"""
+    """Pull file from device to local"""
     if not device or device == "-":
         return "No device selected"
     try:
@@ -92,8 +92,8 @@ def pull_file(device: str, remote_path: str, local_path: str) -> str:
 
 def execute_command(device: str, command: str) -> bool:
     """
-    특정 디바이스에서 ADB shell 명령 실행 (성공/실패 반환)
-    자동 테스트에서 사용
+    Execute ADB shell command on specific device (return success/failure)
+    Used in automated tests
     """
     if not device or device == "-":
         return False
@@ -112,7 +112,7 @@ def execute_command(device: str, command: str) -> bool:
 
 def execute_command_with_output(device: str, command: str) -> tuple[bool, str]:
     """
-    특정 디바이스에서 ADB shell 명령 실행 후 결과와 출력 반환
+    Execute ADB shell command on specific device and return result and output
     """
     if not device or device == "-":
         return False, "No device selected"
@@ -131,43 +131,43 @@ def execute_command_with_output(device: str, command: str) -> tuple[bool, str]:
 
 def get_screen_state(device: str) -> tuple[bool, bool]:
     """
-    화면 상태 확인 (성공여부, 화면켜짐여부)
+    Check screen state (success status, screen on status)
     """
     success, output = execute_command_with_output(device, "dumpsys power | grep 'Display Power'")
     if success:
-        # Display Power: state=ON 또는 state=OFF 형태로 나옴
+        # Display Power: appears as state=ON or state=OFF format
         screen_on = "state=ON" in output
         return True, screen_on
     return False, False
 
 
 def wake_device(device: str) -> bool:
-    """디바이스 화면 켜기"""
+    """Turn on device screen"""
     return execute_command(device, "input keyevent KEYCODE_WAKEUP")
 
 
 def sleep_device(device: str) -> bool:
-    """디바이스 화면 끄기"""
+    """Turn off device screen"""
     return execute_command(device, "input keyevent KEYCODE_POWER")
 
 
 def unlock_device(device: str) -> bool:
-    """디바이스 잠금해제 (간단한 swipe up)"""
+    """Unlock device (simple swipe up)"""
     return execute_command(device, "input swipe 500 1000 500 500")
 
 
 def tap_screen(device: str, x: int, y: int) -> bool:
-    """화면 특정 위치 터치"""
+    """Touch specific position on screen"""
     return execute_command(device, f"input tap {x} {y}")
 
 
 def swipe_screen(device: str, x1: int, y1: int, x2: int, y2: int, duration: int = 300) -> bool:
-    """화면 스와이프"""
+    """Swipe screen"""
     return execute_command(device, f"input swipe {x1} {y1} {x2} {y2} {duration}")
 
 
 def start_activity(device: str, package: str, activity: str = None) -> bool:
-    """앱 실행"""
+    """Launch app"""
     if activity:
         cmd = f"am start -n {package}/{activity}"
     else:
@@ -176,16 +176,16 @@ def start_activity(device: str, package: str, activity: str = None) -> bool:
 
 
 def force_stop_app(device: str, package: str) -> bool:
-    """앱 강제 종료"""
+    """Force stop app"""
     return execute_command(device, f"am force-stop {package}")
 
 
 def get_battery_level(device: str) -> tuple[bool, int]:
-    """배터리 레벨 확인"""
+    """Check battery level"""
     success, output = execute_command_with_output(device, "dumpsys battery | grep level")
     if success:
         try:
-            # level: 85 형태로 나옴
+            # Appears as level: 85 format
             level = int(output.split(':')[1].strip())
             return True, level
         except (IndexError, ValueError):
@@ -194,17 +194,17 @@ def get_battery_level(device: str) -> tuple[bool, int]:
 
 
 def set_brightness(device: str, brightness: int) -> bool:
-    """화면 밝기 설정 (0-255)"""
-    brightness = max(0, min(255, brightness))  # 범위 제한
+    """Set screen brightness (0-255)"""
+    brightness = max(0, min(255, brightness))  # Range limitation
     return execute_command(device, f"settings put system screen_brightness {brightness}")
 
 
 def get_cpu_usage(device: str) -> tuple[bool, float]:
-    """CPU 사용률 확인"""
+    """Check CPU usage"""
     success, output = execute_command_with_output(device, "top -n 1 | head -3 | tail -1")
     if success:
         try:
-            # CPU 사용률 파싱 (기기마다 형태가 다를 수 있음)
+            # Parse CPU usage (format may vary by device)
             parts = output.split()
             for part in parts:
                 if '%' in part and 'cpu' in part.lower():

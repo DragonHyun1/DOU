@@ -1,54 +1,54 @@
-# HVPM Monitor UI 개선사항
+# HVPM Monitor UI Improvements
 
-## 🎨 주요 개선 내용
+## 🎨 Major Improvements
 
-### 1. 전체 레이아웃 재구성
-- **기존**: 절대 위치 기반 배치로 창 크기 변경 시 문제 발생
-- **개선**: 반응형 레이아웃 시스템 도입
-  - QVBoxLayout, QHBoxLayout 기반 구조
-  - 창 크기에 따른 자동 조정
-  - 최소/최대 크기 제한 설정
+### 1. Overall Layout Restructuring
+- **Previous**: Absolute position-based layout causing issues when window size changes
+- **Improved**: Responsive layout system introduction
+  - QVBoxLayout, QHBoxLayout-based structure
+  - Automatic adjustment according to window size
+  - Minimum/maximum size limit settings
 
-### 2. 컴포넌트 그룹화 및 구조화
-- **Connection Settings**: 장치 연결 관련 컨트롤 통합
-- **Real-time Monitoring**: 그래프 및 모니터링 컨트롤
-- **Voltage Control**: 전압 설정 및 읽기 기능
-- **System Log**: 시스템 로그 표시
+### 2. Component Grouping and Structuring
+- **Connection Settings**: Integration of device connection-related controls
+- **Real-time Monitoring**: Graph and monitoring controls
+- **Voltage Control**: Voltage setting and reading functions
+- **System Log**: System log display
 
-### 3. 현대적 UI 디자인
-- **색상 체계**: 일관된 다크 테마 적용
-- **시각적 계층**: GroupBox를 통한 명확한 섹션 구분
-- **아이콘**: 이모지를 활용한 직관적 버튼 표시
-- **상태 표시**: 색상 코딩된 상태 정보
+### 3. Modern UI Design
+- **Color Scheme**: Consistent dark theme application
+- **Visual Hierarchy**: Clear section division through GroupBox
+- **Icons**: Intuitive button display using emojis
+- **Status Display**: Color-coded status information
 
-### 4. 사용성 개선
-- **툴팁**: 모든 주요 컨트롤에 도움말 추가
-- **키보드 지원**: Enter 키로 전압 설정 가능
-- **상태바**: 실시간 상태 정보 표시
-- **메뉴바**: 추가 기능 접근성 향상
+### 4. Usability Improvements
+- **Tooltips**: Help added to all major controls
+- **Keyboard Support**: Voltage setting possible with Enter key
+- **Status Bar**: Real-time status information display
+- **Menu Bar**: Improved accessibility to additional features
 
-## 📋 새로운 기능
+## 📋 New Features
 
-### 메뉴 시스템
-- **File**: 데이터 내보내기, 종료
-- **View**: 테마 토글, 레이아웃 리셋
-- **Help**: 정보 표시
+### Menu System
+- **File**: Data export, exit
+- **View**: Theme toggle, layout reset
+- **Help**: Information display
 
-### 향상된 로깅
-- **타임스탬프**: 모든 로그에 시간 정보 추가
-- **색상 코딩**: 로그 레벨별 색상 구분
-- **상태바 연동**: 중요 메시지 상태바 표시
+### Enhanced Logging
+- **Timestamp**: Time information added to all logs
+- **Color Coding**: Color distinction by log level
+- **Status Bar Integration**: Important message display in status bar
 
-### 개선된 그래프
-- **스타일링**: 더 두꺼운 선, 향상된 색상
-- **연결 확인**: 모니터링 시작 전 연결 상태 검증
-- **에러 처리**: 연결 끊김 시 자동 중지
+### Improved Graphs
+- **Styling**: Thicker lines, enhanced colors
+- **Connection Check**: Connection status verification before monitoring start
+- **Error Handling**: Automatic stop when connection is lost
 
-### 데이터 내보내기
-- **CSV 형식**: 수집된 데이터를 CSV 파일로 저장
-- **파일 선택**: 사용자 지정 저장 위치
+### Data Export
+- **CSV Format**: Save collected data as CSV file
+- **File Selection**: User-defined save location
 
-## 🎯 UI 구조
+## 🎯 UI Structure
 
 ```
 MainWindow
@@ -70,84 +70,84 @@ MainWindow
     └── Log List Widget
 ```
 
-## 🔧 기술적 개선사항
+## 🔧 Technical Improvements
 
-### 테마 시스템
-- **ModernTheme 클래스**: 중앙화된 색상 관리
-- **동적 색상**: 상태별 색상 자동 적용
-- **PyQtGraph 통합**: 그래프와 UI 테마 동기화
+### Theme System
+- **ModernTheme Class**: Centralized color management
+- **Dynamic Colors**: Automatic color application by status
+- **PyQtGraph Integration**: Graph and UI theme synchronization
 
-### 에러 처리
-- **연결 상태 모니터링**: 실시간 연결 상태 확인
-- **사용자 피드백**: 명확한 에러 메시지 및 경고
-- **복구 메커니즘**: 연결 끊김 시 자동 처리
+### Error Handling
+- **Connection Status Monitoring**: Real-time connection status check
+- **User Feedback**: Clear error messages and warnings
+- **Recovery Mechanism**: Automatic handling when connection is lost
 
-### 성능 최적화
-- **메서드 분리**: 기능별 메서드 세분화
-- **상태 관리**: 효율적인 UI 상태 업데이트
-- **메모리 관리**: 적절한 버퍼 크기 설정
+### Performance Optimization
+- **Method Separation**: Detailed method subdivision by function
+- **State Management**: Efficient UI state updates
+- **Memory Management**: Appropriate buffer size settings
 
-## 📱 사용법
+## 📱 Usage Instructions
 
-### 기본 사용 순서
-1. **장치 연결**: Refresh 버튼으로 HVPM 및 ADB 장치 검색
-2. **전압 설정**: 목표 전압 입력 후 "Set Voltage" 버튼 클릭
-3. **모니터링**: "Start Monitoring" 버튼으로 실시간 모니터링 시작
-4. **데이터 확인**: 그래프에서 실시간 전압/전류 확인
-5. **데이터 저장**: File > Export Data로 측정 데이터 저장
+### Basic Usage Steps
+1. **Device Connection**: Search for HVPM and ADB devices with Refresh button
+2. **Voltage Setting**: Enter target voltage and click "Set Voltage" button
+3. **Monitoring**: Start real-time monitoring with "Start Monitoring" button
+4. **Data Verification**: Check real-time voltage/current in graphs
+5. **Data Save**: Save measurement data via File > Export Data
 
-### 단축키
-- **Enter**: 전압 입력 필드에서 전압 설정 실행
-- **Ctrl+Q**: 프로그램 종료 (메뉴를 통해)
+### Shortcuts
+- **Enter**: Execute voltage setting in voltage input field
+- **Ctrl+Q**: Exit program (through menu)
 
-### 상태 표시
-- **초록색**: 정상 연결/성공 상태
-- **빨간색**: 연결 끊김/에러 상태  
-- **주황색**: 경고 상태
-- **파란색**: 정보 메시지
+### Status Display
+- **Green**: Normal connection/success status
+- **Red**: Connection lost/error status  
+- **Orange**: Warning status
+- **Blue**: Information message
 
-## 🔄 마이그레이션 가이드
+## 🔄 Migration Guide
 
-### 기존 코드와의 호환성
-- 모든 기존 기능 유지
-- HVPM 서비스 인터페이스 동일
-- 설정 및 데이터 형식 호환
+### Compatibility with Existing Code
+- All existing functions maintained
+- HVPM service interface identical
+- Settings and data format compatible
 
-### 파일 구조
+### File Structure
 ```
 workspace/
-├── main.py (개선된 메인 파일)
-├── main_original.py (기존 백업)
+├── main.py (improved main file)
+├── main_original.py (existing backup)
 ├── ui/
-│   ├── main_ui_improved.ui (새 UI 파일)
-│   └── main_ui_original.ui (기존 백업)
+│   ├── main_ui_improved.ui (new UI file)
+│   └── main_ui_original.ui (existing backup)
 ├── generated/
-│   ├── main_ui_improved.py (생성된 UI 코드)
-│   └── main_ui.py (기존 파일)
+│   ├── main_ui_improved.py (generated UI code)
+│   └── main_ui.py (existing file)
 └── services/
-    └── theme.py (향상된 테마 시스템)
+    └── theme.py (enhanced theme system)
 ```
 
-## 🚀 향후 개선 계획
+## 🚀 Future Improvement Plans
 
-### 단기 계획
-- [ ] 라이트 테마 옵션 추가
-- [ ] 그래프 확대/축소 기능
-- [ ] 측정 단위 변경 옵션
+### Short-term Plans
+- [ ] Add light theme option
+- [ ] Graph zoom in/out function
+- [ ] Measurement unit change option
 
-### 장기 계획
-- [ ] 다중 장치 지원
-- [ ] 실시간 알림 시스템
-- [ ] 고급 데이터 분석 도구
-- [ ] 설정 저장/불러오기
+### Long-term Plans
+- [ ] Multi-device support
+- [ ] Real-time notification system
+- [ ] Advanced data analysis tools
+- [ ] Settings save/load
 
-## ⚠️ 주의사항
+## ⚠️ Precautions
 
-1. **PyQt6 의존성**: 새로운 UI는 PyQt6 기반으로 구현됨
-2. **화면 해상도**: 최소 1000x600 해상도 권장
-3. **테마 적용**: 시스템 테마와 독립적으로 동작
-4. **성능**: 대용량 데이터 수집 시 메모리 사용량 모니터링 필요
+1. **PyQt6 Dependency**: New UI is implemented based on PyQt6
+2. **Screen Resolution**: Minimum 1000x600 resolution recommended
+3. **Theme Application**: Works independently from system theme
+4. **Performance**: Memory usage monitoring needed when collecting large amounts of data
 
 ---
 
-*이 문서는 HVPM Monitor UI 개선 프로젝트의 결과를 요약합니다. 추가 질문이나 개선 제안이 있으시면 언제든 말씀해 주세요.*
+*This document summarizes the results of the HVPM Monitor UI improvement project. If you have additional questions or improvement suggestions, please let us know anytime.*

@@ -5,13 +5,13 @@ from .utils import EvalContext
 
 class ActLibrary:
     """
-    00_ACT_Library.txt 에 정의된 각 @xxx 를 메서드로 구현.
-    모든 메서드는 (ctx:EvalContext, dev:Device) 를 매개변수로 받아
-    전역 변수·식 저장소에 접근한다.
+    Implement each @xxx defined in 00_ACT_Library.txt as methods.
+    All methods receive (ctx:EvalContext, dev:Device) as parameters
+    to access global variable and expression storage.
     """
 
     def __init__(self):
-        # 전역 플래그 (DSL $xxxx) – 실제 동작과는 무관, 필요 시 이용
+        # Global flags (DSL $xxxx) - unrelated to actual operation, use when needed
         self.flags = {
             "PointerLocation": False,
             "TopLayerScriptView": False,
@@ -21,13 +21,13 @@ class ActLibrary:
         }
 
     # -------------------------------------------------
-    # 기본 설정 (default_setting)
+    # Basic settings (default_setting)
     # -------------------------------------------------
     def default_setting(self, ctx: EvalContext, dev: Device):
         dev.shell("settings put system screen_off_timeout 600000")
         dev.shell("settings put system multi_control_enabled 0")
         dev.shell("settings put system quickshare 0")
-        # ShareLive 화면 실행 (예시)
+        # Launch ShareLive screen (example)
         dev.shell(
             "am start -n com.samsung.android.app.sharelive/.presentation.settings.SettingsActivity"
         )

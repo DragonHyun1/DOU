@@ -1,10 +1,10 @@
-[다른 툴에서 전류 모드로 측정한 결과]
+[Current measurement results from other tool]
 4209.  DAQReadNChanNSamp1DWfm ("_unnamedTask<1F>", 12 (0xC), 10.000000 (1.000000E+01), 0.000033 (3.330000E-05), {4.7491E-05,8.75428E-05,...}, 0.000033 (3.330000E-05), {-7.26645E-05,7.43914E-06,...}, "")
 Process ID: 0x00009DA8         Thread ID: 0x00005068
 Start Time: 15:56:27.8469      Call Duration 00:00:00.0000
 Status: 0
 
-[다른 툴에서 전압 모드로 측정한 결과]
+[Voltage measurement results from other tool]
 5019.  DAQReadNChanNSamp1DWfm ("_unnamedTask<20>", 12 (0xC), 10.000000 (1.000000E+01), 0.000033 (3.330000E-05), {1.76457,1.75729,...}, 0.000033 (3.330000E-05), {-0.0407253,-0.0476142,...}, "")
 Process ID: 0x00009DA8         Thread ID: 0x00005068
 Start Time: 15:58:18.6388      Call Duration 00:00:00.0000
@@ -13,223 +13,220 @@ Status: 0
 
 
 
+# HVPM Monitor Auto Test Feature Guide
 
+## 🚀 Overview
 
-# HVPM Monitor Auto Test 기능 가이드
+The HVPM Monitor's automated test feature is a powerful tool that combines device control via ADB and power measurement via HVPM to perform automated testing.
 
-## 🚀 개요
+### Key Features
+- **Voltage Stabilization**: Voltage setting for device stabilization before test start
+- **Automated Scenarios**: Support for various test scenarios
+- **Real-time Monitoring**: Real-time voltage/current measurement during tests
+- **Progress Tracking**: Visual display of test progress
 
-HVPM Monitor의 자동 테스트 기능은 ADB를 통한 디바이스 제어와 HVPM을 통한 전력 측정을 결합하여 자동화된 테스트를 수행할 수 있는 강력한 도구입니다.
-
-### 주요 특징
-- **전압 안정화**: 테스트 시작 전 디바이스 안정화를 위한 전압 설정
-- **자동 시나리오**: 다양한 테스트 시나리오 지원
-- **실시간 모니터링**: 테스트 중 전압/전류 실시간 측정
-- **진행률 추적**: 테스트 진행 상황 시각적 표시
-
-## 📋 테스트 시나리오
+## 📋 Test Scenarios
 
 ### 1. Screen On/Off Test
-- **설명**: 화면 켜기/끄기를 반복하여 디스플레이 관련 전력 소모 측정
-- **동작**:
-  1. 화면 켜기 (KEYCODE_WAKEUP)
-  2. 지정된 시간 대기 (기본 10초)
-  3. 화면 끄기 (KEYCODE_POWER)
-  4. 지정된 시간 대기 (기본 5초)
-  5. 지정된 사이클 수만큼 반복 (기본 5회)
+- **Description**: Measures display-related power consumption by repeatedly turning screen on/off
+- **Operation**:
+  1. Turn screen on (KEYCODE_WAKEUP)
+  2. Wait for specified time (default 10 seconds)
+  3. Turn screen off (KEYCODE_POWER)
+  4. Wait for specified time (default 5 seconds)
+  5. Repeat for specified number of cycles (default 5 times)
 
 ### 2. Screen On/Off Long Test
-- **설명**: 더 긴 주기의 화면 켜기/끄기 테스트
-- **특징**: 10사이클, 15초 ON, 10초 OFF
+- **Description**: Longer cycle screen on/off test
+- **Features**: 10 cycles, 15 seconds ON, 10 seconds OFF
 
 ### 3. CPU Stress Test
-- **설명**: CPU 부하를 발생시켜 고부하 상황에서의 전력 소모 측정
-- **동작**:
-  1. CPU 스트레스 프로세스 시작
-  2. 지정된 시간 동안 유지 (기본 60초)
-  3. 스트레스 프로세스 종료
+- **Description**: Measures power consumption under high load by generating CPU stress
+- **Operation**:
+  1. Start CPU stress process
+  2. Maintain for specified time (default 60 seconds)
+  3. Terminate stress process
 
 ### 4. CPU Stress Long Test
-- **설명**: 장시간 CPU 스트레스 테스트 (5분)
+- **Description**: Long-duration CPU stress test (5 minutes)
 
-## ⚙️ 설정 및 구성
+## ⚙️ Settings and Configuration
 
-### 전압 설정
-1. **Stabilization Voltage (안정화 전압)**
-   - 기본값: 4.8V
-   - 목적: 테스트 시작 전 디바이스가 꺼지지 않도록 안정적인 전압 제공
-   - 권장 범위: 4.5V - 5.0V
+### Voltage Settings
+1. **Stabilization Voltage**
+   - Default: 4.8V
+   - Purpose: Provide stable voltage to prevent device shutdown before test start
+   - Recommended range: 4.5V - 5.0V
 
-2. **Test Voltage (테스트 전압)**
-   - 기본값: 4.0V
-   - 목적: 실제 테스트 수행 시 사용할 전압
-   - 권장 범위: 3.0V - 4.5V (테스트 목적에 따라 조정)
+2. **Test Voltage**
+   - Default: 4.0V
+   - Purpose: Voltage to use during actual test execution
+   - Recommended range: 3.0V - 4.5V (adjust according to test purpose)
 
-### 디바이스 연결
-1. **HVPM 연결**: USB를 통한 HVPM 디바이스 연결 필요
-2. **ADB 연결**: USB 디버깅이 활성화된 Android 디바이스 연결 필요
+### Device Connection
+1. **HVPM Connection**: HVPM device connection via USB required
+2. **ADB Connection**: Android device with USB debugging enabled required
 
-## 🔄 테스트 실행 과정
+## 🔄 Test Execution Process
 
-### 1. 초기화 단계 (0-20%)
-- 연결 상태 확인
-- 안정화 전압 설정 (4.8V)
-- 10초간 전압 안정화 대기
+### 1. Initialization Phase (0-20%)
+- Check connection status
+- Set stabilization voltage (4.8V)
+- Wait 10 seconds for voltage stabilization
 
-### 2. 테스트 준비 (20-30%)
-- 테스트 전압 설정 (4.0V)
-- 전압 안정화 확인
+### 2. Test Preparation (20-30%)
+- Set test voltage (4.0V)
+- Confirm voltage stabilization
 
-### 3. 테스트 실행 (30-100%)
-- 선택된 시나리오 실행
-- 실시간 진행률 업데이트
-- ADB 명령어를 통한 디바이스 제어
-- HVPM을 통한 전력 측정
+### 3. Test Execution (30-100%)
+- Execute selected scenario
+- Real-time progress updates
+- Device control via ADB commands
+- Power measurement via HVPM
 
-## 📱 사용 방법
+## 📱 Usage Instructions
 
-### 기본 사용 순서
+### Basic Usage Steps
 
-1. **디바이스 연결**
+1. **Device Connection**
    ```
-   1. HVPM 디바이스를 USB로 연결
-   2. Android 디바이스를 USB로 연결하고 USB 디버깅 활성화
-   3. "Refresh" 버튼 클릭하여 디바이스 검색
-   ```
-
-2. **테스트 구성**
-   ```
-   1. Test Scenario 드롭다운에서 원하는 테스트 선택
-   2. Stabilization Voltage 설정 (기본 4.8V)
-   3. Test Voltage 설정 (기본 4.0V)
+   1. Connect HVPM device via USB
+   2. Connect Android device via USB and enable USB debugging
+   3. Click "Refresh" button to search for devices
    ```
 
-3. **테스트 실행**
+2. **Test Configuration**
    ```
-   1. "Start Test" 버튼 클릭
-   2. 확인 대화상자에서 설정 확인 후 "Yes" 클릭
-   3. 테스트 진행 상황을 Progress Bar와 Status에서 확인
-   4. 필요시 "Stop" 버튼으로 중단 가능
-   ```
-
-4. **결과 확인**
-   ```
-   1. 실시간 그래프에서 전압/전류 변화 관찰
-   2. System Log에서 상세한 테스트 로그 확인
-   3. File > Export Data로 측정 데이터 저장
+   1. Select desired test from Test Scenario dropdown
+   2. Set Stabilization Voltage (default 4.8V)
+   3. Set Test Voltage (default 4.0V)
    ```
 
-## 🛠️ 고급 설정
+3. **Test Execution**
+   ```
+   1. Click "Start Test" button
+   2. Confirm settings in confirmation dialog and click "Yes"
+   3. Monitor test progress via Progress Bar and Status
+   4. Can stop with "Stop" button if needed
+   ```
 
-### 커스텀 테스트 시나리오 추가
+4. **Result Verification**
+   ```
+   1. Observe voltage/current changes in real-time graph
+   2. Check detailed test logs in System Log
+   3. Save measurement data via File > Export Data
+   ```
 
-새로운 테스트 시나리오를 추가하려면 `services/auto_test.py`에서 `TestScenario` 클래스를 상속받아 구현:
+## 🛠️ Advanced Settings
+
+### Adding Custom Test Scenarios
+
+To add new test scenarios, implement by inheriting the `TestScenario` class in `services/auto_test.py`:
 
 ```python
 class CustomTest(TestScenario):
     def __init__(self):
-        super().__init__("Custom Test", "사용자 정의 테스트")
+        super().__init__("Custom Test", "User-defined test")
     
     def execute(self, device: str, log_callback: Callable, progress_callback: Callable = None) -> bool:
-        # 테스트 로직 구현
+        # Implement test logic
         pass
 ```
 
-### ADB 명령어 확장
+### Extending ADB Commands
 
-`services/adb.py`에 새로운 ADB 명령어 함수 추가 가능:
+New ADB command functions can be added to `services/adb.py`:
 
 ```python
 def custom_command(device: str, parameter: str) -> bool:
-    """사용자 정의 ADB 명령어"""
+    """User-defined ADB command"""
     return execute_command(device, f"custom_shell_command {parameter}")
 ```
 
-## 📊 데이터 분석
+## 📊 Data Analysis
 
-### 측정 데이터 해석
+### Interpreting Measurement Data
 
-1. **전압 변화**
-   - 안정화 구간: 4.8V에서 시작하여 안정화
-   - 테스트 구간: 4.0V로 변경 후 테스트 진행
-   - 급격한 전압 변화 시 디바이스 상태 변화를 의미
+1. **Voltage Changes**
+   - Stabilization phase: Starts at 4.8V and stabilizes
+   - Test phase: Changes to 4.0V and proceeds with test
+   - Sudden voltage changes indicate device state changes
 
-2. **전류 변화**
-   - 화면 ON: 전류 증가 (디스플레이 전력 소모)
-   - 화면 OFF: 전류 감소 (대기 전력 소모)
-   - CPU 스트레스: 지속적인 높은 전류 소모
+2. **Current Changes**
+   - Screen ON: Current increase (display power consumption)
+   - Screen OFF: Current decrease (standby power consumption)
+   - CPU stress: Sustained high current consumption
 
-### 데이터 내보내기
+### Data Export
 
-- **형식**: CSV (Time, Voltage, Current)
-- **활용**: Excel, Python pandas 등으로 추가 분석 가능
+- **Format**: CSV (Time, Voltage, Current)
+- **Usage**: Can be analyzed further with Excel, Python pandas, etc.
 
-## ⚠️ 주의사항
+## ⚠️ Precautions
 
-### 안전 수칙
-1. **전압 범위**: 5.5V를 초과하지 않도록 주의
-2. **디바이스 상태**: 테스트 전 디바이스 충전 상태 확인
-3. **연결 안정성**: USB 케이블 연결 상태 확인
+### Safety Guidelines
+1. **Voltage Range**: Be careful not to exceed 5.5V
+2. **Device Status**: Check device charge status before testing
+3. **Connection Stability**: Verify USB cable connection status
 
-### 문제 해결
+### Troubleshooting
 
-#### 연결 문제
-- **HVPM 연결 실패**: 디바이스 드라이버 설치 확인
-- **ADB 연결 실패**: USB 디버깅 활성화 및 권한 허용 확인
+#### Connection Issues
+- **HVPM Connection Failure**: Check device driver installation
+- **ADB Connection Failure**: Check USB debugging activation and permission allowance
 
-#### 테스트 실행 문제
-- **테스트 시작 실패**: 모든 디바이스 연결 상태 확인
-- **중간 중단**: 로그에서 오류 메시지 확인
+#### Test Execution Issues
+- **Test Start Failure**: Check all device connection status
+- **Mid-test Interruption**: Check error messages in logs
 
-#### 데이터 측정 문제
-- **NaN 값**: HVPM 연결 상태 및 샘플링 설정 확인
-- **불안정한 측정**: 전압 안정화 시간 증가 고려
+#### Data Measurement Issues
+- **NaN Values**: Check HVPM connection status and sampling settings
+- **Unstable Measurements**: Consider increasing voltage stabilization time
 
-## 🔧 개발자 정보
+## 🔧 Developer Information
 
-### 아키텍처
+### Architecture
 ```
 AutoTestService
-├── TestScenario (추상 클래스)
+├── TestScenario (Abstract class)
 │   ├── ScreenOnOffTest
 │   ├── CPUStressTest
-│   └── [사용자 정의 시나리오]
-├── HvpmService (전압 제어)
-└── ADB Service (디바이스 제어)
+│   └── [User-defined scenarios]
+├── HvpmService (Voltage control)
+└── ADB Service (Device control)
 ```
 
-### 주요 클래스
-- `AutoTestService`: 전체 테스트 관리
-- `TestScenario`: 테스트 시나리오 기본 클래스
-- `ScreenOnOffTest`: 화면 ON/OFF 테스트 구현
-- `CPUStressTest`: CPU 스트레스 테스트 구현
+### Key Classes
+- `AutoTestService`: Overall test management
+- `TestScenario`: Test scenario base class
+- `ScreenOnOffTest`: Screen ON/OFF test implementation
+- `CPUStressTest`: CPU stress test implementation
 
-### 시그널/슬롯
-- `progress_updated`: 진행률 업데이트
-- `test_completed`: 테스트 완료
-- `voltage_stabilized`: 전압 안정화 완료
+### Signals/Slots
+- `progress_updated`: Progress update
+- `test_completed`: Test completion
+- `voltage_stabilized`: Voltage stabilization complete
 
-## 📈 성능 최적화
+## 📈 Performance Optimization
 
-### 권장 설정
-- **샘플링 주파수**: 10Hz (기본값)
-- **버퍼 크기**: 600 샘플 (1분간 데이터)
-- **안정화 시간**: 10초 (기본값)
+### Recommended Settings
+- **Sampling Frequency**: 10Hz (default)
+- **Buffer Size**: 600 samples (1 minute of data)
+- **Stabilization Time**: 10 seconds (default)
 
-### 시스템 요구사항
+### System Requirements
 - **OS**: Windows 10/11, Linux, macOS
-- **Python**: 3.8 이상
-- **메모리**: 최소 4GB RAM
-- **저장공간**: 100MB 이상
+- **Python**: 3.8 or higher
+- **Memory**: Minimum 4GB RAM
+- **Storage**: 100MB or more
 
 ---
 
-## 📞 지원
+## 📞 Support
 
-문제가 발생하거나 추가 기능이 필요한 경우:
-1. System Log 확인
-2. 오류 메시지 및 재현 단계 기록
-3. 디바이스 및 환경 정보 수집
+If you encounter issues or need additional features:
+1. Check System Log
+2. Record error messages and reproduction steps
+3. Collect device and environment information
 
-이 가이드를 통해 HVPM Monitor의 자동 테스트 기능을 효과적으로 활용하시기 바랍니다!
-
+We hope you can effectively utilize the HVPM Monitor's automated test features through this guide!

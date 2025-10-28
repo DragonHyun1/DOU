@@ -5,15 +5,15 @@ from .utils import EvalContext
 
 class PrecondLibrary:
     """
-    Precondition_Library.txt 에 정의된 흐름을 함수형으로 변환.
-    대부분 파일에 값을 써서 이후 스크립트가 재활용하도록 만든다.
+    Convert flows defined in Precondition_Library.txt to functional form.
+    Mostly write values to files so that subsequent scripts can reuse them.
     """
 
     def __init__(self):
         pass
 
     # -------------------------------------------------
-    # 휘도(밝기) 사전 설정 – 모델·OS에 따라 indoor.txt 를 만든다.
+    # Brightness preset - create indoor.txt according to model and OS.
     # -------------------------------------------------
     def brightness_preprocess(self, ctx: EvalContext, dev: Device):
         ctx.set_var(
@@ -25,7 +25,7 @@ class PrecondLibrary:
         ctx.set_var("check_25", '"SM-S93"', dev)
         ctx.set_var("OS_ver", "[doshell getprop ro.build.version.sem]", dev)
 
-        # 모델별 indoor 값 생성
+        # Generate indoor values by model
         if ctx.vars["check_26"] == ctx.vars["model"]:
             ctx.vars["indoor_txt"] = "105"
             dev.shell(f'echo {ctx.vars["indoor_txt"]} > /sdcard/indoor.txt')
@@ -47,7 +47,7 @@ class PrecondLibrary:
             dev.shell(f'echo {ctx.vars["indoor_txt"]} > /sdcard/indoor.txt')
             dev.shell(f'echo {ctx.vars["indoor_txt"]} > /sdcard/indoor_500.txt')
 
-        # outdoor / hbm 값 모두 미리 만든다
+        # Create all outdoor / hbm values in advance
         ctx.vars["outdoor_txt"] = ctx._func("brightness_create", "2300", "5")
         dev.shell(f'echo {ctx.vars["outdoor_txt"]} > /sdcard/outdoor.txt')
 
@@ -58,7 +58,7 @@ class PrecondLibrary:
         dev.shell(f'echo {ctx.vars["hbm_txt"]} > /sdcard/hbm.txt')
 
     # -------------------------------------------------
-    # Wi‑Fi 현재 SSID 탐색 (wifi_set)
+    # Current Wi-Fi SSID discovery (wifi_set)
     # -------------------------------------------------
     def wifi_set(self, ctx: EvalContext, dev: Device):
         ctx.set_var("blank", '" "', dev)
@@ -76,7 +76,7 @@ class PrecondLibrary:
         dev.shell(f'echo {ctx.vars["wifi_5"]} > /sdcard/wifi5.txt')
 
     # -------------------------------------------------
-    # TSP / ACL 분기 (tsp_acl)
+    # TSP / ACL branching (tsp_acl)
     # -------------------------------------------------
     def tsp_acl(self, ctx: EvalContext, dev: Device):
         # model_check 를 먼저 실행해서 ctx.vars["result"] 를 만든다

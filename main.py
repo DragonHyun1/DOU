@@ -34,7 +34,7 @@ class MainWindow(QtWidgets.QMainWindow):
         # Apply modern theme with adaptive sizing
         theme.apply_theme(self)
 
-        # HVPM 서비스
+        # HVPM service
         self.hvpm_service = HvpmService(
             combo=self.ui.hvpm_CB,
             status_label=getattr(self.ui, 'hvpmStatus_LB', None),
@@ -42,13 +42,13 @@ class MainWindow(QtWidgets.QMainWindow):
             volt_entry=getattr(self.ui, 'hvpmVolt_LE', None)
         )
 
-        # Auto Test 서비스
+        # Auto Test service
         self.auto_test_service = AutoTestService(
             hvpm_service=self.hvpm_service,
             log_callback=self._log
         )
         
-        # NI DAQ 서비스
+        # NI DAQ service
         self._setup_nidaq_environment()
         self.ni_service = create_ni_service()
         self.ni_service.connection_changed.connect(self._on_ni_connection_changed)
@@ -69,7 +69,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.test_scenario_engine.test_completed.connect(self._on_auto_test_completed)
         self.test_scenario_engine.log_message.connect(self._log)
         
-        # 측정 모드 추적 (독립적 제어)
+        # Measurement mode tracking (independent control)
         self._hvpm_monitoring = False
         self._ni_monitoring = False
         self._show_conflict_warning = True
@@ -89,29 +89,29 @@ class MainWindow(QtWidgets.QMainWindow):
         self.test_data_collection_active = False
         self.last_timestamp_log = 0
 
-        # 버퍼/타이머 초기화 (그래프용 - 비활성화)
+        # Buffer/timer initialization (for graphs - disabled)
         self._t0 = None
-        self._tbuf = deque(maxlen=600)   # 10Hz*60s = 최근 1분
+        self._tbuf = deque(maxlen=600)   # 10Hz*60s = recent 1 minute
         self._vbuf = deque(maxlen=600)
         self._ibuf = deque(maxlen=600)
         self._graphActive = False
         self._graphTimer = QTimer(self)
-        self._graphTimer.setInterval(100)        # 10 Hz UI 업데이트
+        self._graphTimer.setInterval(100)        # 10 Hz UI update
         self._graphTimer.timeout.connect(self._on_graph_tick)
         
-        # HVPM 간단 모니터링용
+        # For simple HVPM monitoring
         self._hvpm_monitoring_active = False
         self._hvpm_monitor_timer = QTimer(self)
-        self._hvpm_monitor_timer.setInterval(1000)  # 1초마다
+        self._hvpm_monitor_timer.setInterval(1000)  # Every 1 second
         self._hvpm_monitor_timer.timeout.connect(self._on_hvpm_monitor_tick)
 
-        # ADB 상태 초기화
+        # ADB state initialization
         self.selected_device = None
         self._refreshing_adb = False
         self._cfg_refresh_reads_voltage = False
 
         # Setup enhanced UI components
-        # self.setup_graphs()  # 그래프 기능 비활성화
+        # self.setup_graphs()  # Graph functionality disabled
         self.setup_status_indicators()
         self.setup_menu_actions()
         
@@ -122,7 +122,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.setup_connections()
         self.setup_auto_test_ui()
         
-        # 초기화 - UI 설정 완료 후 실행
+        # Initialization - execute after UI setup completion
         self.refresh_connections()
         
         # Initialize NI devices
@@ -142,7 +142,7 @@ class MainWindow(QtWidgets.QMainWindow):
         # Apply responsive layout management
         self._apply_responsive_layout()
         
-        # Status bar 메시지
+        # Status bar message
         self.ui.statusbar.showMessage("Ready - Connect devices to start monitoring and testing", 5000)
 
     def _apply_adaptive_window_sizing(self):
@@ -298,9 +298,9 @@ class MainWindow(QtWidgets.QMainWindow):
         """Setup NI-DAQmx environment paths"""
         import os
         
-        # NI-DAQmx 런타임 경로 추가 시도
+        # Attempt to add NI-DAQmx runtime paths
         possible_paths = [
-            # Windows 표준 경로
+            # Windows standard paths
             r"C:\Program Files (x86)\National Instruments\Shared\ExternalCompilerSupport\C\lib64\msvc",
             r"C:\Program Files\National Instruments\Shared\ExternalCompilerSupport\C\lib64\msvc", 
             r"C:\Windows\System32",
@@ -309,7 +309,7 @@ class MainWindow(QtWidgets.QMainWindow):
             r"C:\Program Files (x86)\National Instruments\Shared\CVI\Bin",
             r"C:\Program Files\National Instruments\Shared\CVI\Bin",
             
-            # 로컬 NIDAQ 런타임 폴더들
+            # Local NIDAQ runtime folders
             "./NIDAQ1610Runtime",
             "../NIDAQ1610Runtime", 
             "../../NIDAQ1610Runtime",
@@ -317,21 +317,21 @@ class MainWindow(QtWidgets.QMainWindow):
             "../NIDAQ1610Runtime/bin",
             "../../NIDAQ1610Runtime/bin",
             
-            # 상대 경로들
+            # Relative paths
             os.path.join(os.getcwd(), "NIDAQ1610Runtime"),
             os.path.join(os.path.dirname(os.getcwd()), "NIDAQ1610Runtime"),
             os.path.join(os.getcwd(), "NIDAQ1610Runtime", "bin"),
             os.path.join(os.path.dirname(os.getcwd()), "NIDAQ1610Runtime", "bin"),
         ]
 
-        # 사용자 정의 NIDAQ 경로 확인
+        # Check for custom NIDAQ path
         custom_nidaq_path = os.environ.get('NIDAQ_RUNTIME_PATH')
         if custom_nidaq_path:
             possible_paths.insert(0, custom_nidaq_path)
             possible_paths.insert(0, os.path.join(custom_nidaq_path, 'bin'))
             print(f"Using custom NIDAQ path: {custom_nidaq_path}")
 
-        # 환경 변수에 경로 추가
+        # Add paths to environment variables
         found_paths = []
         for path in possible_paths:
             if os.path.exists(path):
@@ -395,7 +395,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.ui.setVolt_PB.clicked.connect(self.handle_set_voltage)
         if hasattr(self.ui, 'startMonitoring_PB') and self.ui.startMonitoring_PB:
             self.ui.startMonitoring_PB.clicked.connect(self.toggle_monitoring)
-        # 그래프 버튼들 비활성화
+        # Graph buttons disabled
         # if hasattr(self.ui, 'startGraph_PB') and self.ui.startGraph_PB:
         #     self.ui.startGraph_PB.clicked.connect(self.start_graph)
         # if hasattr(self.ui, 'stopGraph_PB') and self.ui.stopGraph_PB:
@@ -1000,7 +1000,7 @@ class MainWindow(QtWidgets.QMainWindow):
         
         self.ui.statusbar.showMessage(message, 3000)
 
-    # ---------- 로그 ----------
+    # ---------- Log ----------
     def _log(self, msg: str, level: str = "info"):
         """Enhanced logging with better formatting and stability"""
         try:

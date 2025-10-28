@@ -6,9 +6,9 @@ from PyQt6.QtCore import QObject, pyqtSignal, QTimer
 import os
 import sys
 
-# NI-DAQmx 런타임 경로 추가 시도
+# Attempt to add NI-DAQmx runtime paths
 possible_paths = [
-    # Windows 표준 경로
+    # Windows standard paths
     r"C:\Program Files (x86)\National Instruments\Shared\ExternalCompilerSupport\C\lib64\msvc",
     r"C:\Program Files\National Instruments\Shared\ExternalCompilerSupport\C\lib64\msvc", 
     r"C:\Windows\System32",
@@ -17,7 +17,7 @@ possible_paths = [
     r"C:\Program Files (x86)\National Instruments\Shared\CVI\Bin",
     r"C:\Program Files\National Instruments\Shared\CVI\Bin",
     
-    # 로컬 NIDAQ 런타임 폴더들
+    # Local NIDAQ runtime folders
     "./NIDAQ1610Runtime",
     "../NIDAQ1610Runtime", 
     "../../NIDAQ1610Runtime",
@@ -25,21 +25,21 @@ possible_paths = [
     "../NIDAQ1610Runtime/bin",
     "../../NIDAQ1610Runtime/bin",
     
-    # 상대 경로들
+    # Relative paths
     os.path.join(os.getcwd(), "NIDAQ1610Runtime"),
     os.path.join(os.path.dirname(os.getcwd()), "NIDAQ1610Runtime"),
     os.path.join(os.getcwd(), "NIDAQ1610Runtime", "bin"),
     os.path.join(os.path.dirname(os.getcwd()), "NIDAQ1610Runtime", "bin"),
 ]
 
-# 사용자 정의 NIDAQ 경로 확인
+# Check for custom NIDAQ path
 custom_nidaq_path = os.environ.get('NIDAQ_RUNTIME_PATH')
 if custom_nidaq_path:
     possible_paths.insert(0, custom_nidaq_path)
     possible_paths.insert(0, os.path.join(custom_nidaq_path, 'bin'))
     print(f"Using custom NIDAQ path: {custom_nidaq_path}")
 
-# 환경 변수에 경로 추가
+# Add paths to environment variables
 found_paths = []
 for path in possible_paths:
     if os.path.exists(path):
@@ -807,7 +807,7 @@ class MockNIDAQService(NIDAQService):
         self.mock_current = 0.0
         
     def get_available_devices(self) -> List[str]:
-        # NI-DAQmx 없을 때 테스트용 Mock 장비 표시
+        # Display mock devices for testing when NI-DAQmx is not available
         print("=== Using Mock NI DAQ Service (GUARANTEED) ===")
         print("No real NI-DAQmx hardware/software available")
         print("Returning comprehensive mock devices for testing...")
