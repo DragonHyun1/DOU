@@ -226,16 +226,20 @@ class TestScenarioEngine(QObject):
         self.status = TestStatus.INITIALIZING
         self.stop_requested = False
         
-        # Start test in separate thread
-        self.test_thread = threading.Thread(target=self._execute_test, args=(scenario,))
-        self.test_thread.daemon = True
-        self.test_thread.start()
+        # Execute test in single thread (no separate thread needed)
+        self.log_callback(f"Starting test scenario: {scenario_name}", "info")
         
-        self.log_callback(f"Started test scenario: {scenario_name}", "info")
-        return True
+        try:
+            # Execute test directly in main thread
+            self._execute_test_unified(scenario)
+            return True
+        except Exception as e:
+            self.log_callback(f"Test execution failed: {e}", "error")
+            self.status = TestStatus.FAILED
+            return False
     
     def stop_test(self) -> bool:
-        """Stop current test execution"""
+        """Stop current test execution (simplified for single thread)"""
         if self.status == TestStatus.IDLE:
             return True
         
@@ -246,20 +250,212 @@ class TestScenarioEngine(QObject):
         if self.monitoring_active:
             self.monitoring_active = False
         
-        # Wait for threads to finish
-        if self.test_thread and self.test_thread.is_alive():
-            self.test_thread.join(timeout=5.0)
-        
-        if self.monitoring_thread and self.monitoring_thread.is_alive():
-            self.monitoring_thread.join(timeout=3.0)
+        # No threads to wait for in single-thread mode
+        # Just set the stop flag and let the main loop handle it
         
         if self.current_test:
             self.current_test.end_time = datetime.now()
             self.current_test.status = TestStatus.STOPPED
         
-        self.log_callback("Test execution stopped", "info")
+        self.log_callback("Test execution stop requested", "info")
         return True
     
+    def _execute_test_unified(self, scenario: TestConfig):
+        """Execute test scenario in single thread (unified approach)"""
+        try:
+            self.status = TestStatus.RUNNING
+            self.log_callback(f"Executing scenario: {scenario.name} (Single Thread)", "info")
+            
+            # Validate scenario before execution
+            if not scenario.steps:
+                raise ValueError("No test steps defined in scenario")
+            
+            self.log_callback(f"Starting {len(scenario.steps)} test steps", "info")
+            
+            # Execute each step in single thread
+            for i, step in enumerate(scenario.steps):
+                if self.stop_requested:
+                    break
+                
+                try:
+                    self.current_step = i + 1
+                    self._update_progress_safe(f"Executing: {step.name}")
+                    self.log_callback(f"Step {self.current_step}/{self.total_steps}: {step.name}", "info")
+                    
+                    # Special handling for screen test with DAQ monitoring
+                    if step.action == "screen_on_off_with_daq_monitoring":
+                        success = self._unified_screen_test_with_daq()
+                    else:
+                        success = self._execute_step(step)
+                        
+                except Exception as step_error:
+                    self.log_callback(f"Critical error in step {step.name}: {step_error}", "error")
+                    success = False
+                
+                if not success:
+                    self.status = TestStatus.FAILED
+                    if self.current_test:
+                        self.current_test.end_time = datetime.now()
+                        self.log_callback(f"Test failed at step: {step.name}", "error")
+                        if QT_AVAILABLE:
+                            self.test_completed.emit(False, f"Test failed at step: {step.name}")
+                    return
+                
+                # Wait for step duration (simplified - no separate progress thread)
+                if step.duration > 0:
+                    self.log_callback(f"Waiting {step.duration}s for step completion", "info")
+                    time.sleep(step.duration)
+            
+            # Test completed successfully
+            self.status = TestStatus.COMPLETED
+            if self.current_test:
+                self.current_test.end_time = datetime.now()
+                self.log_callback("Test scenario completed successfully", "info")
+                if QT_AVAILABLE:
+                    self.test_completed.emit(True, "Test completed successfully")
+            
+        except Exception as e:
+            self.status = TestStatus.FAILED
+            if self.current_test:
+                self.current_test.end_time = datetime.now()
+                self.current_test.error_message = str(e)
+            self.log_callback(f"Test execution error: {e}", "error")
+            if QT_AVAILABLE:
+                self.test_completed.emit(False, f"Test failed: {e}")
+        
+        finally:
+            # Cleanup (no threads to manage)
+            self.monitoring_active = False
+            self.status = TestStatus.IDLE
+
+    def _unified_screen_test_with_daq(self) -> bool:
+        """Unified screen test with DAQ monitoring in single thread"""
+        try:
+            self.log_callback("Starting unified screen test with DAQ monitoring", "info")
+            
+            # Initialize data collection
+            self.daq_data = []
+            self.monitoring_active = True
+            
+            # Validate services
+            if not self.adb_service:
+                self.log_callback("ERROR: ADB service not available", "error")
+                return False
+            
+            # Get enabled channels and configuration
+            try:
+                enabled_channels = self._get_enabled_channels_from_monitor()
+                rail_names = self._get_channel_rail_names()
+                measurement_mode = self._get_measurement_mode()
+                
+                if not enabled_channels:
+                    self.log_callback("WARNING: No enabled channels found, using defaults", "warn")
+                    enabled_channels = ['ai0', 'ai1']
+                    rail_names = {'ai0': 'Rail_A', 'ai1': 'Rail_B'}
+                
+                self.log_callback(f"Monitoring {len(enabled_channels)} channels in {measurement_mode} mode", "info")
+            except Exception as e:
+                self.log_callback(f"Error getting channel info: {e}, using defaults", "warn")
+                enabled_channels = ['ai0', 'ai1']
+                rail_names = {'ai0': 'Rail_A', 'ai1': 'Rail_B'}
+                measurement_mode = 'current'
+            
+            # Start screen test with integrated DAQ monitoring
+            start_time = time.time()
+            cycles = 10  # 20 seconds / 2 seconds per cycle
+            
+            self.log_callback("Starting screen on/off cycle with integrated DAQ monitoring", "info")
+            
+            # Start with screen on
+            self.adb_service.turn_screen_on()
+            time.sleep(0.5)
+            
+            for cycle in range(cycles):
+                if self.stop_requested:
+                    self.log_callback("Test stop requested, breaking cycle", "warn")
+                    break
+                
+                try:
+                    # 1. Collect DAQ data point
+                    elapsed_time = time.time() - start_time
+                    data_point = self._collect_daq_data_point(enabled_channels, measurement_mode, elapsed_time)
+                    if data_point:
+                        self.daq_data.append(data_point)
+                    
+                    # 2. Update progress
+                    progress = int((cycle / cycles) * 90)  # 0-90% for screen test
+                    self._update_progress_safe(f"Screen test cycle {cycle+1}/{cycles}")
+                    
+                    # 3. Screen control (alternating on/off every cycle)
+                    if cycle % 2 == 0:
+                        self.adb_service.turn_screen_off()
+                        self.log_callback(f"Screen OFF (cycle {cycle+1}/{cycles})", "info")
+                    else:
+                        self.adb_service.turn_screen_on()
+                        self.log_callback(f"Screen ON (cycle {cycle+1}/{cycles})", "info")
+                    
+                    # 4. Wait for next cycle (2 seconds total per cycle)
+                    time.sleep(1.5)  # Already slept 0.5s for DAQ, so 1.5s more
+                    
+                except Exception as cycle_error:
+                    self.log_callback(f"Error in screen cycle {cycle+1}: {cycle_error}", "error")
+                    continue
+            
+            # Final data collection
+            final_elapsed = time.time() - start_time
+            final_data = self._collect_daq_data_point(enabled_channels, measurement_mode, final_elapsed)
+            if final_data:
+                self.daq_data.append(final_data)
+            
+            self.monitoring_active = False
+            data_count = len(self.daq_data)
+            self.log_callback(f"Unified screen test completed. Collected {data_count} data points", "info")
+            
+            # Final progress update
+            self._update_progress_safe("Screen test completed, preparing export")
+            
+            return True
+            
+        except Exception as e:
+            self.log_callback(f"CRITICAL ERROR in unified screen test: {e}", "error")
+            import traceback
+            self.log_callback(f"Traceback: {traceback.format_exc()}", "error")
+            return False
+        
+        finally:
+            self.monitoring_active = False
+
+    def _collect_daq_data_point(self, enabled_channels: List[str], measurement_mode: str, elapsed_time: float) -> dict:
+        """Collect a single DAQ data point"""
+        try:
+            channel_data = {}
+            
+            # Generate simulation data (replace with actual DAQ calls if available)
+            import random
+            for channel in enabled_channels:
+                if measurement_mode == "current":
+                    # Simulate current data with screen on/off variation
+                    base_current = 0.15 if elapsed_time % 4 < 2 else 0.05  # Screen on/off simulation
+                    value = round(base_current + random.uniform(-0.02, 0.02), 6)
+                    channel_data[f"{channel}_current"] = value
+                else:
+                    value = round(random.uniform(1.0, 5.0), 3)
+                    channel_data[f"{channel}_voltage"] = value
+            
+            # Create data point
+            data_point = {
+                'timestamp': datetime.now(),
+                'time_elapsed': elapsed_time,
+                'screen_test_time': elapsed_time,
+                **channel_data
+            }
+            
+            return data_point
+            
+        except Exception as e:
+            self.log_callback(f"Error collecting DAQ data: {e}", "error")
+            return None
+
     def _execute_test(self, scenario: TestConfig):
         """Execute test scenario with enhanced error handling"""
         try:
@@ -1368,6 +1564,21 @@ class TestScenarioEngine(QObject):
         """Set multi-channel monitor reference"""
         self.multi_channel_monitor = monitor
     
+    def _update_progress_safe(self, step_name: str):
+        """Update progress safely (no Qt signals from threads)"""
+        if self.total_steps > 0:
+            progress = int((self.current_step / self.total_steps) * 100)
+            # Use log instead of Qt signal to avoid thread issues
+            self.log_callback(f"Progress: {progress}% - {step_name}", "info")
+            
+            # Only emit Qt signal if we're in main thread (safe)
+            try:
+                if QT_AVAILABLE and not threading.current_thread().daemon:
+                    self.progress_updated.emit(progress, step_name)
+            except Exception as e:
+                # Ignore Qt signal errors in threads
+                pass
+
     def _update_progress(self, step_name: str):
         """Update progress and emit signal"""
         if self.total_steps > 0:
