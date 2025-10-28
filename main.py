@@ -44,9 +44,7 @@ class MainWindow(QtWidgets.QMainWindow):
             volt_entry=getattr(self.ui, 'hvpmVolt_LE', None)
         )
         
-        # HVPM 서비스에 USB 간섭 완화 서비스 연결
-        if hasattr(self.hvpm_service, 'usb_mitigation'):
-            self.hvpm_service.usb_mitigation = self.usb_mitigation_service
+        # HVPM USB Passthrough Auto는 자동으로 활성화됨
 
         # Auto Test 서비스
         self.auto_test_service = AutoTestService(
@@ -2015,12 +2013,12 @@ class MainWindow(QtWidgets.QMainWindow):
             QtWidgets.QMessageBox.warning(self, "Error", f"Failed to open USB interference dialog:\n{e}")
     
     def _on_usb_compensation_settings_changed(self, settings: dict):
-        """Handle USB compensation settings changes"""
-        self._log("USB compensation settings updated", "info")
+        """Handle USB Passthrough settings changes"""
+        self._log("USB Passthrough settings updated", "info")
         
-        # 설정 변경을 HVPM 서비스에 반영
-        if hasattr(self.hvpm_service, 'interference_compensation_enabled'):
-            self.hvpm_service.interference_compensation_enabled = settings.get('auto_compensation_enabled', True)
+        # USB Passthrough Auto 설정 변경
+        if hasattr(self.hvpm_service, 'usb_passthrough_auto_enabled'):
+            self.hvpm_service.usb_passthrough_auto_enabled = settings.get('usb_passthrough_enabled', True)
     
     def _on_channel_config_changed(self, config_dict):
         """Handle channel configuration changes"""
