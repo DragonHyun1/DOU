@@ -870,7 +870,7 @@ class TestScenarioEngine(QObject):
                 # Initialize screen test timing with thread-safe event
                 self._screen_test_start_time = None
                 self._screen_test_started = threading.Event()  # Thread-safe synchronization
-                self._monitoring_timeout = time.time() + 60.0  # 60 second timeout
+                self._monitoring_timeout = time.time() + 120.0  # 120 second timeout (Phone app test takes ~49s)
                 
                 # Create completely isolated thread for DAQ monitoring
                 monitoring_thread = threading.Thread(
@@ -1297,30 +1297,19 @@ class TestScenarioEngine(QObject):
                 self.log_callback(f"Created directory: {results_dir}", "info")
             
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            csv_filename = f"{results_dir}/screen_onoff_test_{timestamp}.csv"
             excel_filename = f"{results_dir}/screen_onoff_test_{timestamp}.xlsx"
             
-            self.log_callback(f"Exporting to CSV file: {csv_filename}", "info")
             self.log_callback(f"Exporting to Excel file: {excel_filename}", "info")
             
-            # Export to CSV (fast and reliable)
-            csv_success = self._export_to_csv_fallback(csv_filename)
-            
-            # Export to Excel with enhanced formatting
+            # Export to Excel with enhanced formatting (XLSX only)
             excel_success = self._export_to_excel_basic(excel_filename)
             
-            if csv_success:
-                self.log_callback(f"SUCCESS: Test data exported to {csv_filename}", "success")
-            else:
-                self.log_callback("FAILED: Could not export CSV data", "error")
-                
             if excel_success:
                 self.log_callback(f"SUCCESS: Test data exported to {excel_filename}", "success")
             else:
                 self.log_callback("FAILED: Could not export Excel data", "error")
             
-            # Return success if at least one export succeeded
-            return csv_success or excel_success
+            return excel_success
         except Exception as e:
             self.log_callback(f"CRITICAL ERROR in CSV export: {e}", "error")
             import traceback
@@ -1402,8 +1391,8 @@ class TestScenarioEngine(QObject):
                             if hasattr(self, '_screen_test_start_time') and self._screen_test_start_time is not None:
                                 screen_test_elapsed = current_time - self._screen_test_start_time
                                 
-                                # Only collect data during screen test period (0-20 seconds)
-                                if screen_test_elapsed >= 0 and screen_test_elapsed <= 20.0:
+                            # Only collect data during test period (0-10 seconds for Phone app test)  
+                            if screen_test_elapsed >= 0 and screen_test_elapsed <= 10.0:
                                     data_point = {
                                         'timestamp': datetime.now(),
                                         'time_elapsed': screen_test_elapsed,  # Time from screen test start
@@ -1418,24 +1407,24 @@ class TestScenarioEngine(QObject):
                                     # Log first data point
                                     if loop_count == 1:
                                         print(f"Started data collection at screen test time: {screen_test_elapsed:.1f}s")
-                                elif screen_test_elapsed > 20.0:
-                                    # Stop collecting data after 20 seconds
-                                    print(f"Screen test completed ({screen_test_elapsed:.1f}s), stopping data collection")
-                                    self.monitoring_active = False
-                                    break
+                            elif screen_test_elapsed > 10.0:
+                                # Stop collecting data after 10 seconds
+                                print(f"Phone app test completed ({screen_test_elapsed:.1f}s), stopping data collection")
+                                self.monitoring_active = False
+                                break
                             else:
                                 # Event is set but start time not available yet, wait a bit
                                 continue
                         else:
                             # Screen test hasn't started yet, check timeout
                             if hasattr(self, '_monitoring_timeout') and current_time > self._monitoring_timeout:
-                                print("ERROR: Timeout waiting for screen test to start (60s), stopping monitoring")
+                                print("ERROR: Timeout waiting for screen test to start (120s), stopping monitoring")
                                 self.monitoring_active = False
                                 break
                             
                             # Wait for screen test to start
                             if loop_count % 5 == 1:  # Log every 5 seconds while waiting
-                                timeout_time = getattr(self, '_monitoring_timeout', current_time + 60)
+                                timeout_time = getattr(self, '_monitoring_timeout', current_time + 120)
                                 remaining_time = max(0, timeout_time - current_time)
                                 print(f"Waiting for screen test to start... ({remaining_time:.0f}s timeout remaining)")
                             continue
@@ -1506,8 +1495,8 @@ class TestScenarioEngine(QObject):
                         if hasattr(self, '_screen_test_start_time') and self._screen_test_start_time is not None:
                             screen_test_elapsed = current_time - self._screen_test_start_time
                             
-                            # Only collect data during screen test period (0-20 seconds)
-                            if screen_test_elapsed >= 0 and screen_test_elapsed <= 20.0:
+                            # Only collect data during test period (0-10 seconds for Phone app test)
+                            if screen_test_elapsed >= 0 and screen_test_elapsed <= 10.0:
                                 data_point = {
                                     'timestamp': datetime.now(),
                                     'time_elapsed': screen_test_elapsed,
@@ -1522,8 +1511,8 @@ class TestScenarioEngine(QObject):
                                 # Log first data point
                                 if loop_count == 1:
                                     print(f"Isolated: Started data collection at {screen_test_elapsed:.1f}s")
-                            elif screen_test_elapsed > 20.0:
-                                print(f"Isolated: Screen test completed ({screen_test_elapsed:.1f}s), stopping")
+                            elif screen_test_elapsed > 10.0:
+                                print(f"Isolated: Phone app test completed ({screen_test_elapsed:.1f}s), stopping")
                                 self.monitoring_active = False
                                 break
                         else:
@@ -1531,13 +1520,13 @@ class TestScenarioEngine(QObject):
                     else:
                         # Check timeout
                         if hasattr(self, '_monitoring_timeout') and current_time > self._monitoring_timeout:
-                            print("Isolated: ERROR - Timeout waiting for screen test (60s)")
+                            print("Isolated: ERROR - Timeout waiting for screen test (120s)")
                             self.monitoring_active = False
                             break
                         
                         # Wait message (less frequent)
                         if loop_count % 10 == 1:
-                            timeout_time = getattr(self, '_monitoring_timeout', current_time + 60)
+                            timeout_time = getattr(self, '_monitoring_timeout', current_time + 120)
                             remaining = max(0, timeout_time - current_time)
                             print(f"Isolated: Waiting for screen test... ({remaining:.0f}s remaining)")
                         continue
@@ -2244,6 +2233,15 @@ class TestScenarioEngine(QObject):
             
             # Wait a moment for DAQ to stabilize
             time.sleep(1)
+            
+            # Initialize screen test timing for DAQ data collection
+            test_start_time = time.time()
+            self._screen_test_start_time = test_start_time
+            
+            # Signal DAQ monitoring that test has started
+            if hasattr(self, '_screen_test_started'):
+                self._screen_test_started.set()
+                self.log_callback("Phone app test start signal sent to DAQ monitoring", "info")
             
             # Execute Phone app test sequence
             self.log_callback("=== Phone App Test Sequence Started ===", "info")
