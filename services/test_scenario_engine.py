@@ -297,8 +297,16 @@ class TestScenarioEngine(QObject):
                     if self.current_test:
                         self.current_test.end_time = datetime.now()
                         self.log_callback(f"Test failed at step: {step.name}", "error")
-                        if QT_AVAILABLE:
-                            self.test_completed.emit(False, f"Test failed at step: {step.name}")
+                    
+                    # Reset to IDLE state before emitting failure signal
+                    self.monitoring_active = False
+                    old_status = self.status
+                    self.status = TestStatus.IDLE
+                    self.log_callback(f"Auto test status changed after step failure: {old_status.value} → {self.status.value}", "info")
+                    
+                    # Emit failure signal after state reset
+                    if QT_AVAILABLE:
+                        self.test_completed.emit(False, f"Test failed at step: {step.name}")
                     return
                 
                 # Wait for step duration (simplified - no separate progress thread)
@@ -311,8 +319,16 @@ class TestScenarioEngine(QObject):
             if self.current_test:
                 self.current_test.end_time = datetime.now()
                 self.log_callback("Test scenario completed successfully", "info")
-                if QT_AVAILABLE:
-                    self.test_completed.emit(True, "Test completed successfully")
+            
+            # Reset to IDLE state before emitting completion signal
+            self.monitoring_active = False
+            old_status = self.status
+            self.status = TestStatus.IDLE
+            self.log_callback(f"Auto test status changed: {old_status.value} → {self.status.value}", "info")
+            
+            # Emit completion signal after state reset
+            if QT_AVAILABLE:
+                self.test_completed.emit(True, "Test completed successfully")
             
         except Exception as e:
             self.status = TestStatus.FAILED
@@ -320,13 +336,24 @@ class TestScenarioEngine(QObject):
                 self.current_test.end_time = datetime.now()
                 self.current_test.error_message = str(e)
             self.log_callback(f"Test execution error: {e}", "error")
+            
+            # Reset to IDLE state before emitting failure signal
+            self.monitoring_active = False
+            old_status = self.status
+            self.status = TestStatus.IDLE
+            self.log_callback(f"Auto test status changed after error: {old_status.value} → {self.status.value}", "info")
+            
+            # Emit failure signal after state reset
             if QT_AVAILABLE:
                 self.test_completed.emit(False, f"Test failed: {e}")
         
         finally:
-            # Cleanup (no threads to manage)
+            # Ensure cleanup (redundant but safe)
             self.monitoring_active = False
-            self.status = TestStatus.IDLE
+            if self.status != TestStatus.IDLE:
+                old_status = self.status
+                self.status = TestStatus.IDLE
+                self.log_callback(f"Final auto test state reset: {old_status.value} → {self.status.value}", "info")
 
     def _unified_screen_test_with_daq(self) -> bool:
         """Unified screen test with DAQ monitoring in single thread"""
@@ -1567,7 +1594,9 @@ class TestScenarioEngine(QObject):
     
     def is_running(self) -> bool:
         """Check if test is currently running"""
-        return self.status in [TestStatus.INITIALIZING, TestStatus.RUNNING]
+        running = self.status in [TestStatus.INITIALIZING, TestStatus.RUNNING]
+        self.log_callback(f"is_running() check: status={self.status.value}, running={running}", "debug")
+        return running
     
     def get_status(self) -> TestStatus:
         """Get current test status"""
