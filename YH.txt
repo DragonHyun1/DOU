@@ -1,10 +1,7 @@
-2G로 커넥팅 되었다고 하는데 와이파이는 켜졌는데 0_WIFIFW_RAX40_2nd_2G에 연결은 안되었어
-내가 직접 연결하려고 보니 비밀번호 입력하라고 되어있던데 직접 입력하고 연결은 또 되거든
-너 비밀번호 입력하고 접속했던거 맞아?
-[18:02:40] Connecting to 2.4GHz WiFi: 0_WIFIFW_RAX40_2nd_2G
-[18:02:50] WiFi Status: {'enabled': False, 'connected_ssid': '<unknown ssid>', 'raw_info': 'mWifiInfo SSID: <unknown ssid>, BSSID: <none>, MAC: 02:00:00:00:00:00, IP: null, Security type: -1, Supplicant state: DISCONNECTED, Wi-Fi standard: unknown, RSSI: -127, Link speed: -1Mbps, Tx Link speed: -1Mbps, Max Supported Tx Link speed: -1Mbps, Rx Link speed: -1Mbps, Max Supported Rx Link speed: -1Mbps, Frequency: -1MHz, Net ID: -1, Metered hint: false, score: 0, isUsable: true, CarrierMerged: false, SubscriptionId: -1, IsPrimary: 0, Trusted: false, Restricted: false, Ephemeral: false, OEM paid: false, OEM private: false, OSU AP: false, FQDN: <none>, Provider friendly name: <none>, Requesting package name: <none><none>MLO Information: , Is TID-To-Link negotiation supported by the AP: false, AP MLD Address: <none>, AP MLO Link Id: <none>, AP MLO Affiliated links: <none>, Vendor Data: <none>\nmWifiInfo SSID: <unknown ssid>, BSSID: <none>, MAC: 02:00:00:00:00:00, IP: null, Security type: -1, Supplicant state: DISCONNECTED, Wi-Fi standard: unknown, RSSI: -127, Link speed: -1Mbps, Tx Link speed: -1Mbps, Max Supported Tx Link speed: -1Mbps, Rx Link speed: -1Mbps, Max Supported Rx Link speed: -1Mbps, Frequency: -1MHz, Net ID: -1, Metered hint: false, score: 0, isUsable: true, CarrierMerged: false, SubscriptionId: -1, IsPrimary: 0, Trusted: false, Restricted: false, Ephemeral: false, OEM paid: false, OEM private: false, OSU AP: false, FQDN: <none>, Provider friendly name: <none>, Requesting package name: <none><none>MLO Information: , Is TID-To-Link negotiation supported by the AP: false, AP MLD Address: <none>, AP MLO Link Id: <none>, AP MLO Affiliated links: <none>, Vendor Data: <none>\nmWifiInfo SSID: <unknown ssid>, BSSID: <none>, MAC: 02:00:00:00:00:00, IP: null, Security type: -1, Supplicant state: DISCONNECTED, Wi-Fi standard: 11ax, RSSI: -127, Link speed: -1Mbps, Tx Link speed: -1Mbps, Max Supported Tx Link speed: -1Mbps, Rx Link speed: -1Mbps, Max Supported Rx Link speed: -1Mbps, Frequency: -1MHz, Net ID: -1, Metered hint: false, score: 0, isUsable: true, CarrierMerged: false, SubscriptionId: -1, IsPrimary: 0, Trusted: false, Restricted: false, Ephemeral: false, OEM paid: false, OEM private: false, OSU AP: false, FQDN: <none>, Provider friendly name: <none>, Requesting package name: <none><none>MLO Information: , Is TID-To-Link negotiation supported by the AP: false, AP MLD Address: <none>, AP MLO Link Id: <none>, AP MLO Affiliated links: <none>, Vendor Data: <none>'}
-[18:02:50] 2.4GHz WiFi connection completed
-
-"Phone"을 못 찾아서 fail된거야?
-[18:03:33] Error in Phone app test: 'TestScenarioEngine' object has no attribute '_start_daq_monitoring'
-[18:03:33] Test failed at step: phone_app_test
+[18:32:08] Step 10/11: phone_app_test
+[18:32:08] Starting Phone app test with DAQ monitoring
+[18:32:08] Starting DAQ monitoring for Phone app test
+[18:32:08] Error in Phone app test: 'TestScenarioEngine' object has no attribute '_start_daq_monitoring'
+[18:32:08] Test failed at step: phone_app_test
+[18:32:08] Auto test status changed after step failure: failed → idle
+[18:32:08] _on_auto_test_completed called: success=False, message=Test failed at step: phone_app_test
