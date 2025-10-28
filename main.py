@@ -11,8 +11,10 @@ from services.ni_daq import create_ni_service
 from services import theme, adb
 from services.adaptive_ui import get_adaptive_ui
 from services.responsive_layout import get_responsive_manager
+from services.usb_interference_mitigation import create_usb_mitigation_service
 from ui.test_settings_dialog import TestSettingsDialog
 from ui.multi_channel_monitor import MultiChannelMonitorDialog
+from ui.usb_interference_dialog import USBInterferenceDialog
 from collections import deque
 import pyqtgraph as pg
 
@@ -34,13 +36,17 @@ class MainWindow(QtWidgets.QMainWindow):
         # Apply modern theme with adaptive sizing
         theme.apply_theme(self)
 
-        # HVPM 서비스
+        # HVPM 서비스 (USB 간섭 완화 서비스와 연결)
         self.hvpm_service = HvpmService(
             combo=self.ui.hvpm_CB,
             status_label=getattr(self.ui, 'hvpmStatus_LB', None),
             volt_label=getattr(self.ui, 'hvpmVolt_LB', None),
             volt_entry=getattr(self.ui, 'hvpmVolt_LE', None)
         )
+        
+        # HVPM 서비스에 USB 간섭 완화 서비스 연결
+        if hasattr(self.hvpm_service, 'usb_mitigation'):
+            self.hvpm_service.usb_mitigation = self.usb_mitigation_service
 
         # Auto Test 서비스
         self.auto_test_service = AutoTestService(
@@ -56,6 +62,10 @@ class MainWindow(QtWidgets.QMainWindow):
         
         # Multi-channel monitoring
         self.multi_channel_dialog = None
+        
+        # USB 간섭 완화 서비스
+        self.usb_mitigation_service = create_usb_mitigation_service()
+        self.usb_interference_dialog = None
         
         # Initialize test scenario engine after ni_service is created
         self.test_scenario_engine = TestScenarioEngine(
@@ -497,6 +507,8 @@ class MainWindow(QtWidgets.QMainWindow):
         # Tools menu actions (if exists)
         if hasattr(self.ui, 'actionMulti_Channel_Monitor'):
             self.ui.actionMulti_Channel_Monitor.triggered.connect(self.open_multi_channel_monitor)
+        if hasattr(self.ui, 'actionUSB_Interference_Settings'):
+            self.ui.actionUSB_Interference_Settings.triggered.connect(self.open_usb_interference_dialog)
         
         # Help menu actions
         self.ui.actionAbout.triggered.connect(self.show_about)
@@ -1978,6 +1990,38 @@ class MainWindow(QtWidgets.QMainWindow):
             self._log(f"ERROR: Failed to open multi-channel monitor: {e}", "error")
             QtWidgets.QMessageBox.warning(self, "Error", f"Failed to open multi-channel monitor:\n{e}")
     
+    def open_usb_interference_dialog(self):
+        """Open USB interference mitigation settings dialog"""
+        try:
+            if self.usb_interference_dialog is None:
+                self.usb_interference_dialog = USBInterferenceDialog(
+                    parent=self,
+                    mitigation_service=self.usb_mitigation_service
+                )
+                
+                # Connect signals
+                self.usb_interference_dialog.compensation_settings_changed.connect(
+                    self._on_usb_compensation_settings_changed
+                )
+            
+            self.usb_interference_dialog.show()
+            self.usb_interference_dialog.raise_()
+            self.usb_interference_dialog.activateWindow()
+            
+            self._log("USB interference mitigation dialog opened", "info")
+            
+        except Exception as e:
+            self._log(f"ERROR: Failed to open USB interference dialog: {e}", "error")
+            QtWidgets.QMessageBox.warning(self, "Error", f"Failed to open USB interference dialog:\n{e}")
+    
+    def _on_usb_compensation_settings_changed(self, settings: dict):
+        """Handle USB compensation settings changes"""
+        self._log("USB compensation settings updated", "info")
+        
+        # 설정 변경을 HVPM 서비스에 반영
+        if hasattr(self.hvpm_service, 'interference_compensation_enabled'):
+            self.hvpm_service.interference_compensation_enabled = settings.get('auto_compensation_enabled', True)
+    
     def _on_channel_config_changed(self, config_dict):
         """Handle channel configuration changes"""
         for channel, config in config_dict.items():
@@ -2036,7 +2080,7 @@ class MainWindow(QtWidgets.QMainWindow):
         QtWidgets.QMessageBox.about(
             self, 
             "About HVPM Monitor with Multi-Channel DAQ", 
-            "HVPM Monitor v3.2 with Multi-Channel DAQ\n\n"
+            "HVPM Monitor v3.3 with Multi-Channel DAQ & USB Interference Mitigation\n\n"
             "Enhanced power measurement tool with automated testing capabilities.\n"
             "Features real-time monitoring, voltage control, and multi-channel DAQ monitoring.\n\n"
             "New Features:\n"
@@ -2045,7 +2089,14 @@ class MainWindow(QtWidgets.QMainWindow):
             "• Real-time and single-shot measurements\n"
             "• Power rail management\n"
             "• Automated test scenarios\n"
+            "• USB interference mitigation\n"
+            "• Smart voltage compensation\n"
             "• Enhanced UI and logging\n\n"
+            "USB Interference Mitigation:\n"
+            "• Automatic USB connection detection\n"
+            "• Smart voltage compensation algorithms\n"
+            "• Learning-based interference pattern recognition\n"
+            "• Hardware solution recommendations\n\n"
             "Built with PyQt6 and PyQtGraph"
         )
 

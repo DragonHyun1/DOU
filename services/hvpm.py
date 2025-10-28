@@ -2,6 +2,7 @@
 import time
 from PyQt6 import QtWidgets
 from Monsoon import HVPM, sampleEngine
+from .usb_interference_mitigation import USBInterferenceMitigation, MeasurementMode
 
 class HvpmService:
     def __init__(self, combo: QtWidgets.QComboBox,
@@ -20,6 +21,13 @@ class HvpmService:
         self.last_set_vout = None
         self.last_read_voltage = None
         self.last_read_current = None
+        
+        # USB 간섭 완화 서비스 통합
+        self.usb_mitigation = USBInterferenceMitigation()
+        self.usb_mitigation.start_monitoring()
+        
+        # 간섭 완화 설정
+        self.interference_compensation_enabled = True
 
     def is_connected(self):
         """Check if HVPM device is connected and ready"""
@@ -249,8 +257,24 @@ class HvpmService:
     def read_voltage(self, log_callback=None):
         v = self.read_voltage_once_channel_major(nsamp=700, tail=140, warmup_ms=180, log_callback=log_callback)
         if v is not None:
+            # USB 간섭 보정 적용
+            if self.interference_compensation_enabled:
+                compensated_v = self.usb_mitigation.compensate_voltage_measurement(v)
+                self.usb_mitigation.learn_interference_pattern(v, self.usb_mitigation.adb_connected)
+                if log_callback and abs(compensated_v - v) > 0.01:  # 보정이 적용된 경우만 로그
+                    log_callback(f"[HVPM] USB interference compensation: {v:.3f}V -> {compensated_v:.3f}V", "info")
+                return compensated_v
             return v
-        return self.read_voltage_once_channel_major(nsamp=1200, tail=200, warmup_ms=300, log_callback=log_callback)
+        
+        # 재시도
+        v = self.read_voltage_once_channel_major(nsamp=1200, tail=200, warmup_ms=300, log_callback=log_callback)
+        if v is not None and self.interference_compensation_enabled:
+            compensated_v = self.usb_mitigation.compensate_voltage_measurement(v)
+            self.usb_mitigation.learn_interference_pattern(v, self.usb_mitigation.adb_connected)
+            if log_callback and abs(compensated_v - v) > 0.01:
+                log_callback(f"[HVPM] USB interference compensation: {v:.3f}V -> {compensated_v:.3f}V", "info")
+            return compensated_v
+        return v
 
     # -------- dual-channel VI read --------
     def read_vi_once_channel_major(self, nsamp=700, tail=140, warmup_ms=180, log_callback=None):
@@ -294,8 +318,24 @@ class HvpmService:
     def read_vi(self, log_callback=None):
         v, i = self.read_vi_once_channel_major(nsamp=700, tail=140, warmup_ms=180, log_callback=log_callback)
         if v is not None and i is not None:
+            # USB 간섭 보정 적용 (전압에만)
+            if self.interference_compensation_enabled:
+                compensated_v = self.usb_mitigation.compensate_voltage_measurement(v)
+                self.usb_mitigation.learn_interference_pattern(v, self.usb_mitigation.adb_connected)
+                if log_callback and abs(compensated_v - v) > 0.01:
+                    log_callback(f"[HVPM] USB interference compensation: {v:.3f}V -> {compensated_v:.3f}V", "info")
+                return compensated_v, i
             return v, i
-        return self.read_vi_once_channel_major(nsamp=1200, tail=200, warmup_ms=300, log_callback=log_callback)
+        
+        # 재시도
+        v, i = self.read_vi_once_channel_major(nsamp=1200, tail=200, warmup_ms=300, log_callback=log_callback)
+        if v is not None and i is not None and self.interference_compensation_enabled:
+            compensated_v = self.usb_mitigation.compensate_voltage_measurement(v)
+            self.usb_mitigation.learn_interference_pattern(v, self.usb_mitigation.adb_connected)
+            if log_callback and abs(compensated_v - v) > 0.01:
+                log_callback(f"[HVPM] USB interference compensation: {v:.3f}V -> {compensated_v:.3f}V", "info")
+            return compensated_v, i
+        return v, i
 
     # -------- set voltage --------
     def set_voltage(self, volts: float, log_callback=None) -> bool:
