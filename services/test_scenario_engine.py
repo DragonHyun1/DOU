@@ -2218,10 +2218,28 @@ class TestScenarioEngine(QObject):
                 self.log_callback("ADB service not available", "error")
                 return False
             
+            # Debug: Check available methods
+            self.log_callback(f"Available DAQ methods: {[m for m in dir(self) if 'daq' in m.lower()]}", "info")
+            
             # Start DAQ monitoring
             self.log_callback("Starting DAQ monitoring for Phone app test", "info")
-            if not self._step_start_daq_monitoring():
-                self.log_callback("Failed to start DAQ monitoring", "error")
+            
+            # Debug: Check if method exists
+            if hasattr(self, '_step_start_daq_monitoring'):
+                self.log_callback("✅ _step_start_daq_monitoring method exists", "info")
+                try:
+                    result = self._step_start_daq_monitoring()
+                    self.log_callback(f"DAQ monitoring start result: {result}", "info")
+                    if not result:
+                        self.log_callback("Failed to start DAQ monitoring", "error")
+                        return False
+                except Exception as daq_error:
+                    self.log_callback(f"Error calling _step_start_daq_monitoring: {daq_error}", "error")
+                    import traceback
+                    self.log_callback(f"DAQ start traceback: {traceback.format_exc()}", "error")
+                    return False
+            else:
+                self.log_callback("❌ _step_start_daq_monitoring method does not exist", "error")
                 return False
             
             # Wait a moment for DAQ to stabilize
