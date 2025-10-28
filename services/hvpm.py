@@ -20,6 +20,10 @@ class HvpmService:
         self.last_set_vout = None
         self.last_read_voltage = None
         self.last_read_current = None
+        
+        # USB Passthrough Auto 설정 (간단한 하드웨어 차단)
+        self.usb_passthrough_auto_enabled = True
+        self.usb_passthrough_initialized = False
 
     def is_connected(self):
         """Check if HVPM device is connected and ready"""
@@ -122,6 +126,62 @@ class HvpmService:
 
         return True
     # === END PATCH ===
+    
+    def _enable_usb_passthrough_auto(self, log_callback=None):
+        """USB Passthrough Auto 모드 활성화 - USB 전압 자동 차단"""
+        if not self.pm:
+            if log_callback: 
+                log_callback("[HVPM] No device for USB Passthrough setup", "warn")
+            return False
+        
+        if self.usb_passthrough_initialized:
+            return True  # 이미 설정됨
+        
+        try:
+            # 방법 1: HVPMClient 스타일 API 시도
+            if hasattr(self.pm, 'send'):
+                self.pm.send({"cmd": "usb_passthrough", "params": {"mode": "auto"}})
+                if log_callback:
+                    log_callback("[HVPM] USB Passthrough Auto enabled (send API)", "info")
+                self.usb_passthrough_initialized = True
+                return True
+            
+            # 방법 2: 직접 메서드 시도
+            for method_name in ['setUSBPassthrough', 'enableUSBPassthrough', 'setUSBPowerPassthrough']:
+                if hasattr(self.pm, method_name):
+                    method = getattr(self.pm, method_name)
+                    try:
+                        method("auto")  # 또는 True
+                        if log_callback:
+                            log_callback(f"[HVPM] USB Passthrough Auto enabled ({method_name})", "info")
+                        self.usb_passthrough_initialized = True
+                        return True
+                    except Exception as e:
+                        if log_callback:
+                            log_callback(f"[HVPM] {method_name} failed: {e}", "debug")
+                        continue
+            
+            # 방법 3: 설정 파일 방식 시도
+            if hasattr(self.pm, 'setParameter'):
+                try:
+                    self.pm.setParameter('usb_passthrough', 'auto')
+                    if log_callback:
+                        log_callback("[HVPM] USB Passthrough Auto enabled (setParameter)", "info")
+                    self.usb_passthrough_initialized = True
+                    return True
+                except Exception as e:
+                    if log_callback:
+                        log_callback(f"[HVPM] setParameter failed: {e}", "debug")
+            
+            # 모든 방법 실패
+            if log_callback:
+                log_callback("[HVPM] USB Passthrough Auto not supported or failed", "warn")
+            return False
+            
+        except Exception as e:
+            if log_callback:
+                log_callback(f"[HVPM] USB Passthrough setup error: {e}", "error")
+            return False
 
     def refresh_ports(self, log_callback=None):
         """장비 재탐색 + UI 갱신. 장비가 꺼져있으면 즉시 Not Connected 처리."""
@@ -184,6 +244,10 @@ class HvpmService:
             if log_callback:
                 self._log = log_callback  # 선택: 내부 저장
                 log_callback(f"[HVPM] Connected, serial={shown}", "info")
+            
+            # USB Passthrough Auto 자동 설정
+            if self.usb_passthrough_auto_enabled:
+                self._enable_usb_passthrough_auto(log_callback)
 
         except Exception as e:
             # 연결 실패 경로: UI를 바로 Not Connected로
@@ -247,9 +311,16 @@ class HvpmService:
             return None
 
     def read_voltage(self, log_callback=None):
+        # USB Passthrough Auto 활성화 (USB 전압 자동 차단)
+        if self.usb_passthrough_auto_enabled:
+            self._enable_usb_passthrough_auto(log_callback)
+        
+        # 간섭 없는 정확한 측정
         v = self.read_voltage_once_channel_major(nsamp=700, tail=140, warmup_ms=180, log_callback=log_callback)
         if v is not None:
             return v
+        
+        # 재시도
         return self.read_voltage_once_channel_major(nsamp=1200, tail=200, warmup_ms=300, log_callback=log_callback)
 
     # -------- dual-channel VI read --------
@@ -292,9 +363,16 @@ class HvpmService:
             return None, None
 
     def read_vi(self, log_callback=None):
+        # USB Passthrough Auto 활성화 (USB 전압 자동 차단)
+        if self.usb_passthrough_auto_enabled:
+            self._enable_usb_passthrough_auto(log_callback)
+        
+        # 간섭 없는 정확한 V/I 측정
         v, i = self.read_vi_once_channel_major(nsamp=700, tail=140, warmup_ms=180, log_callback=log_callback)
         if v is not None and i is not None:
             return v, i
+        
+        # 재시도
         return self.read_vi_once_channel_major(nsamp=1200, tail=200, warmup_ms=300, log_callback=log_callback)
 
     # -------- set voltage --------
