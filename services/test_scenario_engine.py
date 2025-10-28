@@ -1890,22 +1890,72 @@ class TestScenarioEngine(QObject):
             summary_sheet.write('A8', 'Data Points:', label_format)
             summary_sheet.write('B8', len(self.daq_data))
             
-            # Channel information
-            summary_sheet.write('A10', 'Monitored Channels:', title_format)
-            enabled_channels = self._get_enabled_channels()
-            for i, channel in enumerate(enabled_channels):
-                summary_sheet.write(f'A{11+i}', f'Channel {channel}:', label_format)
-                # Calculate average current for this channel
-                channel_key = f'{channel}_current'
-                if self.daq_data and channel_key in self.daq_data[0]:
-                    avg_current = sum(data.get(channel_key, 0) for data in self.daq_data) / len(self.daq_data)
-                    summary_sheet.write(f'B{11+i}', f"{avg_current:.3f} A (avg)")
+            # Power Rail Statistics
+            summary_sheet.write('A10', 'Power Rail Statistics:', title_format)
+            
+            # Get enabled channels, rail names, and measurement mode
+            enabled_channels = self._get_enabled_channels_from_monitor()
+            rail_names = self._get_channel_rail_names()
+            measurement_mode = getattr(self, '_monitoring_mode', 'current')
+            
+            row = 11
+            for channel in enabled_channels:
+                rail_name = rail_names.get(channel, f"Rail_{channel}")
+                
+                if measurement_mode == "current":
+                    channel_key = f'{channel}_current'
+                    unit = "A"
+                    unit_name = "Current"
                 else:
-                    summary_sheet.write(f'B{11+i}', "No data")
+                    channel_key = f'{channel}_voltage'
+                    unit = "V"
+                    unit_name = "Voltage"
+                
+                # Rail name header
+                summary_sheet.write(f'A{row}', f'{rail_name} ({unit_name}):', title_format)
+                row += 1
+                
+                if self.daq_data and channel_key in self.daq_data[0]:
+                    # Get all values for this channel
+                    values = [data.get(channel_key, 0) for data in self.daq_data if channel_key in data]
+                    
+                    if values:
+                        # Calculate statistics
+                        avg_value = sum(values) / len(values)
+                        min_value = min(values)
+                        max_value = max(values)
+                        
+                        # Write statistics
+                        summary_sheet.write(f'A{row}', '  Average:', label_format)
+                        summary_sheet.write(f'B{row}', f"{avg_value:.3f} {unit}")
+                        row += 1
+                        
+                        summary_sheet.write(f'A{row}', '  Minimum:', label_format)
+                        summary_sheet.write(f'B{row}', f"{min_value:.3f} {unit}")
+                        row += 1
+                        
+                        summary_sheet.write(f'A{row}', '  Maximum:', label_format)
+                        summary_sheet.write(f'B{row}', f"{max_value:.3f} {unit}")
+                        row += 1
+                        
+                        summary_sheet.write(f'A{row}', '  Range:', label_format)
+                        summary_sheet.write(f'B{row}', f"{max_value - min_value:.3f} {unit}")
+                        row += 1
+                    else:
+                        summary_sheet.write(f'A{row}', '  Status:', label_format)
+                        summary_sheet.write(f'B{row}', "No valid data")
+                        row += 1
+                else:
+                    summary_sheet.write(f'A{row}', '  Status:', label_format)
+                    summary_sheet.write(f'B{row}', "Channel not monitored")
+                    row += 1
+                
+                # Add spacing between rails
+                row += 1
             
             # Auto-adjust column widths
-            summary_sheet.set_column('A:A', 20)
-            summary_sheet.set_column('B:B', 25)
+            summary_sheet.set_column('A:A', 25)
+            summary_sheet.set_column('B:B', 20)
             
         except Exception as e:
             self.log_callback(f"Error creating summary sheet: {e}", "error")
@@ -1963,16 +2013,81 @@ class TestScenarioEngine(QObject):
             with pd.ExcelWriter(filename, engine='openpyxl') as writer:
                 df.to_excel(writer, sheet_name='Test_Results', index=False)
                 
-                # Create summary sheet
+                # Create detailed summary sheet
+                summary_info = []
+                summary_values = []
+                
+                # Basic test information
+                summary_info.extend(['Test Name', 'Start Time', 'Data Points', 'Duration', 'Status'])
+                summary_values.extend([
+                    self.current_test.scenario_name if self.current_test else 'Unknown',
+                    self.current_test.start_time.strftime('%Y-%m-%d %H:%M:%S') if self.current_test else 'Unknown',
+                    len(self.daq_data),
+                    f"{len(self.daq_data)} seconds",
+                    self.status.value.upper()
+                ])
+                
+                # Add empty row
+                summary_info.append('')
+                summary_values.append('')
+                
+                # Power Rail Statistics
+                summary_info.append('=== Power Rail Statistics ===')
+                summary_values.append('')
+                
+                for channel in enabled_channels:
+                    rail_name = rail_names.get(channel, f"Rail_{channel}")
+                    
+                    if measurement_mode == "current":
+                        channel_key = f'{channel}_current'
+                        unit = "A"
+                        unit_name = "Current"
+                    else:
+                        channel_key = f'{channel}_voltage'
+                        unit = "V"
+                        unit_name = "Voltage"
+                    
+                    # Rail header
+                    summary_info.append(f'{rail_name} ({unit_name}):')
+                    summary_values.append('')
+                    
+                    # Find the correct column name in formatted_data
+                    column_name = f"{rail_name} ({unit})"
+                    if column_name in formatted_data:
+                        # Get all values for this rail
+                        values = [v for v in formatted_data[column_name] if isinstance(v, (int, float))]
+                        
+                        if values:
+                            avg_value = sum(values) / len(values)
+                            min_value = min(values)
+                            max_value = max(values)
+                            
+                            summary_info.extend([
+                                f'  Average',
+                                f'  Minimum', 
+                                f'  Maximum',
+                                f'  Range'
+                            ])
+                            summary_values.extend([
+                                f'{avg_value:.3f} {unit}',
+                                f'{min_value:.3f} {unit}',
+                                f'{max_value:.3f} {unit}',
+                                f'{max_value - min_value:.3f} {unit}'
+                            ])
+                        else:
+                            summary_info.append('  Status')
+                            summary_values.append('No valid data')
+                    else:
+                        summary_info.append('  Status')
+                        summary_values.append('Channel not monitored')
+                    
+                    # Add spacing
+                    summary_info.append('')
+                    summary_values.append('')
+                
                 summary_data = {
-                    'Test Information': ['Test Name', 'Start Time', 'Data Points', 'Duration', 'Channels'],
-                    'Value': [
-                        self.current_test.scenario_name if self.current_test else 'Unknown',
-                        self.current_test.start_time.strftime('%Y-%m-%d %H:%M:%S') if self.current_test else 'Unknown',
-                        len(self.daq_data),
-                        f"{len(self.daq_data)} seconds",
-                        ', '.join(rail_names.values())
-                    ]
+                    'Test Information': summary_info,
+                    'Value': summary_values
                 }
                 
                 summary_df = pd.DataFrame(summary_data)
