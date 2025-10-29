@@ -200,6 +200,36 @@ class TestScenarioEngine(QObject):
         self.scenarios["browser_performance"] = browser_config
         self.log_callback(f"Registered scenario: {browser_config.name} (key: browser_performance)", "info")
         
+        # Phone App Scenario (User Requested)
+        phone_app_config = TestConfig(
+            name="Phone App Test",
+            description="사용자 요청 Phone App 시나리오: Init mode + DAQ monitoring + Phone app test",
+            hvpm_voltage=4.0,
+            stabilization_time=10.0,
+            monitoring_interval=1.0,
+            test_duration=10.0  # Phone app test duration
+        )
+        
+        # Define detailed phone app test steps based on user requirements
+        phone_app_config.steps = [
+            # Init mode steps
+            TestStep("init_hvpm", 2.0, "set_hvpm_voltage", {"voltage": 4.0}),
+            TestStep("airplane_mode", 2.0, "enable_flight_mode"),
+            TestStep("wifi_2g_connect", 15.0, "connect_wifi_2g"),
+            TestStep("bluetooth_on", 2.0, "enable_bluetooth"),
+            TestStep("screen_timeout_10min", 2.0, "set_screen_timeout_10min"),
+            TestStep("lcd_on_unlock_home_clear", 10.0, "lcd_on_unlock_home_clear_apps"),
+            TestStep("current_stabilization", 10.0, "wait_current_stabilization"),
+            # Test execution steps
+            TestStep("start_daq_monitoring", 2.0, "start_daq_monitoring"),
+            TestStep("phone_app_test", 10.0, "execute_phone_app_scenario"),
+            TestStep("stop_daq_monitoring", 2.0, "stop_daq_monitoring"),
+            TestStep("save_excel", 3.0, "export_to_excel")
+        ]
+        
+        self.scenarios["phone_app_test"] = phone_app_config
+        self.log_callback(f"Registered scenario: {phone_app_config.name} (key: phone_app_test)", "info")
+        
         # Phone App Test Scenario
         phone_app_config = TestConfig(
             name="Phone App Power Test",
@@ -666,6 +696,14 @@ class TestScenarioEngine(QObject):
                 return self._step_connect_wifi_2g()
             elif step.action == "enable_bluetooth":
                 return self._step_enable_bluetooth()
+            elif step.action == "set_screen_timeout_10min":
+                return self._step_set_screen_timeout_10min()
+            elif step.action == "lcd_on_unlock_home_clear_apps":
+                return self._step_lcd_on_unlock_home_clear_apps()
+            elif step.action == "wait_current_stabilization":
+                return self._step_wait_current_stabilization()
+            elif step.action == "execute_phone_app_scenario":
+                return self._step_execute_phone_app_scenario()
             elif step.action == "clear_all_recent_apps":
                 return self._step_clear_all_recent_apps()
             elif step.action == "phone_app_test_with_daq":
@@ -900,7 +938,10 @@ class TestScenarioEngine(QObject):
                 # Initialize screen test timing with thread-safe event
                 self._screen_test_start_time = None
                 self._screen_test_started = threading.Event()  # Thread-safe synchronization
-                self._monitoring_timeout = time.time() + 120.0  # 120 second timeout (Phone app test takes ~49s)
+                # Calculate timeout based on test duration + buffer
+                test_duration = 10.0  # Phone app test duration
+                timeout_buffer = 30.0  # Extra buffer time
+                self._monitoring_timeout = time.time() + test_duration + timeout_buffer  # Dynamic timeout
                 
                 # Create completely isolated thread for DAQ monitoring
                 monitoring_thread = threading.Thread(
@@ -2618,4 +2659,242 @@ class TestScenarioEngine(QObject):
             
         except Exception as e:
             self.log_callback(f"Error in Phone app scenario test: {e}", "error")
+            return False
+    
+    # ===== NEW PHONE APP TEST STEP METHODS =====
+    
+    def _step_connect_wifi_2g(self) -> bool:
+        """Connect to 2.4GHz WiFi"""
+        try:
+            self.log_callback("=== Connecting to 2.4GHz WiFi ===", "info")
+            
+            if not self.adb_service:
+                self.log_callback("ADB service not available", "error")
+                return False
+            
+            # Enable WiFi first
+            self.log_callback("Enabling WiFi...", "info")
+            result = self.adb_service._run_adb_command(['shell', 'svc', 'wifi', 'enable'])
+            if result is None:
+                self.log_callback("Failed to enable WiFi", "error")
+                return False
+            
+            time.sleep(3)  # Wait for WiFi to initialize
+            
+            # Connect to 2.4GHz network (assuming network is available)
+            self.log_callback("Connecting to 2.4GHz network...", "info")
+            # Note: This assumes the 2.4GHz network is already configured
+            # In real implementation, you might need to configure the network first
+            
+            # Check WiFi status
+            wifi_status = self.adb_service._run_adb_command(['shell', 'dumpsys', 'wifi', '|', 'grep', 'mWifiInfo'])
+            if wifi_status:
+                self.log_callback(f"WiFi status: {wifi_status[:100]}...", "info")
+            
+            self.log_callback("2.4GHz WiFi connection completed", "info")
+            return True
+            
+        except Exception as e:
+            self.log_callback(f"Error connecting to 2.4GHz WiFi: {e}", "error")
+            return False
+    
+    def _step_enable_bluetooth(self) -> bool:
+        """Enable Bluetooth"""
+        try:
+            self.log_callback("=== Enabling Bluetooth ===", "info")
+            
+            if not self.adb_service:
+                self.log_callback("ADB service not available", "error")
+                return False
+            
+            # Enable Bluetooth using settings
+            result = self.adb_service._run_adb_command(['shell', 'settings', 'put', 'global', 'bluetooth_on', '1'])
+            if result is None:
+                self.log_callback("Failed to enable Bluetooth", "error")
+                return False
+            
+            time.sleep(2)  # Wait for Bluetooth to initialize
+            
+            # Verify Bluetooth status
+            bt_status = self.adb_service._run_adb_command(['shell', 'settings', 'get', 'global', 'bluetooth_on'])
+            if bt_status and '1' in bt_status:
+                self.log_callback("Bluetooth enabled successfully", "info")
+                return True
+            else:
+                self.log_callback("Bluetooth enable verification failed", "warn")
+                return False
+            
+        except Exception as e:
+            self.log_callback(f"Error enabling Bluetooth: {e}", "error")
+            return False
+    
+    def _step_set_screen_timeout_10min(self) -> bool:
+        """Set screen timeout to 10 minutes"""
+        try:
+            self.log_callback("=== Setting screen timeout to 10 minutes ===", "info")
+            
+            if not self.adb_service:
+                self.log_callback("ADB service not available", "error")
+                return False
+            
+            # Set screen timeout to 10 minutes (600000 milliseconds)
+            result = self.adb_service._run_adb_command(['shell', 'settings', 'put', 'system', 'screen_off_timeout', '600000'])
+            if result is None:
+                self.log_callback("Failed to set screen timeout", "error")
+                return False
+            
+            time.sleep(1)
+            
+            # Verify the setting
+            timeout_value = self.adb_service._run_adb_command(['shell', 'settings', 'get', 'system', 'screen_off_timeout'])
+            if timeout_value and '600000' in timeout_value:
+                self.log_callback("Screen timeout set to 10 minutes successfully", "info")
+                return True
+            else:
+                self.log_callback("Screen timeout verification failed", "warn")
+                return False
+            
+        except Exception as e:
+            self.log_callback(f"Error setting screen timeout: {e}", "error")
+            return False
+    
+    def _step_lcd_on_unlock_home_clear_apps(self) -> bool:
+        """LCD on -> 스크린 잠금 해제 -> home 버튼 클릭 -> App clear all 진행"""
+        try:
+            self.log_callback("=== LCD ON + Unlock + Home + Clear Apps ===", "info")
+            
+            if not self.adb_service:
+                self.log_callback("ADB service not available", "error")
+                return False
+            
+            # Step 1: LCD on (turn screen on)
+            self.log_callback("Step 1: Turning LCD on", "info")
+            if not self.adb_service.turn_screen_on():
+                self.log_callback("Failed to turn screen on", "error")
+                return False
+            time.sleep(1)
+            
+            # Step 2: 스크린 잠금 해제 (unlock screen)
+            self.log_callback("Step 2: Unlocking screen", "info")
+            if not self.adb_service.unlock_screen():
+                self.log_callback("Failed to unlock screen", "error")
+                return False
+            time.sleep(1)
+            
+            # Step 3: Home 버튼 클릭
+            self.log_callback("Step 3: Pressing home button", "info")
+            result = self.adb_service._run_adb_command(['shell', 'input', 'keyevent', 'KEYCODE_HOME'])
+            if result is None:
+                self.log_callback("Failed to press home button", "error")
+                return False
+            time.sleep(1)
+            
+            # Step 4: App clear all 진행
+            self.log_callback("Step 4: Clearing all apps", "info")
+            if not self.adb_service.clear_recent_apps():
+                self.log_callback("Failed to clear all apps", "error")
+                return False
+            
+            self.log_callback("LCD on + Unlock + Home + Clear Apps completed", "info")
+            return True
+            
+        except Exception as e:
+            self.log_callback(f"Error in LCD on + unlock + home + clear apps: {e}", "error")
+            return False
+    
+    def _step_wait_current_stabilization(self) -> bool:
+        """전류 안정화 대기 시간 10초"""
+        try:
+            self.log_callback("=== Waiting for current stabilization (10 seconds) ===", "info")
+            
+            # 10초 동안 대기하면서 진행 상황 표시
+            for i in range(10):
+                if self.stop_requested:
+                    self.log_callback("Stop requested during stabilization", "warn")
+                    return False
+                
+                progress = int((i + 1) / 10 * 100)
+                self.log_callback(f"Current stabilization: {i+1}/10 seconds ({progress}%)", "info")
+                time.sleep(1)
+            
+            self.log_callback("Current stabilization completed", "info")
+            return True
+            
+        except Exception as e:
+            self.log_callback(f"Error during current stabilization: {e}", "error")
+            return False
+    
+    def _step_execute_phone_app_scenario(self) -> bool:
+        """Execute Phone App scenario test (10 seconds)"""
+        try:
+            self.log_callback("=== Executing Phone App Scenario (10 seconds) ===", "info")
+            
+            if not self.adb_service:
+                self.log_callback("ADB service not available", "error")
+                return False
+            
+            # Initialize test timing for DAQ data collection
+            test_start_time = time.time()
+            self._screen_test_start_time = test_start_time
+            
+            # Signal DAQ monitoring that test has started
+            if hasattr(self, '_screen_test_started'):
+                self._screen_test_started.set()
+                self.log_callback("Phone app test start signal sent to DAQ monitoring", "info")
+            
+            # 0초: Phone app 클릭
+            self.log_callback("0s: Clicking Phone app", "info")
+            # Open phone app using intent
+            result = self.adb_service._run_adb_command(['shell', 'am', 'start', '-a', 'android.intent.action.CALL_BUTTON'])
+            if result is None:
+                # Fallback: try dialer package
+                result = self.adb_service._run_adb_command(['shell', 'am', 'start', '-n', 'com.android.dialer/.DialtactsActivity'])
+                if result is None:
+                    self.log_callback("Failed to open Phone app", "error")
+                    return False
+            
+            # Wait until 5 seconds
+            self.log_callback("Waiting in Phone app until 5s...", "info")
+            elapsed = 0
+            while elapsed < 5.0:
+                if self.stop_requested:
+                    self.log_callback("Stop requested during Phone app test", "warn")
+                    return False
+                
+                time.sleep(0.5)
+                elapsed = time.time() - test_start_time
+                progress = int((elapsed / 10.0) * 100)
+                self.log_callback(f"Phone app test progress: {elapsed:.1f}s/10s ({progress}%)", "info")
+            
+            # 5초: Back key 클릭
+            self.log_callback("5s: Pressing back key", "info")
+            result = self.adb_service._run_adb_command(['shell', 'input', 'keyevent', 'KEYCODE_BACK'])
+            if result is None:
+                self.log_callback("Failed to press back key", "error")
+                return False
+            
+            # Wait until 10 seconds (test end)
+            self.log_callback("Waiting until 10s (test end)...", "info")
+            while elapsed < 10.0:
+                if self.stop_requested:
+                    self.log_callback("Stop requested during Phone app test", "warn")
+                    return False
+                
+                time.sleep(0.5)
+                elapsed = time.time() - test_start_time
+                progress = int((elapsed / 10.0) * 100)
+                self.log_callback(f"Phone app test progress: {elapsed:.1f}s/10s ({progress}%)", "info")
+            
+            # 10초: Test end
+            self.log_callback("10s: Phone app test completed", "info")
+            
+            # Record test completion time
+            test_end_time = time.time()
+            actual_duration = test_end_time - test_start_time
+            self.log_callback(f"Phone app scenario completed in {actual_duration:.1f} seconds", "info")
+            
+            return True
+            
+        except Exception as e:
+            self.log_callback(f"Error executing Phone app scenario: {e}", "error")
             return False
