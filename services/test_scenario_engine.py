@@ -159,8 +159,11 @@ class TestScenarioEngine(QObject):
             test_duration=20.0
         )
         
-        # Define test steps
+        # Define test steps - Enhanced with Default Settings
         screen_onoff_config.steps = [
+            # Default settings (consistent for all scenarios)
+            TestStep("default_settings", 5.0, "apply_default_settings"),
+            # Init mode steps
             TestStep("init_hvpm", 2.0, "set_hvpm_voltage", {"voltage": 4.0}),
             TestStep("init_adb", 3.0, "setup_adb_device"),
             TestStep("flight_mode", 2.0, "enable_flight_mode"),
@@ -168,6 +171,7 @@ class TestScenarioEngine(QObject):
             TestStep("unlock_screen", 2.0, "unlock_device"),
             TestStep("home_screen", 2.0, "go_to_home"),
             TestStep("stabilize", 20.0, "wait_stabilization"),
+            # Test execution
             TestStep("screen_test_with_daq", 20.0, "screen_on_off_with_daq_monitoring"),  # Combined step
             TestStep("save_data", 2.0, "export_to_excel")
         ]
@@ -185,12 +189,16 @@ class TestScenarioEngine(QObject):
             test_duration=300.0  # 5 minutes
         )
         
-        # Define browser test steps
+        # Define browser test steps - Enhanced with Default Settings
         browser_config.steps = [
+            # Default settings (consistent for all scenarios)
+            TestStep("default_settings", 5.0, "apply_default_settings"),
+            # Init mode steps
             TestStep("init_hvpm", 2.0, "set_hvpm_voltage", {"voltage": 4.0}),
             TestStep("init_adb", 3.0, "setup_adb_device"),
             TestStep("setup_device", 10.0, "setup_browser_environment"),
             TestStep("wifi_setup", 15.0, "enable_wifi_connection"),
+            # Test execution
             TestStep("browser_test", 60.0, "run_browser_search_test"),
             TestStep("pageboost_test", 120.0, "run_pageboost_performance"),
             TestStep("cleanup", 10.0, "cleanup_apps_and_notifications"),
@@ -200,10 +208,10 @@ class TestScenarioEngine(QObject):
         self.scenarios["browser_performance"] = browser_config
         self.log_callback(f"Registered scenario: {browser_config.name} (key: browser_performance)", "info")
         
-        # Phone App Scenario (User Requested)
+        # Phone App Scenario (User Requested) - Enhanced with Default Settings
         phone_app_config = TestConfig(
             name="Phone App Test",
-            description="사용자 요청 Phone App 시나리오: Init mode + DAQ monitoring + Phone app test",
+            description="사용자 요청 Phone App 시나리오: Default Settings + Init mode + DAQ monitoring + Phone app test",
             hvpm_voltage=4.0,
             stabilization_time=10.0,
             monitoring_interval=1.0,
@@ -212,12 +220,13 @@ class TestScenarioEngine(QObject):
         
         # Define detailed phone app test steps based on user requirements
         phone_app_config.steps = [
-            # Init mode steps
+            # Default settings (consistent for all scenarios)
+            TestStep("default_settings", 5.0, "apply_default_settings"),
+            # Init mode steps (scenario-specific)
             TestStep("init_hvpm", 2.0, "set_hvpm_voltage", {"voltage": 4.0}),
             TestStep("airplane_mode", 2.0, "enable_flight_mode"),
             TestStep("wifi_2g_connect", 15.0, "connect_wifi_2g"),
             TestStep("bluetooth_on", 2.0, "enable_bluetooth"),
-            TestStep("screen_timeout_10min", 2.0, "set_screen_timeout_10min"),
             TestStep("lcd_on_unlock_home_clear", 10.0, "lcd_on_unlock_home_clear_apps"),
             TestStep("current_stabilization", 10.0, "wait_current_stabilization"),
             # Test execution steps
@@ -704,6 +713,8 @@ class TestScenarioEngine(QObject):
                 return self._step_wait_current_stabilization()
             elif step.action == "execute_phone_app_scenario":
                 return self._step_execute_phone_app_scenario()
+            elif step.action == "apply_default_settings":
+                return self._step_apply_default_settings()
             elif step.action == "clear_all_recent_apps":
                 return self._step_clear_all_recent_apps()
             elif step.action == "phone_app_test_with_daq":
@@ -2898,3 +2909,42 @@ class TestScenarioEngine(QObject):
         except Exception as e:
             self.log_callback(f"Error executing Phone app scenario: {e}", "error")
             return False
+    
+    def _step_apply_default_settings(self) -> bool:
+        """Apply default settings for consistent test environment"""
+        try:
+            self.log_callback("=== Applying Default Settings ===", "info")
+            
+            if not self.adb_service:
+                self.log_callback("ADB service not available", "error")
+                return False
+            
+            # Verify device connection before applying settings
+            if not self.adb_service.verify_device_connection():
+                self.log_callback("❌ Device connection verification failed", "error")
+                return False
+            
+            # Get initial device status
+            initial_status = self.adb_service.get_device_status()
+            self.log_callback(f"📱 Initial device status: {initial_status}", "info")
+            
+            # Apply default settings using ADB service
+            success = self.adb_service.apply_default_settings()
+            
+            # Get final device status after applying settings
+            final_status = self.adb_service.get_device_status()
+            self.log_callback(f"📱 Final device status: {final_status}", "info")
+            
+            if success:
+                self.log_callback("✅ Default settings applied successfully", "info")
+                self.log_callback("Device is now in consistent initial state for testing", "info")
+                return True
+            else:
+                self.log_callback("⚠️ Default settings partially applied", "warn")
+                self.log_callback("Continuing with test (some settings may not be optimal)", "warn")
+                return True  # Continue even if some settings failed
+                
+        except Exception as e:
+            self.log_callback(f"❌ Error applying default settings: {e}", "error")
+            self.log_callback("Continuing with test (device may not be in optimal state)", "warn")
+            return True  # Don't fail the entire test for default settings

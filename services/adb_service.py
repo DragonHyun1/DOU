@@ -91,25 +91,38 @@ class ADBService:
         return info
     
     def _run_adb_command(self, command: List[str], timeout: int = 30) -> Optional[str]:
-        """Run ADB command and return output"""
+        """Run ADB command and return output with enhanced error handling"""
         if not self.connected_device:
             self.logger.error("No device connected")
             return None
         
         try:
             full_command = ['adb', '-s', self.connected_device] + command
+            
+            # Log command for debugging
+            self.logger.debug(f"Executing ADB command: {' '.join(full_command)}")
+            
             result = subprocess.run(full_command, 
                                   capture_output=True, text=True, timeout=timeout)
             
             if result.returncode != 0:
                 self.logger.error(f"ADB command failed: {' '.join(full_command)}")
-                self.logger.error(f"Error: {result.stderr}")
+                self.logger.error(f"Return code: {result.returncode}")
+                self.logger.error(f"Stderr: {result.stderr}")
+                self.logger.error(f"Stdout: {result.stdout}")
                 return None
+            
+            # Log successful command output for debugging
+            if result.stdout:
+                self.logger.debug(f"Command output: {result.stdout[:200]}...")
             
             return result.stdout
             
         except subprocess.TimeoutExpired:
-            self.logger.error(f"ADB command timeout: {' '.join(command)}")
+            self.logger.error(f"ADB command timeout ({timeout}s): {' '.join(command)}")
+            return None
+        except FileNotFoundError:
+            self.logger.error("ADB not found. Please install Android SDK platform-tools")
             return None
         except Exception as e:
             self.logger.error(f"Error running ADB command: {e}")
@@ -514,3 +527,205 @@ input keyevent KEYCODE_HOME
         self.connected_device = None
         self.device_info = {}
         self.logger.info("Disconnected from ADB device")
+    
+    def apply_default_settings(self) -> bool:
+        """
+        Apply default settings for all test scenarios
+        This ensures consistent initial state for all tests
+        
+        [Default Setting]
+        - screen off timeout: 10분 (600000ms)
+        - multi_control_enabled: 0
+        - quickshare: off
+        - brightness_mode: off (manual mode)
+        - brightness: indoor_500 level
+        - volume: 7
+        - bluetooth: off
+        - wifi: off
+        - autosync: off
+        - gps: off
+        """
+        try:
+            self.logger.info("=== Applying Default Settings ===")
+            settings_applied = 0
+            total_settings = 10
+            
+            # 1. Screen off timeout: 10분 (600000ms)
+            self.logger.info("1/10: Setting screen timeout to 10 minutes...")
+            result = self._run_adb_command(['shell', 'settings', 'put', 'system', 'screen_off_timeout', '600000'])
+            if result is not None:
+                settings_applied += 1
+                self.logger.info("✅ Screen timeout set to 10 minutes")
+            else:
+                self.logger.warning("❌ Failed to set screen timeout")
+            
+            # 2. Multi control disabled
+            self.logger.info("2/10: Disabling multi control...")
+            result = self._run_adb_command(['shell', 'settings', 'put', 'system', 'multi_control_enabled', '0'])
+            if result is not None:
+                settings_applied += 1
+                self.logger.info("✅ Multi control disabled")
+            else:
+                self.logger.warning("❌ Failed to disable multi control")
+            
+            # 3. QuickShare off
+            self.logger.info("3/10: Disabling QuickShare...")
+            result = self._run_adb_command(['shell', 'settings', 'put', 'system', 'quickshare', '0'])
+            if result is not None:
+                settings_applied += 1
+                self.logger.info("✅ QuickShare disabled")
+            else:
+                self.logger.warning("❌ Failed to disable QuickShare")
+            
+            # 4. Brightness mode off (manual mode)
+            self.logger.info("4/10: Setting brightness to manual mode...")
+            result = self._run_adb_command(['shell', 'settings', 'put', 'system', 'screen_brightness_mode', '0'])
+            if result is not None:
+                settings_applied += 1
+                self.logger.info("✅ Brightness set to manual mode")
+            else:
+                self.logger.warning("❌ Failed to set brightness mode")
+            
+            # 5. Set brightness to indoor_500 level (assuming ~128/255)
+            self.logger.info("5/10: Setting brightness to indoor_500 level...")
+            result = self._run_adb_command(['shell', 'settings', 'put', 'system', 'screen_brightness', '128'])
+            if result is not None:
+                settings_applied += 1
+                self.logger.info("✅ Brightness set to indoor_500 level")
+            else:
+                self.logger.warning("❌ Failed to set brightness level")
+            
+            # 6. Volume level 7
+            self.logger.info("6/10: Setting volume to level 7...")
+            result = self._run_adb_command(['shell', 'media', 'volume', '--set', '7'])
+            if result is not None:
+                settings_applied += 1
+                self.logger.info("✅ Volume set to level 7")
+            else:
+                self.logger.warning("❌ Failed to set volume")
+            
+            # 7. Bluetooth off
+            self.logger.info("7/10: Disabling Bluetooth...")
+            result = self._run_adb_command(['shell', 'settings', 'put', 'global', 'bluetooth_on', '0'])
+            if result is not None:
+                settings_applied += 1
+                self.logger.info("✅ Bluetooth disabled")
+            else:
+                self.logger.warning("❌ Failed to disable Bluetooth")
+            
+            # 8. WiFi off
+            self.logger.info("8/10: Disabling WiFi...")
+            result = self._run_adb_command(['shell', 'svc', 'wifi', 'disable'])
+            if result is not None:
+                settings_applied += 1
+                self.logger.info("✅ WiFi disabled")
+            else:
+                self.logger.warning("❌ Failed to disable WiFi")
+            
+            # 9. Auto-sync off
+            self.logger.info("9/10: Disabling auto-sync...")
+            result = self._run_adb_command(['shell', 'settings', 'put', 'global', 'auto_sync', '0'])
+            if result is not None:
+                settings_applied += 1
+                self.logger.info("✅ Auto-sync disabled")
+            else:
+                self.logger.warning("❌ Failed to disable auto-sync")
+            
+            # 10. GPS off
+            self.logger.info("10/10: Disabling GPS...")
+            result = self._run_adb_command(['shell', 'settings', 'put', 'secure', 'location_providers_allowed', ''])
+            if result is not None:
+                settings_applied += 1
+                self.logger.info("✅ GPS disabled")
+            else:
+                self.logger.warning("❌ Failed to disable GPS")
+            
+            # Wait for settings to take effect
+            time.sleep(2)
+            
+            success_rate = (settings_applied / total_settings) * 100
+            self.logger.info(f"=== Default Settings Applied: {settings_applied}/{total_settings} ({success_rate:.1f}%) ===")
+            
+            if settings_applied >= 8:  # At least 80% success rate
+                self.logger.info("✅ Default settings application successful")
+                return True
+            else:
+                self.logger.warning(f"⚠️ Default settings partially applied ({success_rate:.1f}%)")
+                return False
+                
+        except Exception as e:
+            self.logger.error(f"❌ Error applying default settings: {e}")
+            return False
+    
+    def verify_device_connection(self) -> bool:
+        """Verify that the device is still connected and responsive"""
+        try:
+            if not self.connected_device:
+                self.logger.error("No device connected to verify")
+                return False
+            
+            # Try a simple command to verify connection
+            result = self._run_adb_command(['shell', 'echo', 'test'], timeout=10)
+            
+            if result is not None and 'test' in result:
+                self.logger.debug("Device connection verified")
+                return True
+            else:
+                self.logger.error("Device connection verification failed")
+                return False
+                
+        except Exception as e:
+            self.logger.error(f"Error verifying device connection: {e}")
+            return False
+    
+    def get_device_status(self) -> Dict[str, Any]:
+        """Get comprehensive device status for debugging"""
+        try:
+            status = {
+                'connected': False,
+                'device_id': self.connected_device,
+                'responsive': False,
+                'battery_level': 'Unknown',
+                'screen_state': 'Unknown',
+                'wifi_state': 'Unknown',
+                'bluetooth_state': 'Unknown'
+            }
+            
+            if not self.connected_device:
+                return status
+            
+            status['connected'] = True
+            
+            # Check if device is responsive
+            status['responsive'] = self.verify_device_connection()
+            
+            if status['responsive']:
+                # Get battery level
+                battery = self._run_adb_command(['shell', 'dumpsys', 'battery', '|', 'grep', 'level'])
+                if battery:
+                    try:
+                        level = battery.split(':')[1].strip()
+                        status['battery_level'] = f"{level}%"
+                    except:
+                        pass
+                
+                # Get screen state
+                screen = self._run_adb_command(['shell', 'dumpsys', 'display', '|', 'grep', 'mScreenState'])
+                if screen:
+                    status['screen_state'] = 'ON' if 'ON' in screen else 'OFF'
+                
+                # Get WiFi state
+                wifi = self._run_adb_command(['shell', 'settings', 'get', 'global', 'wifi_on'])
+                if wifi:
+                    status['wifi_state'] = 'ON' if wifi.strip() == '1' else 'OFF'
+                
+                # Get Bluetooth state
+                bt = self._run_adb_command(['shell', 'settings', 'get', 'global', 'bluetooth_on'])
+                if bt:
+                    status['bluetooth_state'] = 'ON' if bt.strip() == '1' else 'OFF'
+            
+            return status
+            
+        except Exception as e:
+            self.logger.error(f"Error getting device status: {e}")
+            return {'error': str(e)}
