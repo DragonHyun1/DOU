@@ -198,21 +198,13 @@ class TestScenarioEngine(QObject):
             TestStep("init_flight_mode", 2.0, "enable_flight_mode"),
             TestStep("init_wifi_2g", 8.0, "connect_wifi_2g"),
             TestStep("init_bluetooth", 3.0, "enable_bluetooth"),
-            TestStep("init_clear_apps", 5.0, "clear_all_recent_apps"),
-            TestStep("unlock_screen", 2.0, "unlock_device"),
-            TestStep("go_home", 2.0, "go_to_home"),
+            TestStep("init_screen_app_clear", 8.0, "screen_on_app_clear_screen_off"),
             
-            # Stabilization
+            # Stabilization (current stabilization for 10 seconds)
             TestStep("stabilize", 10.0, "wait_stabilization"),
             
-            # Start DAQ monitoring (after init mode completion)
-            TestStep("start_daq", 2.0, "start_daq_monitoring"),
-            
-            # Phone App Test (without DAQ setup)
-            TestStep("phone_app_test", 10.0, "phone_app_test_only"),
-            
-            # Stop DAQ monitoring
-            TestStep("stop_daq", 2.0, "stop_daq_monitoring"),
+            # Screen On + DAQ Start + Phone App Test + DAQ Stop (combined step)
+            TestStep("phone_app_test_with_daq", 15.0, "phone_app_test_with_daq_optimized"),
             
             # Export results
             TestStep("save_data", 2.0, "export_to_excel")
@@ -662,6 +654,10 @@ class TestScenarioEngine(QObject):
                 return self._step_phone_app_test_with_daq()
             elif step.action == "phone_app_test_only":
                 return self._step_phone_app_test_only()
+            elif step.action == "screen_on_app_clear_screen_off":
+                return self._step_screen_on_app_clear_screen_off()
+            elif step.action == "phone_app_test_with_daq_optimized":
+                return self._step_phone_app_test_with_daq_optimized()
             elif step.action == "stop_daq_monitoring":
                 return self._step_stop_daq_monitoring()
             else:
@@ -2366,4 +2362,125 @@ class TestScenarioEngine(QObject):
             
         except Exception as e:
             self.log_callback(f"Error in Phone app test: {e}", "error")
+            return False
+    
+    def _step_screen_on_app_clear_screen_off(self) -> bool:
+        """Screen on -> Home -> Clear all apps -> Screen off"""
+        try:
+            self.log_callback("=== Init Mode: Screen On + App Clear + Screen Off ===", "info")
+            
+            if not self.adb_service:
+                self.log_callback("ADB service not available", "error")
+                return False
+            
+            # 1. Screen ON
+            self.log_callback("Step 1: Turn screen ON", "info")
+            if not self.adb_service.turn_screen_on():
+                self.log_callback("Failed to turn screen on", "error")
+            time.sleep(1)
+            
+            # 2. Press Home button
+            self.log_callback("Step 2: Press Home button", "info")
+            if not self.adb_service.press_home_key():
+                self.log_callback("Failed to press home key", "error")
+            time.sleep(1)
+            
+            # 3. Clear all recent apps
+            self.log_callback("Step 3: Clear all recent apps", "info")
+            if not self.adb_service.clear_recent_apps():
+                self.log_callback("Failed to clear recent apps", "error")
+            time.sleep(2)
+            
+            # 4. Screen OFF
+            self.log_callback("Step 4: Turn screen OFF", "info")
+            if not self.adb_service.turn_screen_off():
+                self.log_callback("Failed to turn screen off", "error")
+            time.sleep(1)
+            
+            self.log_callback("Init mode screen/app setup completed", "info")
+            return True
+            
+        except Exception as e:
+            self.log_callback(f"Error in screen/app setup: {e}", "error")
+            return False
+    
+    def _step_phone_app_test_with_daq_optimized(self) -> bool:
+        """Optimized: Screen ON -> DAQ Start -> Phone App Test -> DAQ Stop"""
+        try:
+            self.log_callback("=== Optimized Phone App Test with DAQ ===", "info")
+            
+            if not self.adb_service:
+                self.log_callback("ADB service not available", "error")
+                return False
+            
+            # 7. Screen ON (after stabilization)
+            self.log_callback("Step 7: Turn screen ON (post-stabilization)", "info")
+            if not self.adb_service.turn_screen_on():
+                self.log_callback("Failed to turn screen on", "error")
+            time.sleep(1)
+            
+            # Start DAQ monitoring
+            self.log_callback("Step 7.1: Starting DAQ monitoring", "info")
+            if not self._step_start_daq_monitoring():
+                self.log_callback("Failed to start DAQ monitoring", "error")
+                return False
+            
+            # Wait for DAQ to stabilize
+            time.sleep(1)
+            
+            # Initialize screen test timing for DAQ data collection
+            test_start_time = time.time()
+            self._screen_test_start_time = test_start_time
+            
+            # Signal DAQ monitoring that test has started
+            if hasattr(self, '_screen_test_started'):
+                self._screen_test_started.set()
+                self.log_callback("Phone app test start signal sent to DAQ monitoring", "info")
+            
+            # 8. Phone App Test (10 seconds)
+            self.log_callback("=== Step 8: Phone App Test Started (10s) ===", "info")
+            
+            # 0초: Phone app 열기
+            self.log_callback("0s: Opening Phone app", "info")
+            if not self.adb_service.open_phone_app():
+                self.log_callback("Failed to open Phone app", "error")
+            time.sleep(0.5)
+            
+            # 5초 대기 (Phone app에서)
+            self.log_callback("Waiting 5 seconds in Phone app...", "info")
+            time.sleep(5)
+            
+            # 5초: Back key로 홈 화면 이동
+            self.log_callback("5s: Press back key to go to home screen", "info")
+            if not self.adb_service.press_back_key():
+                self.log_callback("Failed to press back key", "error")
+            time.sleep(0.5)
+            
+            # 홈 화면으로 확실히 이동
+            if not self.adb_service.press_home_key():
+                self.log_callback("Failed to press home key", "error")
+            
+            # 5초 더 대기 (총 10초)
+            self.log_callback("Waiting 5 more seconds on home screen...", "info")
+            time.sleep(4.5)  # 0.5초는 이미 대기했으므로 4.5초만 더
+            
+            self.log_callback("=== Phone App Test Completed (10s) ===", "info")
+            
+            # 9. Stop DAQ monitoring
+            self.log_callback("Step 9: Stopping DAQ monitoring", "info")
+            self._step_stop_daq_monitoring()
+            
+            # Wait for DAQ to finish
+            time.sleep(2)
+            
+            self.log_callback("Optimized Phone app test with DAQ completed", "info")
+            return True
+            
+        except Exception as e:
+            self.log_callback(f"Error in optimized Phone app test: {e}", "error")
+            # Ensure DAQ monitoring is stopped
+            try:
+                self._step_stop_daq_monitoring()
+            except:
+                pass
             return False
