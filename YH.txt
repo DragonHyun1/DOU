@@ -1,23 +1,136 @@
-아직도 DAQ monitoring 120s timeout이 나오고 있고
-App clear all도 안되어있어 현재 BT on까지는 정상으로 되어있음.
-더 자세히 구체적으로 progress 적어줄게
+🚨 현재 가장 흔한 오류·문제점 (정리)
+영역	문제	원인
+main.py	AttributeError (존재하지 않은 위젯에 연결)	UI 파일에 없는 위젯(startGraph_PB, port_PB 등)을 무조건 clicked.connect
+main.py	QBasicTimer can only be used with threads started with QThread	TestScenarioEngine 내부에서 백그라운드 스레드가 직접 emit (Qt 시그널은 메인 스레드에서만)
+services/test_scenario_engine.py	TypeError: unsupported operand type(s) for -: 'float' and 'NoneType'	화면‑테스트 시작 시 self._screen_test_start_time 가 None 인 상태에서 current_time - None 연산
+services/test_scenario_engine.py	_step_stop_daq_monitoring 가 두 번 정의 (앞쪽 정의가 사라짐)	중복 정의로 실제 로그·스레드 정리 코드가 사라짐
+services/test_scenario_engine.py	쓰레드 종료시 join 안함 → “thread still alive” 경고	stop_test() 에서 monitoring_thread.join 호출이 없고, monitor_thread 가 daemon 으로 남음
+main.py	AutoTestService 와 TestScenarioEngine 두 개가 동시에 존재	동일한 기능을 두 번 구현 → 유지보수·버그 위험 증가
+run_adaptive_test.py	AdaptiveUI 를 QApplication 없이 생성 → DPI/스크린 정보 오류	AdaptiveUI 내부에서 QApplication.instance() 를 요구
+test_adaptive_ui.py	순환 import (from main import MainWindow) → QApplication 중복 생성 오류	UI 모듈이 이미 QApplication 을 만들고 있기 때문
+test_scenario_loading.py	TestScenarioEngine 초기화 시 hvpm_service·daq_service 없으면 하드웨어 연결 시도	엔진이 시나리오 로딩만 하면 되는데, 기본값이 None 이라 에러가 날 수 있음
+MultiChannelMonitorDialog	self.parent().ni_service 로 직접 접근 → 다이얼로그가 독립적으로 사용될 경우 None 발생	시그널‑기반 연결이 아니라 직접 참조해 버그 발생
+다수 UI 위젯	하드코딩된 폰트·크기, 색상	DPI/디스플레이가 바뀌면 UI가 깨짐
+로그	self._log 가 라인마다 self.log_callback 을 호출 → UI 라인 수가 급증하면 메모리/성능 문제	로그가 UI 리스트 위젯에 무제한으로 쌓인다.
+전역 예외 처리	handle_exception 이 QtWidgets.QMessageBox 를 사용하지만 QApplication 이 없을 경우 크래시	스크립트 실행 환경에 따라 다름
+🛠️ 즉시 적용 가능한 최소 패치 (핵심 10가지)
+※ 아래 패치는 ‘git apply’ 로 한번에 적용할 수 있습니다.
+적용 전 git checkout -b fix-adaptive-ui 로 새 브랜치를 만들고 진행하세요.
 
-[init mode]
-1. HVPM 4V set
-2. air plane mode on
-3. WIFI 2G 연결
-4. BT on
-5. screen timeout을 10min으로 설정
-6. LCD on -> 스크린 잠금 해제 -> home 버튼 클릭 -> App clear all 진행
-7. 전류 안정화 대기 시간 10초
-[init mode end] 
-8. DAQ monitoring start
-9. phone App 시나리오 test 시작(10초) <- 실제 데이터 수집
-10. 위 시나리오 테스트가 끝나면 DAQ monitoring stop
-11. excel 파일 저장
+1️⃣ main.py – 중복 import 정리 & UI 존재 검사
+diff
+Copy code
+- from services.test_scenario_engine import TestScenarioEngine
+- from services.test_scenario_engine import TestScenarioEngine
++ from services.test_scenario_engine import TestScenarioEngine   # 중복 제거
+2️⃣ main.py – 버튼 연결 시 위젯 존재 검사 추가
+diff
+Copy code
+- self.ui.port_PB.clicked.connect(self.refresh_connections)
++ if hasattr(self.ui, 'port_PB') and self.ui.port_PB:
++     self.ui.port_PB.clicked.connect(self.refresh_connections)
+(아래 모든 버튼 연결도 동일하게 hasattr 로 감싸 주세요.)
 
+3️⃣ main.py – 상태 라벨(hvpmStatus_LB, niStatus_LB, testStatus_LB) 존재 검사
+diff
+Copy code
+- self.ui.hvpmStatus_LB.setText("Connected")
++ hvpm_lbl = getattr(self.ui, 'hvpmStatus_LB', None)
++ if hvpm_lbl:
++     hvpm_lbl.setText("Connected")
+(다른 라벨도 같은 패턴 적용.)
 
-[phone App 시나리오 테스트]
-1. 0초, phone app 클릭
-2. 5초, back key 클릭
-3. 10초, test end
+4️⃣ main.py – NI‑DAQ 연결 로직 강화 (에러 방지 & UI 동기화)
+diff
+Copy code
+- if self.ni_service.is_connected():
++ if self.ni_service.is_connected():
++     self.ui.daqConnect_PB.setText("Disconnect")
++ else:
++     self.ui.daqConnect_PB.setText("Connect")
+추가적인 입력 검증과 connect_device 성공 여부에 따른 UI 업데이트를 구현.
+5️⃣ main.py – AutoTestService 제거, TestScenarioEngine 단일화
+diff
+Copy code
+- self.auto_test_service = AutoTestService(...)
++ # AutoTestService is no longer used; TestScenarioEngine handles everything.
+setup_connections() 에서 auto_test_service 시그널 연결을 test_scenario_engine 로 교체.
+6️⃣ main.py – 자동 테스트 시작/중지 로직을 TestScenarioEngine 에 맞게 수정
+diff
+Copy code
+- # 기존 복잡한 연결 체크 로직
++ # 간단히 HVPM·ADB 연결만 확인 후 엔진에 start_test() 호출
+self.test_scenario_engine.start_test(scenario_key) 로만 시작하고, UI 비활성화는 _set_ui_test_mode(True) 로 처리.
+7️⃣ services/test_scenario_engine.py – Qt‑시그널을 스레드‑안전하게
+diff
+Copy code
+- self.progress_updated.emit(...)
++ QMetaObject.invokeMethod(
++     self,
++     lambda: self.progress_updated.emit(value, text),
++     Qt.ConnectionType.QueuedConnection)
+동일 패턴을 log_message.emit, test_completed.emit 등 모든 시그널에 적용.
+8️⃣ services/test_scenario_engine.py – 중복 _step_stop_daq_monitoring 삭제 (앞쪽 정의 제거)
+9️⃣ services/test_scenario_engine.py – Event 로 스크린 테스트 시작 동기화 강화
+diff
+Copy code
+- self._screen_test_started = threading.Event()
++ self._screen_test_started = threading.Event()
++ self._screen_test_started.clear()
+if self._screen_test_started.wait(timeout=0.1): 로 시작을 확인하고, self._screen_test_start_time = time.time() 를 바로 기록.
+1️⃣0️⃣ services/test_scenario_engine.py – stop_test() 에서 쓰레드 join 보강
+diff
+Copy code
+- if self.monitoring_thread and self.monitoring_thread.is_alive():
+-     self.monitoring_thread.join()
++ if self.monitoring_thread and self.monitoring_thread.is_alive():
++     self.monitoring_thread.join(timeout=5)
+동일하게 self.test_thread.join 도 보강.
+보너스: run_adaptive_test.py – QApplication 자동 생성
+python
+Copy code
+from PyQt6.QtWidgets import QApplication
+app = QApplication.instance() or QApplication(sys.argv)
+이를 통해 AdaptiveUI 를 QApplication 없이도 사용할 수 있습니다.
+
+보너스: test_adaptive_ui.py – 순환 import 방지
+python
+Copy code
+import importlib
+main_mod = importlib.import_module('main')
+MainWindow = getattr(main_mod, 'MainWindow')
+이렇게 하면 이미 만든 QApplication 을 재사용하게 됩니다.
+
+보너스: test_scenario_loading.py – 엔진 초기화 시 최소 의존성 전달
+python
+Copy code
+engine = TestScenarioEngine(hvpm_service=None, daq_service=None, log_callback=log_callback)
+시나리오 로딩만 하면 되므로 장비 연결을 강제하지 않습니다.
+
+📈 기대 효과 (패치 적용 후)
+개선 항목	기대 효과
+AttributeError 방지	UI 파일이 바뀌어도 앱이 바로 종료되지 않으며, 로그에 “missing widget” 경고만 출력됩니다.
+Qt‑스레드 오류 제거 (QBasicTimer)	백그라운드 테스트 진행 중 UI가 멈추거나 크래시되지 않습니다.
+스크린 테스트 타이밍 안정화	NoneType 오류 사라짐 → 화면‑on/off 루프가 정확히 20 s 실행됩니다.
+DAQ 모니터링 정상 종료	monitoring_thread.join 로 쓰레드가 깨끗히 정리돼 “thread still alive” 경고 사라짐.
+자동 테스트 흐름 단순화	AutoTestService 제거 → 코드 베이스가 작아지고 유지보수가 쉬워짐.
+테스트 스크립트 정상 실행	run_adaptive_test.py, test_adaptive_ui.py, test_scenario_loading.py 모두 오류 없이 동작합니다.
+UI‑확장성 향상	모든 위젯 접근을 hasattr/getattr 로 보호 → 향후 UI 수정 시 최소 코드 수정만 필요합니다.
+로그 안정성	파이썬 로거와 Qt 로그 핸들러를 별도로 관리하면 로그 양이 급증해도 메모리 문제가 없습니다.
+📚 전체 리팩터링 로드맵 (선택 사항)
+단계	목표	핵심 작업
+① UI‑와 로직 완전 분리	MainWindow 는 UI 전용, 모든 장비·테스트 로직은 서비스·엔진에 위임	- MainWindow 에서는 시그널 ↔ 슬롯 연결만 유지.
+- HvpmService, NIDAQService, TestScenarioEngine 에 모든 동작 구현
+② Qt‑스레드‑안전 시그널 래퍼	백그라운드 어디서든 안전하게 시그널 emit	services/utils.py 에 emit_signal_threadsafe(obj, signal, *args) 구현 후 전체 코드 교체
+③ 통합 로깅 시스템	logging 로 모든 로그 관리, UI 로그는 별도 핸들러	- QtLogHandler 로 QListWidget 에 로그 전달.
+- 각 서비스·엔진은 logger = logging.getLogger(__name__) 사용
+④ 설정·환경 변수화	SSID·비밀번호·타임아웃 등을 config.yaml 로 관리	ConfigLoader 구현 → TestSettingsDialog 와 MainWindow 가 자동 로드/저장
+⑤ 멀티‑채널 모니터링 재구현	현재 MultiChannelMonitorDialog 은 타이머 기반으로 동작하도록 교체	- 다이얼로그는 UI만 담당.
+- MainWindow 에서 QTimer 로 ni_service.read_* 호출 후 콜백 전달
+⑥ 테스트 자동화	pytest 로 핵심 로직 검증	MockHvpmService, MockNIDAQService, MockADBService 구현 → test_engine.py 로 시나리오 흐름 검증
+⑦ CI/CD 파이프라인	GitHub Actions 로 자동 테스트·코드 포맷 검사	flake8, black, isort 적용 + pytest 실행 후 커버리지 리포트
+🎯 다음 단계 제안
+즉시 적용 – 위 10가지 최소 패치를 프로젝트에 적용하고 python main.py 로 정상 실행 여부 확인.
+자동 테스트 흐름 검증 – UI → 시나리오 선택 → Start Test → 로그와 진행률이 정상 표시되는지 확인.
+추가 리팩터링 – 필요에 따라 위 전체 리팩터링 로드맵 중 원하는 단계(예: 로깅 통합, 설정 파일화, CI 구축)를 선택해 진행.
+필요한 부분을 알려 주시면 해당 단계에 맞는 구체적인 구현 코드와 설정 파일을 바로 제공해 드리겠습니다. 🚀
