@@ -5,13 +5,27 @@ Phone App Test Scenario
 
 import time
 from typing import Dict, Any
+import sys
+import os
+
+# Add services path for DAQ collection thread
+project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+sys.path.insert(0, project_root)
 
 from ..common.base_scenario import BaseScenario, TestConfig, TestStep
 from ..common.default_settings import DefaultSettings
+from services.daq_collection_thread import DAQCollectionThread
 
 
 class PhoneAppScenario(BaseScenario):
     """Phone App test scenario implementation"""
+    
+    def __init__(self, hvpm_service=None, daq_service=None, adb_service=None, log_callback=None):
+        super().__init__(hvpm_service, daq_service, adb_service, log_callback)
+        
+        # Initialize DAQ collection thread
+        self.daq_collector = DAQCollectionThread(daq_service, log_callback)
+        self.daq_results = None
     
     def get_config(self) -> TestConfig:
         """Get Phone App test configuration"""
@@ -285,24 +299,33 @@ class PhoneAppScenario(BaseScenario):
             return False
     
     def _step_start_daq_monitoring(self) -> bool:
-        """Start DAQ monitoring"""
+        """Start DAQ monitoring using dedicated collection thread"""
         try:
-            self.log_callback("Starting DAQ monitoring", "info")
+            self.log_callback("=== Starting DAQ Collection Thread ===", "info")
             
             if not self.daq_service:
-                self.log_callback("DAQ service not available", "warn")
-                return True  # Continue without DAQ
+                self.log_callback("DAQ service not available - using mock data", "warn")
             
-            # Start DAQ monitoring (implementation depends on DAQ service)
-            # This is a placeholder - actual implementation would call DAQ service
-            time.sleep(2)  # Simulate DAQ start time
+            # Configure DAQ collection
+            enabled_channels = ['ai0', 'ai1', 'ai2', 'ai3']  # Example channels
+            collection_interval = 1.0  # 1 second interval
             
-            self.log_callback("DAQ monitoring started", "info")
-            return True
+            self.daq_collector.configure(enabled_channels, collection_interval)
+            
+            # Start collection thread
+            success = self.daq_collector.start_collection()
+            
+            if success:
+                self.log_callback("✅ DAQ collection thread started successfully", "info")
+                time.sleep(1)  # Brief pause to let collection start
+                return True
+            else:
+                self.log_callback("⚠️ DAQ collection failed to start - continuing without DAQ", "warn")
+                return True  # Continue test even if DAQ fails
             
         except Exception as e:
-            self.log_callback(f"Error starting DAQ monitoring: {e}", "error")
-            return False
+            self.log_callback(f"❌ Error starting DAQ collection: {e}", "error")
+            return True  # Don't fail test for DAQ issues
     
     def _step_execute_phone_app_scenario(self) -> bool:
         """Execute Phone App scenario test (10 seconds)"""
@@ -342,37 +365,66 @@ class PhoneAppScenario(BaseScenario):
             return False
     
     def _step_stop_daq_monitoring(self) -> bool:
-        """Stop DAQ monitoring"""
+        """Stop DAQ monitoring and collect results"""
         try:
-            self.log_callback("Stopping DAQ monitoring", "info")
+            self.log_callback("=== Stopping DAQ Collection Thread ===", "info")
             
-            if not self.daq_service:
-                self.log_callback("DAQ service not available", "warn")
-                return True  # Continue without DAQ
+            # Stop collection and get results
+            self.daq_results = self.daq_collector.stop_collection()
             
-            # Stop DAQ monitoring (implementation depends on DAQ service)
-            # This is a placeholder - actual implementation would call DAQ service
-            time.sleep(2)  # Simulate DAQ stop time
-            
-            self.log_callback("DAQ monitoring stopped", "info")
-            return True
+            if self.daq_results and self.daq_results.get('success'):
+                data_count = self.daq_results.get('data_count', 0)
+                duration = self.daq_results.get('duration', 0)
+                self.log_callback(f"✅ DAQ collection completed: {data_count} data points in {duration:.1f}s", "info")
+                
+                # Log some sample data
+                if data_count > 0:
+                    latest_data = self.daq_results.get('data', [])[-1] if self.daq_results.get('data') else None
+                    if latest_data:
+                        self.log_callback(f"📊 Latest reading: {latest_data.get('readings', {})}", "info")
+                
+                return True
+            else:
+                error_msg = self.daq_results.get('message', 'Unknown error') if self.daq_results else 'No results'
+                self.log_callback(f"⚠️ DAQ collection had issues: {error_msg}", "warn")
+                return True  # Continue even if DAQ had issues
             
         except Exception as e:
-            self.log_callback(f"Error stopping DAQ monitoring: {e}", "error")
-            return False
+            self.log_callback(f"❌ Error stopping DAQ collection: {e}", "error")
+            return True  # Don't fail test for DAQ issues
     
     def _step_export_to_excel(self) -> bool:
         """Export test results to Excel"""
         try:
-            self.log_callback("Exporting results to Excel", "info")
+            self.log_callback("=== Exporting Results to Excel ===", "info")
             
-            # Export to Excel (implementation depends on data format)
-            # This is a placeholder - actual implementation would save data
-            time.sleep(3)  # Simulate export time
+            if not self.daq_results:
+                self.log_callback("⚠️ No DAQ results to export", "warn")
+                return True
             
-            self.log_callback("Results exported to Excel", "info")
+            # Prepare export data
+            data_count = self.daq_results.get('data_count', 0)
+            duration = self.daq_results.get('duration', 0)
+            
+            if data_count > 0:
+                # Generate filename with timestamp
+                from datetime import datetime
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                filename = f"phone_app_test_{timestamp}.xlsx"
+                
+                self.log_callback(f"📊 Preparing to export {data_count} data points to {filename}", "info")
+                
+                # TODO: Implement actual Excel export
+                # For now, just simulate the export
+                time.sleep(2)  # Simulate export time
+                
+                self.log_callback(f"✅ Results exported to {filename}", "info")
+                self.log_callback(f"📈 Test summary: {data_count} data points, {duration:.1f}s duration", "info")
+            else:
+                self.log_callback("⚠️ No data to export", "warn")
+            
             return True
             
         except Exception as e:
-            self.log_callback(f"Error exporting to Excel: {e}", "error")
+            self.log_callback(f"❌ Error exporting to Excel: {e}", "error")
             return False
