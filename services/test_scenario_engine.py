@@ -25,7 +25,7 @@ except ImportError:
     XLSXWRITER_AVAILABLE = False
 
 try:
-    from PyQt6.QtCore import QObject, pyqtSignal, QTimer
+    from PyQt6.QtCore import QObject, pyqtSignal, QTimer, QMetaObject, Qt
     QT_AVAILABLE = True
 except ImportError:
     QT_AVAILABLE = False
@@ -125,8 +125,25 @@ class TestScenarioEngine(QObject):
             self.logger.info(message)
         
         # Emit log signal for thread-safe UI updates
+        self._emit_signal_safe(self.log_message, message, level)
+    
+    def _emit_signal_safe(self, signal, *args):
+        """Thread-safe signal emission"""
         if QT_AVAILABLE:
-            self.log_message.emit(message, level)
+            try:
+                if threading.current_thread() == threading.main_thread():
+                    # Main thread - direct emit
+                    signal.emit(*args)
+                else:
+                    # Background thread - use QMetaObject for thread safety
+                    QMetaObject.invokeMethod(
+                        self,
+                        lambda: signal.emit(*args),
+                        Qt.ConnectionType.QueuedConnection
+                    )
+            except Exception as e:
+                # Fallback to print if Qt signals fail
+                print(f"Signal emit error: {e}, args: {args}")
     
     def _register_builtin_scenarios(self):
         """Register built-in test scenarios"""
@@ -283,8 +300,12 @@ class TestScenarioEngine(QObject):
         if self.monitoring_active:
             self.monitoring_active = False
         
-        # No threads to wait for in single-thread mode
-        # Just set the stop flag and let the main loop handle it
+        # Wait for monitoring thread to finish
+        if hasattr(self, 'monitoring_thread') and self.monitoring_thread and self.monitoring_thread.is_alive():
+            self.log_callback("Waiting for monitoring thread to finish...", "info")
+            self.monitoring_thread.join(timeout=5.0)
+            if self.monitoring_thread.is_alive():
+                self.log_callback("WARNING: Monitoring thread did not finish in time", "warn")
         
         if self.current_test:
             self.current_test.end_time = datetime.now()
@@ -338,8 +359,7 @@ class TestScenarioEngine(QObject):
                     self.log_callback(f"Auto test status changed after step failure: {old_status.value} → {self.status.value}", "info")
                     
                     # Emit failure signal after state reset
-                    if QT_AVAILABLE:
-                        self.test_completed.emit(False, f"Test failed at step: {step.name}")
+                    self._emit_signal_safe(self.test_completed, False, f"Test failed at step: {step.name}")
                     return
                 
                 # Wait for step duration (simplified - no separate progress thread)
@@ -360,8 +380,7 @@ class TestScenarioEngine(QObject):
             self.log_callback(f"Auto test status changed: {old_status.value} → {self.status.value}", "info")
             
             # Emit completion signal after state reset
-            if QT_AVAILABLE:
-                self.test_completed.emit(True, "Test completed successfully")
+            self._emit_signal_safe(self.test_completed, True, "Test completed successfully")
             
         except Exception as e:
             self.status = TestStatus.FAILED
@@ -377,8 +396,7 @@ class TestScenarioEngine(QObject):
             self.log_callback(f"Auto test status changed after error: {old_status.value} → {self.status.value}", "info")
             
             # Emit failure signal after state reset
-            if QT_AVAILABLE:
-                self.test_completed.emit(False, f"Test failed: {e}")
+            self._emit_signal_safe(self.test_completed, False, f"Test failed: {e}")
         
         finally:
             # Ensure cleanup (redundant but safe)
@@ -571,8 +589,7 @@ class TestScenarioEngine(QObject):
                     self.current_test.error_message = f"Failed at step: {step.name}"
                     self.current_test.end_time = datetime.now()
                     self.log_callback(f"Test failed at step: {step.name}", "error")
-                    if QT_AVAILABLE:
-                        self.test_completed.emit(False, f"Test failed at step: {step.name}")
+                    self._emit_signal_safe(self.test_completed, False, f"Test failed at step: {step.name}")
                     return
                 
                 # Wait for step duration (with progress updates for long steps)
@@ -592,8 +609,7 @@ class TestScenarioEngine(QObject):
                 self.current_test.status = TestStatus.COMPLETED
                 self.current_test.end_time = datetime.now()
                 self.log_callback("Test scenario completed successfully", "info")
-                if QT_AVAILABLE:
-                    self.test_completed.emit(True, "Test completed successfully")
+                self._emit_signal_safe(self.test_completed, True, "Test completed successfully")
             
         except Exception as e:
             self.status = TestStatus.FAILED
@@ -601,8 +617,7 @@ class TestScenarioEngine(QObject):
                 self.current_test.status = TestStatus.FAILED
                 self.current_test.error_message = str(e)
             self.log_callback(f"Test execution error: {e}", "error")
-            if QT_AVAILABLE:
-                self.test_completed.emit(False, f"Test failed: {e}")
+            self._emit_signal_safe(self.test_completed, False, f"Test failed: {e}")
         
         finally:
             # Cleanup
@@ -927,8 +942,7 @@ class TestScenarioEngine(QObject):
                         # Calculate progress during screen test (0-90%)
                         elapsed = time.time() - test_start_time
                         progress = min(90, int((elapsed / 20.0) * 90))  # 0-90% for screen test
-                        if QT_AVAILABLE:
-                            self.progress_updated.emit(progress, f"Screen test cycle {i+1}/{cycles}")
+                        self._emit_signal_safe(self.progress_updated, progress, f"Screen test cycle {i+1}/{cycles}")
                         
                         # Turn screen off
                         self.adb_service.turn_screen_off()
@@ -978,8 +992,7 @@ class TestScenarioEngine(QObject):
             
             # Final progress update
             try:
-                if QT_AVAILABLE:
-                    self.progress_updated.emit(90, "Screen test completed, preparing export")
+                self._emit_signal_safe(self.progress_updated, 90, "Screen test completed, preparing export")
             except Exception as e:
                 self.log_callback(f"Error updating progress: {e}", "warn")
             
@@ -1761,8 +1774,8 @@ class TestScenarioEngine(QObject):
             
             # Only emit Qt signal if we're in main thread (safe)
             try:
-                if QT_AVAILABLE and not threading.current_thread().daemon:
-                    self.progress_updated.emit(progress, step_name)
+                if not threading.current_thread().daemon:
+                    self._emit_signal_safe(self.progress_updated, progress, step_name)
             except Exception as e:
                 # Ignore Qt signal errors in threads
                 pass
@@ -1777,8 +1790,8 @@ class TestScenarioEngine(QObject):
         
         # Emit Qt signal safely (only for pure test progress)
         try:
-            if QT_AVAILABLE and not threading.current_thread().daemon:
-                self.progress_updated.emit(test_progress, f"Screen Test: {test_progress}%")
+            if not threading.current_thread().daemon:
+                self._emit_signal_safe(self.progress_updated, test_progress, f"Screen Test: {test_progress}%")
         except Exception as e:
             # Ignore Qt signal errors
             pass
@@ -1809,8 +1822,7 @@ class TestScenarioEngine(QObject):
                 # Before screen test, don't show progress or show preparation progress
                 progress = 0
             
-            if QT_AVAILABLE:
-                self.progress_updated.emit(progress, step_name)
+            self._emit_signal_safe(self.progress_updated, progress, step_name)
     
     def _get_enabled_channels_from_monitor(self) -> List[str]:
         """Get enabled channels from multi-channel monitor"""
