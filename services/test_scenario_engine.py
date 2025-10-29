@@ -198,13 +198,16 @@ class TestScenarioEngine(QObject):
             TestStep("init_flight_mode", 2.0, "enable_flight_mode"),
             TestStep("init_wifi_2g", 8.0, "connect_wifi_2g"),
             TestStep("init_bluetooth", 3.0, "enable_bluetooth"),
-            TestStep("init_screen_app_clear", 8.0, "screen_on_app_clear_screen_off"),
+            TestStep("init_screen_timeout", 3.0, "set_screen_timeout_10min"),
+            TestStep("init_unlock_clear", 10.0, "lcd_on_unlock_home_clear_apps"),
             
             # Stabilization (current stabilization for 10 seconds)
             TestStep("stabilize", 10.0, "wait_stabilization"),
             
-            # Screen On + DAQ Start + Phone App Test + DAQ Stop (combined step)
-            TestStep("phone_app_test_with_daq", 15.0, "phone_app_test_with_daq_optimized"),
+            # DAQ Start + Phone App Test + DAQ Stop (separated)
+            TestStep("start_daq", 2.0, "start_daq_monitoring"),
+            TestStep("phone_app_test", 10.0, "phone_app_scenario_test"),
+            TestStep("stop_daq", 2.0, "stop_daq_monitoring"),
             
             # Export results
             TestStep("save_data", 2.0, "export_to_excel")
@@ -654,6 +657,12 @@ class TestScenarioEngine(QObject):
                 return self._step_phone_app_test_with_daq()
             elif step.action == "phone_app_test_only":
                 return self._step_phone_app_test_only()
+            elif step.action == "set_screen_timeout_10min":
+                return self._step_set_screen_timeout_10min()
+            elif step.action == "lcd_on_unlock_home_clear_apps":
+                return self._step_lcd_on_unlock_home_clear_apps()
+            elif step.action == "phone_app_scenario_test":
+                return self._step_phone_app_scenario_test()
             elif step.action == "screen_on_app_clear_screen_off":
                 return self._step_screen_on_app_clear_screen_off()
             elif step.action == "phone_app_test_with_daq_optimized":
@@ -2483,4 +2492,118 @@ class TestScenarioEngine(QObject):
                 self._step_stop_daq_monitoring()
             except:
                 pass
+            return False
+    def _step_set_screen_timeout_10min(self) -> bool:
+        """Set screen timeout to 10 minutes"""
+        try:
+            self.log_callback("Setting screen timeout to 10 minutes", "info")
+            
+            if not self.adb_service:
+                self.log_callback("ADB service not available", "error")
+                return False
+            
+            # 10 minutes = 600,000 milliseconds
+            timeout_ms = 600000
+            success = self.adb_service.set_screen_timeout(timeout_ms)
+            
+            if success:
+                self.log_callback("Screen timeout set to 10 minutes successfully", "info")
+            else:
+                self.log_callback("Failed to set screen timeout", "error")
+            
+            return success
+            
+        except Exception as e:
+            self.log_callback(f"Error setting screen timeout: {e}", "error")
+            return False
+    
+    def _step_lcd_on_unlock_home_clear_apps(self) -> bool:
+        """LCD ON -> Unlock -> Home -> Clear Apps"""
+        try:
+            self.log_callback("=== Init Mode: LCD ON + Unlock + Home + Clear Apps ===", "info")
+            
+            if not self.adb_service:
+                self.log_callback("ADB service not available", "error")
+                return False
+            
+            # 1. LCD ON
+            self.log_callback("Step 1: Turn LCD ON", "info")
+            if not self.adb_service.turn_screen_on():
+                self.log_callback("Failed to turn screen on", "error")
+            time.sleep(1)
+            
+            # 2. Unlock screen
+            self.log_callback("Step 2: Unlock screen", "info")
+            if not self.adb_service.unlock_screen():
+                self.log_callback("Failed to unlock screen", "error")
+            time.sleep(1)
+            
+            # 3. Press Home button
+            self.log_callback("Step 3: Press Home button", "info")
+            if not self.adb_service.press_home_key():
+                self.log_callback("Failed to press home key", "error")
+            time.sleep(1)
+            
+            # 4. Clear all recent apps
+            self.log_callback("Step 4: Clear all recent apps", "info")
+            if not self.adb_service.clear_recent_apps():
+                self.log_callback("Failed to clear recent apps", "error")
+            time.sleep(2)
+            
+            self.log_callback("Init mode LCD/unlock/clear setup completed", "info")
+            return True
+            
+        except Exception as e:
+            self.log_callback(f"Error in LCD/unlock/clear setup: {e}", "error")
+            return False
+    
+    def _step_phone_app_scenario_test(self) -> bool:
+        """Phone App scenario test (DAQ already running)"""
+        try:
+            self.log_callback("=== Phone App Scenario Test Started ===", "info")
+            
+            if not self.adb_service:
+                self.log_callback("ADB service not available", "error")
+                return False
+            
+            # Initialize screen test timing for DAQ data collection
+            test_start_time = time.time()
+            self._screen_test_start_time = test_start_time
+            
+            # Signal DAQ monitoring that test has started
+            if hasattr(self, '_screen_test_started'):
+                self._screen_test_started.set()
+                self.log_callback("Phone app test start signal sent to DAQ monitoring", "info")
+            
+            # Phone App Scenario Test (10 seconds)
+            self.log_callback("[Phone App Scenario] Starting 10-second test", "info")
+            
+            # 0초: Phone app 클릭
+            self.log_callback("0s: Click Phone app", "info")
+            if not self.adb_service.open_phone_app():
+                self.log_callback("Failed to open Phone app", "error")
+            time.sleep(0.5)
+            
+            # 5초까지 대기 (Phone app에서)
+            self.log_callback("Waiting until 5s in Phone app...", "info")
+            time.sleep(4.5)  # 0.5초는 이미 대기했으므로 4.5초 더
+            
+            # 5초: Back key 클릭
+            self.log_callback("5s: Click back key", "info")
+            if not self.adb_service.press_back_key():
+                self.log_callback("Failed to press back key", "error")
+            time.sleep(0.5)
+            
+            # 10초까지 대기 (홈 화면에서)
+            self.log_callback("Waiting until 10s on home screen...", "info")
+            time.sleep(4.5)  # 0.5초는 이미 대기했으므로 4.5초 더
+            
+            # 10초: Test end
+            self.log_callback("10s: Test end", "info")
+            
+            self.log_callback("=== Phone App Scenario Test Completed ===", "info")
+            return True
+            
+        except Exception as e:
+            self.log_callback(f"Error in Phone app scenario test: {e}", "error")
             return False

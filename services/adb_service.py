@@ -437,6 +437,19 @@ input keyevent KEYCODE_HOME
             self.logger.error(f"Error getting WiFi status: {e}")
             return {'enabled': False, 'connected_ssid': 'Error', 'connection_state': 'Error', 'raw_info': str(e)}
     
+    def set_screen_timeout(self, timeout_ms: int) -> bool:
+        """Set screen timeout in milliseconds"""
+        try:
+            self.logger.info(f"Setting screen timeout to {timeout_ms}ms")
+            result = self._run_adb_command(['shell', 'settings', 'put', 'system', 'screen_off_timeout', str(timeout_ms)])
+            if result is not None:
+                self.logger.info(f"Screen timeout set to {timeout_ms}ms")
+                return True
+            return False
+        except Exception as e:
+            self.logger.error(f"Error setting screen timeout: {e}")
+            return False
+    
     def disconnect(self):
         """Disconnect from device"""
         self.connected_device = None
