@@ -1,11 +1,15 @@
-2G는 0_WIFIFW_RAX40_2nd_2G
-5G는 0_WIFIFW_RAX40_2nd_5G
-둘 다 PW는 "cppower12"
+너의 테스트 타임라인 대로라면 DAQ monitoring 120s timeout이 안되어야지 정상인 것 같거든?
 
-[09:34:06] Preparing to export 0 data points
-[09:34:06] WARNING: No DAQ data collected to export!
-[09:34:06] This means DAQ monitoring did not collect any data during the test
-[09:34:06] Test failed at step: save_data
-
-여전히 같은 문제이고 지금 DAQ monitoring을 하는게 시점이 init mode를 다 완료하고 start를 하는게 맞아?
-처음부터 monitoring을 하면 당연히 time out 될 것 같은데
+구체적으로 progress 적어줄게
+[init mode]
+1. HVPM 4V set
+2. air plane mode on
+3. WIFI 2G 연결
+4. BT on
+5. screen on -> home 버튼 클릭 -> App clear all 진행 -> screen off
+6. 전류 안정화 대기 시간 10초
+[init mode end] 
+7. screen on 후에 DAQ monitoring start
+8. phone App test 시작(10초) <- 실제 데이터 수집
+9. 위 시나리오 테스트가 끝나면 DAQ monitoring stop
+10. excel 파일 저장
