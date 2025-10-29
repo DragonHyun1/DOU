@@ -205,8 +205,14 @@ class TestScenarioEngine(QObject):
             # Stabilization
             TestStep("stabilize", 10.0, "wait_stabilization"),
             
-            # Phone App Test with DAQ monitoring
-            TestStep("phone_app_test", 10.0, "phone_app_test_with_daq"),
+            # Start DAQ monitoring (after init mode completion)
+            TestStep("start_daq", 2.0, "start_daq_monitoring"),
+            
+            # Phone App Test (without DAQ setup)
+            TestStep("phone_app_test", 10.0, "phone_app_test_only"),
+            
+            # Stop DAQ monitoring
+            TestStep("stop_daq", 2.0, "stop_daq_monitoring"),
             
             # Export results
             TestStep("save_data", 2.0, "export_to_excel")
@@ -654,6 +660,10 @@ class TestScenarioEngine(QObject):
                 return self._step_clear_all_recent_apps()
             elif step.action == "phone_app_test_with_daq":
                 return self._step_phone_app_test_with_daq()
+            elif step.action == "phone_app_test_only":
+                return self._step_phone_app_test_only()
+            elif step.action == "stop_daq_monitoring":
+                return self._step_stop_daq_monitoring()
             else:
                 self.log_callback(f"Unknown step action: {step.action}", "error")
                 return False
@@ -2136,7 +2146,7 @@ class TestScenarioEngine(QObject):
         try:
             # 실제 WiFi 정보 사용
             wifi_ssid = "0_WIFIFW_RAX40_2nd_2G"  # 실제 2G WiFi 이름
-            wifi_password = "hds11234**"  # 실제 WiFi 비밀번호
+            wifi_password = "cppower12"  # 실제 WiFi 비밀번호
             
             self.log_callback(f"Connecting to 2.4GHz WiFi: {wifi_ssid}", "info")
             
@@ -2294,4 +2304,66 @@ class TestScenarioEngine(QObject):
                 self._step_stop_daq_monitoring()
             except:
                 pass
+            return False
+    
+    def _step_phone_app_test_only(self) -> bool:
+        """Execute Phone app test without DAQ setup (DAQ already running)"""
+        try:
+            self.log_callback("Starting Phone app test (DAQ already monitoring)", "info")
+            
+            if not self.adb_service:
+                self.log_callback("ADB service not available", "error")
+                return False
+            
+            # Initialize screen test timing for DAQ data collection
+            test_start_time = time.time()
+            self._screen_test_start_time = test_start_time
+            
+            # Signal DAQ monitoring that test has started
+            if hasattr(self, '_screen_test_started'):
+                self._screen_test_started.set()
+                self.log_callback("Phone app test start signal sent to DAQ monitoring", "info")
+            
+            # Execute Phone app test sequence
+            self.log_callback("=== Phone App Test Sequence Started ===", "info")
+            
+            # 0초: LCD ON 및 Phone app 열기
+            self.log_callback("Step 1: Turn on LCD and open Phone app", "info")
+            if not self.adb_service.turn_screen_on():
+                self.log_callback("Failed to turn screen on", "error")
+            
+            time.sleep(0.5)
+            
+            if not self.adb_service.open_phone_app():
+                self.log_callback("Failed to open Phone app", "error")
+            
+            # 5초 대기
+            self.log_callback("Waiting 5 seconds in Phone app...", "info")
+            time.sleep(5)
+            
+            # 5초: Back key 눌러서 홈 화면으로 이동
+            self.log_callback("Step 2: Press back key to go to home screen", "info")
+            if not self.adb_service.press_back_key():
+                self.log_callback("Failed to press back key", "error")
+            
+            time.sleep(0.5)
+            
+            # 홈 화면으로 확실히 이동
+            if not self.adb_service.press_home_key():
+                self.log_callback("Failed to press home key", "error")
+            
+            # 5초 더 대기 (총 10초)
+            self.log_callback("Waiting 5 more seconds on home screen...", "info")
+            time.sleep(5)
+            
+            self.log_callback("=== Phone App Test Sequence Completed ===", "info")
+            
+            # Wait for DAQ to finish collecting data
+            time.sleep(2)
+            
+            self.log_callback("Phone app test completed (DAQ still running)", "info")
+            return True
+            
+        except Exception as e:
+            self.log_callback(f"Error in Phone app test: {e}", "error")
             return False
