@@ -432,6 +432,157 @@ class MainWindow(QtWidgets.QMainWindow):
         self.auto_test_service.progress_updated.connect(self._on_auto_test_progress)
         self.auto_test_service.test_completed.connect(self._on_auto_test_completed)
         self.auto_test_service.voltage_stabilized.connect(self._on_voltage_stabilized)
+        
+        # System log copy/paste functionality
+        if hasattr(self.ui, 'log_LW') and self.ui.log_LW:
+            self.setup_log_context_menu()
+
+    def setup_log_context_menu(self):
+        """Setup context menu for System log with copy/paste functionality"""
+        from PyQt6.QtCore import Qt
+        from PyQt6.QtWidgets import QMenu
+        from PyQt6.QtGui import QAction
+        
+        # Enable context menu
+        self.ui.log_LW.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.ui.log_LW.customContextMenuRequested.connect(self.show_log_context_menu)
+        
+        # Enable keyboard shortcuts
+        self.ui.log_LW.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        
+        # Add keyboard shortcuts
+        from PyQt6.QtGui import QShortcut, QKeySequence
+        
+        # Ctrl+C for copy
+        copy_shortcut = QShortcut(QKeySequence("Ctrl+C"), self.ui.log_LW)
+        copy_shortcut.activated.connect(self.copy_selected_logs)
+        
+        # Ctrl+A for select all
+        select_all_shortcut = QShortcut(QKeySequence("Ctrl+A"), self.ui.log_LW)
+        select_all_shortcut.activated.connect(self.select_all_logs)
+        
+    def show_log_context_menu(self, position):
+        """Show context menu for System log"""
+        from PyQt6.QtWidgets import QMenu
+        from PyQt6.QtGui import QAction
+        from PyQt6.QtCore import QPoint
+        
+        # Get selected items
+        selected_items = self.ui.log_LW.selectedItems()
+        
+        if not selected_items:
+            return
+            
+        # Create context menu
+        context_menu = QMenu(self)
+        
+        # Copy action
+        copy_action = QAction("복사 (Copy)", self)
+        copy_action.setShortcut("Ctrl+C")
+        copy_action.triggered.connect(self.copy_selected_logs)
+        context_menu.addAction(copy_action)
+        
+        # Copy all action
+        copy_all_action = QAction("모두 복사 (Copy All)", self)
+        copy_all_action.triggered.connect(self.copy_all_logs)
+        context_menu.addAction(copy_all_action)
+        
+        # Separator
+        context_menu.addSeparator()
+        
+        # Select all action
+        select_all_action = QAction("모두 선택 (Select All)", self)
+        select_all_action.setShortcut("Ctrl+A")
+        select_all_action.triggered.connect(self.select_all_logs)
+        context_menu.addAction(select_all_action)
+        
+        # Clear logs action
+        context_menu.addSeparator()
+        clear_action = QAction("로그 지우기 (Clear Logs)", self)
+        clear_action.triggered.connect(self.clear_logs)
+        context_menu.addAction(clear_action)
+        
+        # Show menu
+        context_menu.exec(self.ui.log_LW.mapToGlobal(position))
+        
+    def copy_selected_logs(self):
+        """Copy selected log entries to clipboard"""
+        try:
+            selected_items = self.ui.log_LW.selectedItems()
+            if not selected_items:
+                return
+                
+            # Get text from selected items
+            log_texts = []
+            for item in selected_items:
+                log_texts.append(item.text())
+            
+            # Join with newlines and copy to clipboard
+            clipboard_text = '\n'.join(log_texts)
+            
+            from PyQt6.QtWidgets import QApplication
+            clipboard = QApplication.clipboard()
+            clipboard.setText(clipboard_text)
+            
+            self._log(f"복사됨: {len(selected_items)}개 로그 항목", "info")
+            
+        except Exception as e:
+            self._log(f"로그 복사 중 오류: {e}", "error")
+            
+    def copy_all_logs(self):
+        """Copy all log entries to clipboard"""
+        try:
+            log_texts = []
+            for i in range(self.ui.log_LW.count()):
+                item = self.ui.log_LW.item(i)
+                if item:
+                    log_texts.append(item.text())
+            
+            if not log_texts:
+                self._log("복사할 로그가 없습니다", "warn")
+                return
+                
+            # Join with newlines and copy to clipboard
+            clipboard_text = '\n'.join(log_texts)
+            
+            from PyQt6.QtWidgets import QApplication
+            clipboard = QApplication.clipboard()
+            clipboard.setText(clipboard_text)
+            
+            self._log(f"모든 로그 복사됨: {len(log_texts)}개 항목", "info")
+            
+        except Exception as e:
+            self._log(f"전체 로그 복사 중 오류: {e}", "error")
+            
+    def select_all_logs(self):
+        """Select all log entries"""
+        try:
+            self.ui.log_LW.selectAll()
+            selected_count = len(self.ui.log_LW.selectedItems())
+            self._log(f"모든 로그 선택됨: {selected_count}개 항목", "info")
+        except Exception as e:
+            self._log(f"로그 선택 중 오류: {e}", "error")
+            
+    def clear_logs(self):
+        """Clear all log entries"""
+        try:
+            from PyQt6.QtWidgets import QMessageBox
+            
+            # Confirmation dialog
+            reply = QMessageBox.question(
+                self, 
+                "로그 지우기", 
+                "모든 로그를 지우시겠습니까?",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No
+            )
+            
+            if reply == QMessageBox.StandardButton.Yes:
+                self.ui.log_LW.clear()
+                self._log("로그가 지워졌습니다", "info")
+                
+        except Exception as e:
+            self._log(f"로그 지우기 중 오류: {e}", "error")
 
     def setup_status_indicators(self):
         """Setup status indicators and tooltips"""

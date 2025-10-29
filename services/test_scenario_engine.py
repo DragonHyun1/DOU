@@ -1424,6 +1424,7 @@ class TestScenarioEngine(QObject):
         
         try:
             loop_count = 0
+            data_collection_start_time = None  # Track when data collection actually starts
             # Use pre-stored configuration (thread-safe)
             enabled_channels = getattr(self, '_monitoring_channels', ['ai0', 'ai1'])
             measurement_mode = getattr(self, '_monitoring_mode', 'current')
@@ -1483,27 +1484,35 @@ class TestScenarioEngine(QObject):
                             if hasattr(self, '_screen_test_start_time') and self._screen_test_start_time is not None:
                                 screen_test_elapsed = current_time - self._screen_test_start_time
                                 
-                            # Only collect data during test period (0-10 seconds for Phone app test)  
-                            if screen_test_elapsed >= 0 and screen_test_elapsed <= 10.0:
-                                    data_point = {
-                                        'timestamp': datetime.now(),
-                                        'time_elapsed': screen_test_elapsed,  # Time from screen test start
-                                        'screen_test_time': screen_test_elapsed,  # Explicit screen test timing
-                                        **channel_data
-                                    }
-                                    
-                                    # Thread-safe data append
-                                    if hasattr(self, 'daq_data'):
-                                        self.daq_data.append(data_point)
+                                # Set data collection start time if not set
+                                if data_collection_start_time is None:
+                                    data_collection_start_time = current_time
+                                    print(f"Data collection started at screen test time: {screen_test_elapsed:.1f}s")
+                                
+                                # Calculate data collection elapsed time (always starts from 0)
+                                data_elapsed_time = current_time - data_collection_start_time
+                                
+                                # Only collect data during test period (0-10 seconds for Phone app test)  
+                                if screen_test_elapsed >= 0 and screen_test_elapsed <= 10.0 and data_elapsed_time <= 10.0:
+                                        data_point = {
+                                            'timestamp': datetime.now(),
+                                            'time_elapsed': round(data_elapsed_time, 1),  # Time from data collection start (0-10s)
+                                            'screen_test_time': round(data_elapsed_time, 1),  # Same as elapsed time
+                                            **channel_data
+                                        }
                                         
-                                    # Log first data point
-                                    if loop_count == 1:
-                                        print(f"Started data collection at screen test time: {screen_test_elapsed:.1f}s")
-                            elif screen_test_elapsed > 10.0:
-                                # Stop collecting data after 10 seconds
-                                print(f"Phone app test completed ({screen_test_elapsed:.1f}s), stopping data collection")
-                                self.monitoring_active = False
-                                break
+                                        # Thread-safe data append
+                                        if hasattr(self, 'daq_data'):
+                                            self.daq_data.append(data_point)
+                                            
+                                        # Log progress every 10 data points
+                                        if len(self.daq_data) % 10 == 1:
+                                            print(f"Data collection: {len(self.daq_data)} points, current time: {data_elapsed_time:.1f}s")
+                                elif data_elapsed_time > 10.0:
+                                    # Stop collecting data after 10 seconds
+                                    print(f"Data collection completed ({data_elapsed_time:.1f}s), stopping monitoring")
+                                    self.monitoring_active = False
+                                    break
                             else:
                                 # Event is set but start time not available yet, wait a bit
                                 continue
@@ -1517,20 +1526,32 @@ class TestScenarioEngine(QObject):
                             
                             # Fallback: If we've been waiting too long (>10s), start collecting data anyway
                             if loop_count > 10:  # After 10 seconds of waiting
-                                print("Fallback: Starting data collection without screen test signal")
-                                # Create fallback data point
-                                data_point = {
-                                    'timestamp': datetime.now(),
-                                    'time_elapsed': loop_count,  # Use loop count as elapsed time
-                                    'screen_test_time': loop_count,  # Fallback timing
-                                    **channel_data
-                                }
+                                if data_collection_start_time is None:
+                                    data_collection_start_time = current_time
+                                    print("Fallback: Starting data collection without screen test signal")
                                 
-                                # Thread-safe data append
-                                if hasattr(self, 'daq_data'):
-                                    self.daq_data.append(data_point)
-                                    if loop_count == 11:  # Log only once
-                                        print("Started fallback data collection")
+                                # Calculate proper elapsed time from data collection start
+                                fallback_elapsed = current_time - data_collection_start_time
+                                if fallback_elapsed <= 10.0:  # Only collect for 10 seconds
+                                    data_point = {
+                                        'timestamp': datetime.now(),
+                                        'time_elapsed': round(fallback_elapsed, 1),  # Use proper elapsed time (0-10s)
+                                        'screen_test_time': round(fallback_elapsed, 1),  # Fallback timing
+                                        **channel_data
+                                    }
+                                    
+                                    # Thread-safe data append
+                                    if hasattr(self, 'daq_data'):
+                                        self.daq_data.append(data_point)
+                                        
+                                    # Log progress
+                                    if len(self.daq_data) % 5 == 1:
+                                        print(f"Fallback data collection: {len(self.daq_data)} points, time: {fallback_elapsed:.1f}s")
+                                else:
+                                    # Stop fallback collection after 10 seconds
+                                    print("Fallback data collection completed (10s)")
+                                    self.monitoring_active = False
+                                    break
                             
                             # Wait for screen test to start
                             if loop_count % 5 == 1:  # Log every 5 seconds while waiting
@@ -1575,6 +1596,7 @@ class TestScenarioEngine(QObject):
             current_thread.name = "DAQ-Isolated"
             
             loop_count = 0
+            data_collection_start_time = None  # Track when data collection actually starts
             enabled_channels = getattr(self, '_monitoring_channels', ['ai0', 'ai1'])
             measurement_mode = getattr(self, '_monitoring_mode', 'current')
             
@@ -1605,12 +1627,20 @@ class TestScenarioEngine(QObject):
                         if hasattr(self, '_screen_test_start_time') and self._screen_test_start_time is not None:
                             screen_test_elapsed = current_time - self._screen_test_start_time
                             
+                            # Set data collection start time if not set
+                            if data_collection_start_time is None:
+                                data_collection_start_time = current_time
+                                print(f"Isolated: Data collection started at screen test time: {screen_test_elapsed:.1f}s")
+                            
+                            # Calculate data collection elapsed time (always starts from 0)
+                            data_elapsed_time = current_time - data_collection_start_time
+                            
                             # Only collect data during test period (0-10 seconds for Phone app test)
-                            if screen_test_elapsed >= 0 and screen_test_elapsed <= 10.0:
+                            if screen_test_elapsed >= 0 and screen_test_elapsed <= 10.0 and data_elapsed_time <= 10.0:
                                 data_point = {
                                     'timestamp': datetime.now(),
-                                    'time_elapsed': screen_test_elapsed,
-                                    'screen_test_time': screen_test_elapsed,
+                                    'time_elapsed': round(data_elapsed_time, 1),  # Time from data collection start (0-10s)
+                                    'screen_test_time': round(data_elapsed_time, 1),  # Same as elapsed time
                                     **channel_data
                                 }
                                 
@@ -1618,11 +1648,11 @@ class TestScenarioEngine(QObject):
                                 if hasattr(self, 'daq_data'):
                                     self.daq_data.append(data_point)
                                     
-                                # Log first data point
-                                if loop_count == 1:
-                                    print(f"Isolated: Started data collection at {screen_test_elapsed:.1f}s")
-                            elif screen_test_elapsed > 10.0:
-                                print(f"Isolated: Phone app test completed ({screen_test_elapsed:.1f}s), stopping")
+                                # Log progress every 10 data points
+                                if len(self.daq_data) % 10 == 1:
+                                    print(f"Isolated: Data collection: {len(self.daq_data)} points, time: {data_elapsed_time:.1f}s")
+                            elif data_elapsed_time > 10.0:
+                                print(f"Isolated: Data collection completed ({data_elapsed_time:.1f}s), stopping")
                                 self.monitoring_active = False
                                 break
                         else:
