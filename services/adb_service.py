@@ -200,21 +200,18 @@ class ADBService:
             if result is not None:
                 time.sleep(2.0)  # Wait for recent apps to fully load
                 
-                # Step 3: Click Clear All button (multiple positions for compatibility)
+                # Step 3: Click Clear All button (try once, most common position first)
                 self.logger.info("Step 3: Clicking Clear All button...")
-                clear_all_commands = [
-                    # Samsung devices - bottom center
-                    ['shell', 'input', 'tap', '540', '1800'],
-                    # Generic Android - alternative position
-                    ['shell', 'input', 'tap', '540', '1700'],
-                    # Swipe up to reveal clear all if hidden
-                    ['shell', 'input', 'swipe', '540', '1500', '540', '1000'],
-                ]
                 
-                for i, cmd in enumerate(clear_all_commands, 1):
-                    self.logger.info(f"  Trying Clear All position {i}...")
-                    self._run_adb_command(cmd)
-                    time.sleep(0.8)  # Wait between attempts
+                # Try Samsung devices position first (most common)
+                self.logger.info("  Trying Samsung Clear All position...")
+                result = self._run_adb_command(['shell', 'input', 'tap', '540', '1800'])
+                time.sleep(1.5)  # Wait to see if it worked
+                
+                # If first attempt might have failed, try alternative position once
+                self.logger.info("  Trying alternative Clear All position...")
+                self._run_adb_command(['shell', 'input', 'tap', '540', '1700'])
+                time.sleep(1.0)  # Shorter wait for second attempt
                 
                 # Step 4: Wait for Clear All to complete
                 self.logger.info("Step 4: Waiting for Clear All to complete...")

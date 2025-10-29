@@ -218,16 +218,18 @@ class TestScenarioEngine(QObject):
             test_duration=10.0  # Phone app test duration
         )
         
-        # Define detailed phone app test steps based on user requirements
+        # Define detailed phone app test steps based on user requirements (optimized order)
         phone_app_config.steps = [
             # Default settings (consistent for all scenarios)
             TestStep("default_settings", 5.0, "apply_default_settings"),
+            # Early LCD activation for smoother operation
+            TestStep("lcd_on_unlock", 3.0, "lcd_on_and_unlock"),
             # Init mode steps (scenario-specific)
             TestStep("init_hvpm", 2.0, "set_hvpm_voltage", {"voltage": 4.0}),
             TestStep("airplane_mode", 2.0, "enable_flight_mode"),
             TestStep("wifi_2g_connect", 15.0, "connect_wifi_2g"),
             TestStep("bluetooth_on", 2.0, "enable_bluetooth"),
-            TestStep("lcd_on_unlock_home_clear", 10.0, "lcd_on_unlock_home_clear_apps"),
+            TestStep("home_clear_apps", 8.0, "home_and_clear_apps"),
             TestStep("current_stabilization", 10.0, "wait_current_stabilization"),
             # Test execution steps
             TestStep("start_daq_monitoring", 2.0, "start_daq_monitoring"),

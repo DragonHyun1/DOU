@@ -24,16 +24,18 @@ class PhoneAppScenario(BaseScenario):
             test_duration=10.0  # Phone app test duration
         )
         
-        # Define detailed phone app test steps
+        # Define detailed phone app test steps (optimized order)
         config.steps = [
             # Default settings (consistent for all scenarios)
             TestStep("default_settings", 5.0, "apply_default_settings"),
+            # Early LCD activation for smoother operation
+            TestStep("lcd_on_unlock", 3.0, "lcd_on_and_unlock"),
             # Init mode steps (scenario-specific)
             TestStep("init_hvpm", 2.0, "set_hvpm_voltage", {"voltage": 4.0}),
             TestStep("airplane_mode", 2.0, "enable_flight_mode"),
             TestStep("wifi_2g_connect", 15.0, "connect_wifi_2g"),
             TestStep("bluetooth_on", 2.0, "enable_bluetooth"),
-            TestStep("lcd_on_unlock_home_clear", 10.0, "lcd_on_unlock_home_clear_apps"),
+            TestStep("home_clear_apps", 8.0, "home_and_clear_apps"),
             TestStep("current_stabilization", 10.0, "wait_current_stabilization"),
             # Test execution steps
             TestStep("start_daq_monitoring", 2.0, "start_daq_monitoring"),
@@ -57,8 +59,10 @@ class PhoneAppScenario(BaseScenario):
                 return self._step_connect_wifi_2g()
             elif step.action == "enable_bluetooth":
                 return self._step_enable_bluetooth()
-            elif step.action == "lcd_on_unlock_home_clear_apps":
-                return self._step_lcd_on_unlock_home_clear_apps()
+            elif step.action == "lcd_on_and_unlock":
+                return self._step_lcd_on_and_unlock()
+            elif step.action == "home_and_clear_apps":
+                return self._step_home_and_clear_apps()
             elif step.action == "wait_current_stabilization":
                 return self._step_wait_current_stabilization()
             elif step.action == "start_daq_monitoring":
@@ -203,10 +207,10 @@ class PhoneAppScenario(BaseScenario):
             self.log_callback(f"Error enabling Bluetooth: {e}", "error")
             return False
     
-    def _step_lcd_on_unlock_home_clear_apps(self) -> bool:
-        """LCD on -> 스크린 잠금 해제 -> home 버튼 클릭 -> App clear all 진행"""
+    def _step_lcd_on_and_unlock(self) -> bool:
+        """LCD on -> 스크린 잠금 해제 (early activation for smoother operation)"""
         try:
-            self.log_callback("=== LCD ON + Unlock + Home + Clear Apps ===", "info")
+            self.log_callback("=== Early LCD ON + Unlock ===", "info")
             
             if not self.adb_service:
                 self.log_callback("ADB service not available", "error")
@@ -217,33 +221,49 @@ class PhoneAppScenario(BaseScenario):
             if not self.adb_service.turn_screen_on():
                 self.log_callback("Failed to turn screen on", "error")
                 return False
-            time.sleep(1)
+            time.sleep(1.5)  # Give more time for screen to fully turn on
             
             # Step 2: 스크린 잠금 해제 (unlock screen)
             self.log_callback("Step 2: Unlocking screen", "info")
             if not self.adb_service.unlock_screen():
                 self.log_callback("Failed to unlock screen", "error")
                 return False
-            time.sleep(1)
+            time.sleep(1.0)
             
-            # Step 3: Home 버튼 클릭
-            self.log_callback("Step 3: Pressing home button", "info")
+            self.log_callback("✅ Early LCD ON + Unlock completed", "info")
+            return True
+            
+        except Exception as e:
+            self.log_callback(f"Error in early LCD on + unlock: {e}", "error")
+            return False
+    
+    def _step_home_and_clear_apps(self) -> bool:
+        """Home 버튼 클릭 -> App clear all 진행"""
+        try:
+            self.log_callback("=== Home + Clear Apps ===", "info")
+            
+            if not self.adb_service:
+                self.log_callback("ADB service not available", "error")
+                return False
+            
+            # Step 1: Home 버튼 클릭
+            self.log_callback("Step 1: Pressing home button", "info")
             if not self.adb_service.press_home():
                 self.log_callback("Failed to press home button", "error")
                 return False
-            time.sleep(1)
+            time.sleep(1.5)  # Give time for home screen to load
             
-            # Step 4: App clear all 진행
-            self.log_callback("Step 4: Clearing all apps", "info")
+            # Step 2: App clear all 진행
+            self.log_callback("Step 2: Clearing all apps", "info")
             if not self.adb_service.clear_recent_apps():
                 self.log_callback("Failed to clear all apps", "error")
                 return False
             
-            self.log_callback("LCD on + Unlock + Home + Clear Apps completed", "info")
+            self.log_callback("✅ Home + Clear Apps completed", "info")
             return True
             
         except Exception as e:
-            self.log_callback(f"Error in LCD on + unlock + home + clear apps: {e}", "error")
+            self.log_callback(f"Error in home + clear apps: {e}", "error")
             return False
     
     def _step_wait_current_stabilization(self) -> bool:
