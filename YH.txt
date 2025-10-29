@@ -1,7 +1,11 @@
-[18:32:08] Step 10/11: phone_app_test
-[18:32:08] Starting Phone app test with DAQ monitoring
-[18:32:08] Starting DAQ monitoring for Phone app test
-[18:32:08] Error in Phone app test: 'TestScenarioEngine' object has no attribute '_start_daq_monitoring'
-[18:32:08] Test failed at step: phone_app_test
-[18:32:08] Auto test status changed after step failure: failed → idle
-[18:32:08] _on_auto_test_completed called: success=False, message=Test failed at step: phone_app_test
+2G는 0_WIFIFW_RAX40_2nd_2G
+5G는 0_WIFIFW_RAX40_2nd_5G
+둘 다 PW는 "cppower12"
+
+[09:34:06] Preparing to export 0 data points
+[09:34:06] WARNING: No DAQ data collected to export!
+[09:34:06] This means DAQ monitoring did not collect any data during the test
+[09:34:06] Test failed at step: save_data
+
+여전히 같은 문제이고 지금 DAQ monitoring을 하는게 시점이 init mode를 다 완료하고 start를 하는게 맞아?
+처음부터 monitoring을 하면 당연히 time out 될 것 같은데
