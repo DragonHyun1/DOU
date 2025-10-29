@@ -1,15 +1,23 @@
-너의 테스트 타임라인 대로라면 DAQ monitoring 120s timeout이 안되어야지 정상인 것 같거든?
+아직도 DAQ monitoring 120s timeout이 나오고 있고
+App clear all도 안되어있어 현재 BT on까지는 정상으로 되어있음.
+더 자세히 구체적으로 progress 적어줄게
 
-구체적으로 progress 적어줄게
 [init mode]
 1. HVPM 4V set
 2. air plane mode on
 3. WIFI 2G 연결
 4. BT on
-5. screen on -> home 버튼 클릭 -> App clear all 진행 -> screen off
-6. 전류 안정화 대기 시간 10초
+5. screen timeout을 10min으로 설정
+6. LCD on -> 스크린 잠금 해제 -> home 버튼 클릭 -> App clear all 진행
+7. 전류 안정화 대기 시간 10초
 [init mode end] 
-7. screen on 후에 DAQ monitoring start
-8. phone App test 시작(10초) <- 실제 데이터 수집
-9. 위 시나리오 테스트가 끝나면 DAQ monitoring stop
-10. excel 파일 저장
+8. DAQ monitoring start
+9. phone App 시나리오 test 시작(10초) <- 실제 데이터 수집
+10. 위 시나리오 테스트가 끝나면 DAQ monitoring stop
+11. excel 파일 저장
+
+
+[phone App 시나리오 테스트]
+1. 0초, phone app 클릭
+2. 5초, back key 클릭
+3. 10초, test end
