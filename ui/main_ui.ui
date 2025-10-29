@@ -1211,6 +1211,9 @@ input keyevent KEYCODE_WAKEUP</string>
            <verstretch>0</verstretch>
           </sizepolicy>
          </property>
+         <property name="selectionMode">
+          <enum>QAbstractItemView::ExtendedSelection</enum>
+         </property>
          <property name="styleSheet">
           <string>QListWidget { 
             background-color: #1e1e1e; 

@@ -425,6 +425,7 @@ class Ui_MainWindow(object):
         self.logLayout = QtWidgets.QVBoxLayout(self.logGroupBox)
         self.logLayout.setObjectName("logLayout")
         self.log_LW = QtWidgets.QListWidget(parent=self.logGroupBox)
+        self.log_LW.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.ExtendedSelection)
         self.log_LW.setObjectName("log_LW")
         self.logLayout.addWidget(self.log_LW)
         self.mainVerticalLayout.addWidget(self.logGroupBox)

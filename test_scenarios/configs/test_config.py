@@ -14,7 +14,7 @@ class TestConfig:
     # Test environment settings
     ENVIRONMENT = {
         'hvpm_voltage': 4.0,
-        'daq_timeout': 40.0,  # seconds
+        'daq_timeout': 25.0,  # seconds (reduced from 40s to 25s)
         'stabilization_time': 10.0,  # seconds
         'monitoring_interval': 1.0,  # seconds
         'max_test_duration': 300.0,  # 5 minutes max

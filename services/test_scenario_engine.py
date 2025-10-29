@@ -847,6 +847,15 @@ class TestScenarioEngine(QObject):
             self.daq_data = []
             self.monitoring_active = True
             
+            # Initialize screen test synchronization
+            self._screen_test_started = threading.Event()
+            self._screen_test_start_time = None
+            
+            # Set a reasonable timeout (25 seconds: 10s test + 15s buffer)
+            self._monitoring_timeout = time.time() + 25.0
+            
+            self.log_callback("DAQ monitoring initialized with 25s timeout", "info")
+            
             # Check DAQ service connection
             if hasattr(self.daq_service, 'is_connected') and not self.daq_service.is_connected():
                 self.log_callback("WARNING: DAQ service not connected, monitoring may not work", "warn")
@@ -953,7 +962,7 @@ class TestScenarioEngine(QObject):
                 self._screen_test_started = threading.Event()  # Thread-safe synchronization
                 # Calculate timeout based on test duration + buffer
                 test_duration = 10.0  # Phone app test duration
-                timeout_buffer = 30.0  # Extra buffer time
+                timeout_buffer = 15.0  # Reduced buffer time from 30s to 15s
                 self._monitoring_timeout = time.time() + test_duration + timeout_buffer  # Dynamic timeout
                 
                 # Create completely isolated thread for DAQ monitoring
@@ -1470,6 +1479,7 @@ class TestScenarioEngine(QObject):
                         # Check if screen test has started using thread-safe event
                         if hasattr(self, '_screen_test_started') and self._screen_test_started.is_set():
                             # Screen test has started, calculate elapsed time
+                            screen_test_elapsed = 0  # Initialize with default value
                             if hasattr(self, '_screen_test_start_time') and self._screen_test_start_time is not None:
                                 screen_test_elapsed = current_time - self._screen_test_start_time
                                 
@@ -1500,13 +1510,31 @@ class TestScenarioEngine(QObject):
                         else:
                             # Screen test hasn't started yet, check timeout
                             if hasattr(self, '_monitoring_timeout') and current_time > self._monitoring_timeout:
-                                print("ERROR: Timeout waiting for screen test to start (120s), stopping monitoring")
+                                timeout_duration = getattr(self, '_monitoring_timeout', current_time) - (current_time - 25)  # Calculate actual timeout duration
+                                print(f"ERROR: Timeout waiting for screen test to start ({timeout_duration:.0f}s), stopping monitoring")
                                 self.monitoring_active = False
                                 break
                             
+                            # Fallback: If we've been waiting too long (>10s), start collecting data anyway
+                            if loop_count > 10:  # After 10 seconds of waiting
+                                print("Fallback: Starting data collection without screen test signal")
+                                # Create fallback data point
+                                data_point = {
+                                    'timestamp': datetime.now(),
+                                    'time_elapsed': loop_count,  # Use loop count as elapsed time
+                                    'screen_test_time': loop_count,  # Fallback timing
+                                    **channel_data
+                                }
+                                
+                                # Thread-safe data append
+                                if hasattr(self, 'daq_data'):
+                                    self.daq_data.append(data_point)
+                                    if loop_count == 11:  # Log only once
+                                        print("Started fallback data collection")
+                            
                             # Wait for screen test to start
                             if loop_count % 5 == 1:  # Log every 5 seconds while waiting
-                                timeout_time = getattr(self, '_monitoring_timeout', current_time + 120)
+                                timeout_time = getattr(self, '_monitoring_timeout', current_time + 25)  # Use dynamic timeout
                                 remaining_time = max(0, timeout_time - current_time)
                                 print(f"Waiting for screen test to start... ({remaining_time:.0f}s timeout remaining)")
                             continue
@@ -1602,13 +1630,14 @@ class TestScenarioEngine(QObject):
                     else:
                         # Check timeout
                         if hasattr(self, '_monitoring_timeout') and current_time > self._monitoring_timeout:
-                            print("Isolated: ERROR - Timeout waiting for screen test (120s)")
+                            timeout_duration = getattr(self, '_monitoring_timeout', current_time) - (current_time - 25)  # Calculate actual timeout duration
+                            print(f"Isolated: ERROR - Timeout waiting for screen test ({timeout_duration:.0f}s)")
                             self.monitoring_active = False
                             break
                         
                         # Wait message (less frequent)
                         if loop_count % 10 == 1:
-                            timeout_time = getattr(self, '_monitoring_timeout', current_time + 120)
+                            timeout_time = getattr(self, '_monitoring_timeout', current_time + 25)  # Use dynamic timeout
                             remaining = max(0, timeout_time - current_time)
                             print(f"Isolated: Waiting for screen test... ({remaining:.0f}s remaining)")
                         continue
@@ -2322,7 +2351,9 @@ class TestScenarioEngine(QObject):
             # Signal DAQ monitoring that test has started
             if hasattr(self, '_screen_test_started'):
                 self._screen_test_started.set()
-                self.log_callback("Phone app test start signal sent to DAQ monitoring", "info")
+                self.log_callback("✅ Phone app test start signal sent to DAQ monitoring", "info")
+            else:
+                self.log_callback("⚠️ Warning: _screen_test_started event not found", "warn")
             
             # Execute Phone app test sequence
             self.log_callback("=== Phone App Test Sequence Started ===", "info")
@@ -2393,7 +2424,9 @@ class TestScenarioEngine(QObject):
             # Signal DAQ monitoring that test has started
             if hasattr(self, '_screen_test_started'):
                 self._screen_test_started.set()
-                self.log_callback("Phone app test start signal sent to DAQ monitoring", "info")
+                self.log_callback("✅ Phone app test start signal sent to DAQ monitoring", "info")
+            else:
+                self.log_callback("⚠️ Warning: _screen_test_started event not found", "warn")
             
             # Execute Phone app test sequence
             self.log_callback("=== Phone App Test Sequence Started ===", "info")
@@ -2510,7 +2543,9 @@ class TestScenarioEngine(QObject):
             # Signal DAQ monitoring that test has started
             if hasattr(self, '_screen_test_started'):
                 self._screen_test_started.set()
-                self.log_callback("Phone app test start signal sent to DAQ monitoring", "info")
+                self.log_callback("✅ Phone app test start signal sent to DAQ monitoring", "info")
+            else:
+                self.log_callback("⚠️ Warning: _screen_test_started event not found", "warn")
             
             # 8. Phone App Test (10 seconds)
             self.log_callback("=== Step 8: Phone App Test Started (10s) ===", "info")
@@ -2639,7 +2674,9 @@ class TestScenarioEngine(QObject):
             # Signal DAQ monitoring that test has started
             if hasattr(self, '_screen_test_started'):
                 self._screen_test_started.set()
-                self.log_callback("Phone app test start signal sent to DAQ monitoring", "info")
+                self.log_callback("✅ Phone app test start signal sent to DAQ monitoring", "info")
+            else:
+                self.log_callback("⚠️ Warning: _screen_test_started event not found", "warn")
             
             # Phone App Scenario Test (10 seconds)
             self.log_callback("[Phone App Scenario] Starting 10-second test", "info")
@@ -2853,7 +2890,9 @@ class TestScenarioEngine(QObject):
             # Signal DAQ monitoring that test has started
             if hasattr(self, '_screen_test_started'):
                 self._screen_test_started.set()
-                self.log_callback("Phone app test start signal sent to DAQ monitoring", "info")
+                self.log_callback("✅ Phone app test start signal sent to DAQ monitoring", "info")
+            else:
+                self.log_callback("⚠️ Warning: _screen_test_started event not found", "warn")
             
             # 0초: Phone app 클릭
             self.log_callback("0s: Clicking Phone app", "info")
