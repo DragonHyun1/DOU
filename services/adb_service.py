@@ -183,92 +183,64 @@ class ADBService:
             return False
     
     def clear_recent_apps(self) -> bool:
-        """Clear all recent apps completely - Enhanced version"""
+        """Clear all recent apps - Optimized version (Clear All button only)"""
         try:
-            self.logger.info("=== Starting comprehensive app clear process ===")
+            self.logger.info("=== Starting optimized app clear process ===")
             
             # Step 1: Kill all background apps using activity manager
             self.logger.info("Step 1: Killing all background apps...")
             result = self._run_adb_command(['shell', 'am', 'kill-all'])
             if result is not None:
                 time.sleep(1)
-                self.logger.info("Background apps killed")
+                self.logger.info("✅ Background apps killed")
             
-            # Step 2: Force stop running apps
-            self.logger.info("Step 2: Force stopping running apps...")
-            # Get list of running apps and force stop them
-            running_apps = self._run_adb_command(['shell', 'pm', 'list', 'packages', '-3'])  # Third-party apps only
-            if running_apps:
-                for line in running_apps.split('\n'):
-                    if 'package:' in line:
-                        package = line.replace('package:', '').strip()
-                        if package and not any(sys_pkg in package for sys_pkg in ['com.android.', 'com.google.android.']):
-                            self._run_adb_command(['shell', 'am', 'force-stop', package])
-                time.sleep(1)
-                self.logger.info("Running apps force stopped")
-            
-            # Step 3: Clear recent apps UI using multiple methods
-            self.logger.info("Step 3: Clearing recent apps UI...")
-            
-            # Method 3a: Open recent apps screen
+            # Step 2: Open recent apps screen and use Clear All button
+            self.logger.info("Step 2: Opening recent apps screen...")
             result = self._run_adb_command(['shell', 'input', 'keyevent', 'KEYCODE_APP_SWITCH'])
             if result is not None:
-                time.sleep(2.0)  # Wait longer for recent apps to fully load
+                time.sleep(2.0)  # Wait for recent apps to fully load
                 
-                # Method 3b: Try to find and click "Clear All" button
-                self.logger.info("Looking for Clear All button...")
+                # Step 3: Click Clear All button (multiple positions for compatibility)
+                self.logger.info("Step 3: Clicking Clear All button...")
                 clear_all_commands = [
-                    # Samsung devices
-                    ['shell', 'input', 'tap', '540', '1800'],  # Bottom center "Clear All"
-                    # Generic Android
-                    ['shell', 'input', 'tap', '540', '1700'],  # Alternative position
-                    # Swipe up to reveal clear all
+                    # Samsung devices - bottom center
+                    ['shell', 'input', 'tap', '540', '1800'],
+                    # Generic Android - alternative position
+                    ['shell', 'input', 'tap', '540', '1700'],
+                    # Swipe up to reveal clear all if hidden
                     ['shell', 'input', 'swipe', '540', '1500', '540', '1000'],
                 ]
                 
-                for cmd in clear_all_commands:
+                for i, cmd in enumerate(clear_all_commands, 1):
+                    self.logger.info(f"  Trying Clear All position {i}...")
                     self._run_adb_command(cmd)
-                    time.sleep(0.5)
+                    time.sleep(0.8)  # Wait between attempts
                 
-                # Method 3c: Multiple swipe gestures to clear individual apps
-                self.logger.info("Performing swipe gestures to clear apps...")
-                for i in range(8):  # Increased attempts
-                    # Swipe up from different positions
-                    x_positions = [400, 540, 680]  # Left, center, right
-                    for x in x_positions:
-                        self._run_adb_command(['shell', 'input', 'swipe', str(x), '1200', str(x), '400'])
-                        time.sleep(0.2)
+                # Step 4: Wait for Clear All to complete
+                self.logger.info("Step 4: Waiting for Clear All to complete...")
+                time.sleep(2.5)  # Give more time for clearing to finish
                 
-                # Method 3d: Alternative swipe directions
-                for i in range(3):
-                    # Swipe left to right to dismiss apps
-                    self._run_adb_command(['shell', 'input', 'swipe', '200', '800', '800', '800'])
-                    time.sleep(0.3)
-                
-                time.sleep(1)
-                
-                # Step 4: Press home to exit recent apps
-                self.logger.info("Step 4: Returning to home screen...")
+                # Step 5: Return to home screen
+                self.logger.info("Step 5: Returning to home screen...")
                 self._run_adb_command(['shell', 'input', 'keyevent', 'KEYCODE_HOME'])
                 time.sleep(1.0)
                 
-                # Step 5: Verify by checking running processes
-                self.logger.info("Step 5: Verifying app clear...")
-                # Check if recent apps screen is still visible
-                self._run_adb_command(['shell', 'input', 'keyevent', 'KEYCODE_HOME'])  # Double press home
+                # Step 6: Double press home to ensure we're on home screen
+                self._run_adb_command(['shell', 'input', 'keyevent', 'KEYCODE_HOME'])
                 time.sleep(0.5)
                 
-                self.logger.info("=== App clear process completed ===")
+                self.logger.info("✅ Optimized app clear process completed")
                 return True
             
-            self.logger.warning("Failed to open recent apps screen")
+            self.logger.warning("❌ Failed to open recent apps screen")
             return False
             
         except Exception as e:
-            self.logger.error(f"Error in comprehensive app clear: {e}")
+            self.logger.error(f"❌ Error in optimized app clear: {e}")
             # Fallback: at least try to go home
             try:
                 self._run_adb_command(['shell', 'input', 'keyevent', 'KEYCODE_HOME'])
+                time.sleep(0.5)
             except:
                 pass
             return False
