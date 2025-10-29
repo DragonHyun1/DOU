@@ -509,13 +509,14 @@ class TestScenarioEngine(QObject):
                     break
                 
                 try:
-                    # 1. Collect DAQ data at 1-second intervals
-                    if elapsed_time >= data_point_count * data_interval:
+                    # 1. Collect DAQ data at 1-second intervals (more precise timing)
+                    next_data_time = data_point_count * data_interval
+                    if elapsed_time >= next_data_time and (elapsed_time - next_data_time) < 0.2:  # Within 200ms tolerance
                         data_point = self._collect_daq_data_point(enabled_channels, measurement_mode, elapsed_time)
                         if data_point:
                             self.daq_data.append(data_point)
                             data_point_count += 1
-                            self.log_callback(f"Data point {data_point_count}: {elapsed_time:.1f}s", "debug")
+                            self.log_callback(f"Data point {data_point_count}: {elapsed_time:.1f}s (target: {next_data_time:.1f}s)", "debug")
                     
                     # 2. Screen control every 2 seconds
                     screen_cycle_time = int(elapsed_time / screen_interval)

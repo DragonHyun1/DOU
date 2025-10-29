@@ -415,7 +415,7 @@ class MainWindow(QtWidgets.QMainWindow):
         
         # Auto test connections (check if they exist)
         if hasattr(self.ui, 'startAutoTest_PB') and self.ui.startAutoTest_PB:
-            self.ui.startAutoTest_PB.clicked.connect(self.start_auto_test)
+            self.ui.startAutoTest_PB.clicked.connect(self._on_start_test_button_clicked)
         if hasattr(self.ui, 'stopAutoTest_PB') and self.ui.stopAutoTest_PB:
             self.ui.stopAutoTest_PB.clicked.connect(self.stop_auto_test)
         # testSettings_PB removed
@@ -1496,10 +1496,26 @@ class MainWindow(QtWidgets.QMainWindow):
             self.test_config['test_voltage']
         )
 
+    def _on_start_test_button_clicked(self):
+        """Handle start test button click with additional logging"""
+        import traceback
+        stack_trace = ''.join(traceback.format_stack()[-3:-1])  # Get caller info
+        self._log(f"🖱️ Start test button clicked! Call stack:\n{stack_trace}", "info")
+        
+        # Check if we're in a completion callback
+        if any("_on_auto_test_completed" in line for line in stack_trace.split('\n')):
+            self._log("⚠️ Button clicked from test completion callback - ignoring!", "warn")
+            return
+            
+        self.start_auto_test()
+
     def start_auto_test(self):
         """Start automated test with selected scenario"""
+        self._log(f"🚀 start_auto_test called", "info")
+        
         # Check if test scenario engine is running
         if self.test_scenario_engine.is_running():
+            self._log(f"⚠️ Test already running, ignoring start request", "warn")
             return
         
         # Check device connections first
@@ -1585,10 +1601,11 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.ui.statusbar.showMessage(f"Running Auto Test: {scenario_name}", 0)
                 
                 # Log with enhanced formatting
-                self._log(f"Starting automated test: {scenario_name}", "info")
+                self._log(f"🎯 Starting automated test: {scenario_name}", "info")
                 if hasattr(self.ui, 'testResults_TE') and self.ui.testResults_TE:
                     timestamp = time.strftime("%H:%M:%S")
                     self.ui.testResults_TE.append(f"[{timestamp}] Test Started: {scenario_name}")
+                    self._log(f"📝 Added to testResults_TE: Test Started: {scenario_name}", "debug")
             else:
                 self._log(f"Failed to start test scenario: {scenario_name}", "error")
                 QtWidgets.QMessageBox.critical(self, "Test Error", f"Failed to start test scenario: {scenario_name}")
@@ -1669,13 +1686,18 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def _on_auto_test_completed(self, success: bool, message: str):
         """Handle auto test completion"""
-        self._log(f"_on_auto_test_completed called: success={success}, message={message}", "info")
+        self._log(f"🔔 _on_auto_test_completed called: success={success}, message={message}", "info")
         
         # Check test engine status before updating
         if hasattr(self, 'test_scenario_engine'):
             engine_status = self.test_scenario_engine.get_status()
             engine_running = self.test_scenario_engine.is_running()
-            self._log(f"Test engine status: {engine_status.value}, is_running: {engine_running}", "info")
+            self._log(f"📊 Test engine status: {engine_status.value}, is_running: {engine_running}", "info")
+            
+            # Log current test info
+            current_test = self.test_scenario_engine.get_current_test()
+            if current_test:
+                self._log(f"📋 Current test: {current_test.scenario_name}, status: {current_test.status.value if hasattr(current_test.status, 'value') else current_test.status}", "info")
         
         # Re-enable all UI controls after test completion
         self._set_ui_test_mode(False)
@@ -1754,7 +1776,15 @@ class MainWindow(QtWidgets.QMainWindow):
     def _reset_ui_to_initial_state(self):
         """Reset UI to initial state after test completion"""
         try:
-            self._log("Resetting UI to initial state", "info")
+            self._log("🔄 Resetting UI to initial state", "info")
+            
+            # Double-check that test is actually completed
+            if hasattr(self, 'test_scenario_engine'):
+                if self.test_scenario_engine.is_running():
+                    self._log("⚠️ Test still running, skipping UI reset", "warn")
+                    return
+                engine_status = self.test_scenario_engine.get_status()
+                self._log(f"📊 Engine status during reset: {engine_status.value}", "info")
             
             # Reset testStatus_LB to original "Ready" state
             if hasattr(self.ui, 'testStatus_LB') and self.ui.testStatus_LB:
