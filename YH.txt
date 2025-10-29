@@ -1,7 +1,9 @@
-현재 문제되고 있는 부분
-[test_scenarios/__init__.py]
-from .scenarios.screen_onoff.screen_onoff_scenario import ScreenOnOffScenario
-from .scenarios.browser_performance.browser_performance_scenario import BrowserPerformanceScenario
-
-[test_scenarios/scenarios/common]
-from .test_steps import CommonTestSteps
+                # Try Samsung devices position first (most common)
+                self.logger.info("  Trying Samsung Clear All position...")
+                result = self._run_adb_command(['shell', 'input', 'tap', '540', '1800'])
+                time.sleep(1.5)  # Wait to see if it worked
+                
+                # If first attempt might have failed, try alternative position once
+                self.logger.info("  Trying alternative Clear All position...")
+                self._run_adb_command(['shell', 'input', 'tap', '540', '1700'])
+                time.sleep(1.0)  # Shorter wait for second attempt
