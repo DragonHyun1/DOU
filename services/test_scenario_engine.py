@@ -498,6 +498,7 @@ class TestScenarioEngine(QObject):
             last_screen_change = 0
             screen_state = True  # True = ON, False = OFF
             data_point_count = 0
+            last_data_collection_time = -1  # Track last data collection time to prevent duplicates
             
             # Main test loop with precise timing
             while True:
@@ -517,18 +518,17 @@ class TestScenarioEngine(QObject):
                     if test_data_start <= elapsed_time <= test_data_end:
                         # Calculate data point index relative to test start
                         test_elapsed = elapsed_time - test_data_start
-                        next_data_time = data_point_count * data_interval
+                        target_data_time = int(test_elapsed)  # Integer seconds only (0, 1, 2, 3, ...)
                         
-                        if test_elapsed >= next_data_time:
-                            # Ensure we haven't already collected data for this second
-                            last_collected_time = (data_point_count - 1) * data_interval if data_point_count > 0 else -1
-                            if test_elapsed - last_collected_time >= 0.9:  # At least 0.9s gap to prevent duplicates
-                                # Use test-relative time (0.0s, 1.0s, 2.0s, ..., 9.0s)
-                                data_point = self._collect_daq_data_point(enabled_channels, measurement_mode, next_data_time)
-                                if data_point:
-                                    self.daq_data.append(data_point)
-                                    data_point_count += 1
-                                    self.log_callback(f"Test data point {data_point_count}: {next_data_time:.1f}s (total elapsed: {elapsed_time:.1f}s)", "debug")
+                        # Only collect if we haven't collected for this exact second yet
+                        if target_data_time != last_data_collection_time and target_data_time < 10:
+                            # Use exact integer time (0.0s, 1.0s, 2.0s, ..., 9.0s)
+                            data_point = self._collect_daq_data_point(enabled_channels, measurement_mode, float(target_data_time))
+                            if data_point:
+                                self.daq_data.append(data_point)
+                                data_point_count += 1
+                                last_data_collection_time = target_data_time  # Update last collection time
+                                self.log_callback(f"✅ Collected data point {data_point_count}: {target_data_time}.0s (elapsed: {elapsed_time:.1f}s)", "info")
                     
                     # 2. Screen control every 2 seconds (only during test period)
                     if test_data_start <= elapsed_time <= test_data_end:
@@ -551,7 +551,7 @@ class TestScenarioEngine(QObject):
                     
                     # 4. Process Qt events to keep UI responsive and sleep
                     self._process_qt_events()
-                    time.sleep(0.5)  # Increased from 0.1s to 0.5s to reduce unnecessary checks
+                    time.sleep(0.2)  # Check every 0.2s for responsive UI but prevent over-sampling
                     
                 except Exception as cycle_error:
                     self.log_callback(f"Error in test loop at {elapsed_time:.1f}s: {cycle_error}", "error")
