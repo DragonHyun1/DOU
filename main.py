@@ -1908,39 +1908,10 @@ class MainWindow(QtWidgets.QMainWindow):
             self._log(f"Error setting UI test mode: {e}", "error")
 
     def _save_test_results(self, success: bool, message: str):
-        """Save test results to file"""
-        try:
-            import os
-            results_dir = "test_results"
-            if not os.path.exists(results_dir):
-                os.makedirs(results_dir)
-            
-            timestamp = time.strftime("%Y%m%d_%H%M%S")
-            filename = f"{results_dir}/test_result_{timestamp}.txt"
-            
-            scenario_name = self.ui.testScenario_CB.currentText() if hasattr(self.ui, 'testScenario_CB') else "Unknown"
-            stabilization_v = self.test_config.get('stabilization_voltage', 0)
-            test_v = self.test_config.get('test_voltage', 0)
-            
-            with open(filename, 'w', encoding='utf-8') as f:
-                f.write(f"=== HVPM Auto Test Results ===\n")
-                f.write(f"Date: {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
-                f.write(f"Test Scenario: {scenario_name}\n")
-                f.write(f"Stabilization Voltage: {stabilization_v}V\n")
-                f.write(f"Test Voltage: {test_v}V\n")
-                f.write(f"Device: {self.selected_device or 'Unknown'}\n")
-                f.write(f"Result: {'PASSED' if success else 'FAILED'}\n")
-                f.write(f"Message: {message}\n")
-                f.write(f"\n=== Test Log ===\n")
-                
-                # Add test results from UI if available
-                if hasattr(self.ui, 'testResults_TE') and self.ui.testResults_TE:
-                    f.write(self.ui.testResults_TE.toPlainText())
-            
-            self._log(f"Test results saved to {filename}", "info")
-            
-        except Exception as e:
-            self._log(f"ERROR: Failed to save test results: {e}", "error")
+        """Save test results - txt file saving disabled (Excel only)"""
+        # Disabled: Results are now saved in Excel format by test_scenario_engine
+        # No more txt files cluttering the test_results folder
+        pass
     
     def _export_test_results(self):
         """Export detailed test results with measurement data"""
