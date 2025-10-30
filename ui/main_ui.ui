@@ -1133,7 +1133,7 @@ input keyevent KEYCODE_WAKEUP</string>
               <string>font-weight: bold; font-size: 12pt; color: #dcdcdc;</string>
              </property>
              <property name="text">
-              <string>Test Results</string>
+              <string>Test Progress</string>
              </property>
              <property name="alignment">
               <set>Qt::AlignCenter</set>

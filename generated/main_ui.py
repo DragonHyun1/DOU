@@ -676,7 +676,7 @@ class Ui_MainWindow(object):
 "              padding: 10px;\n"
 "            }"))
         self.testResultsLabel.setStyleSheet(_translate("MainWindow", "font-weight: bold; font-size: 12pt; color: #dcdcdc;"))
-        self.testResultsLabel.setText(_translate("MainWindow", "Test Results"))
+        self.testResultsLabel.setText(_translate("MainWindow", "Test Progress"))
         self.testResults_TE.setStyleSheet(_translate("MainWindow", "QTextEdit { \n"
 "                 background-color: #2a2a2a; \n"
 "                 border: 1px solid #555; \n"
