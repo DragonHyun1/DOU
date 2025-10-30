@@ -143,9 +143,6 @@ class MainWindow(QtWidgets.QMainWindow):
         # Apply responsive layout management
         self._apply_responsive_layout()
         
-        # Apply enhanced UI styling
-        self._apply_enhanced_ui_styling()
-        
         # Status bar 메시지
         self.ui.statusbar.showMessage("Ready - Connect devices to start monitoring and testing", 5000)
 
@@ -296,125 +293,6 @@ class MainWindow(QtWidgets.QMainWindow):
         for layout in layouts:
             if layout:
                 self.responsive_manager.apply_responsive_margins(layout)
-
-    def _apply_enhanced_ui_styling(self):
-        """Apply simple and clean UI styling with better layout"""
-        # Simple monitoring display frames - no borders, clean background
-        frames = ['currentVoltageFrame', 'currentCurrentFrame', 'powerFrame']
-        
-        for frame_name in frames:
-            if hasattr(self.ui, frame_name):
-                frame = getattr(self.ui, frame_name)
-                frame.setStyleSheet("""
-                    QFrame {
-                        background-color: #3a3a3a;
-                        border-radius: 6px;
-                        padding: 8px;
-                    }
-                    QLabel {
-                        color: #dcdcdc;
-                        background: transparent;
-                    }
-                """)
-        
-        # Clean display labels - moderate size and colors
-        if hasattr(self.ui, 'hvpmVolt_LB'):
-            self.ui.hvpmVolt_LB.setStyleSheet("""
-                QLabel {
-                    color: #FFD700;
-                    font-size: 16pt;
-                    font-weight: bold;
-                    background: transparent;
-                    padding: 4px;
-                }
-            """)
-        
-        if hasattr(self.ui, 'hvpmCurrent_LB'):
-            self.ui.hvpmCurrent_LB.setStyleSheet("""
-                QLabel {
-                    color: #ffa726;
-                    font-size: 16pt;
-                    font-weight: bold;
-                    background: transparent;
-                    padding: 4px;
-                }
-            """)
-        
-        if hasattr(self.ui, 'hvpmPower_LB'):
-            self.ui.hvpmPower_LB.setStyleSheet("""
-                QLabel {
-                    color: #66bb6a;
-                    font-size: 16pt;
-                    font-weight: bold;
-                    background: transparent;
-                    padding: 4px;
-                }
-            """)
-        
-        # Improve layout spacing and margins
-        if hasattr(self.ui, 'connectionGroupBox'):
-            self.ui.connectionGroupBox.setMaximumHeight(90)
-        
-        if hasattr(self.ui, 'mainVerticalLayout'):
-            self.ui.mainVerticalLayout.setSpacing(12)
-            self.ui.mainVerticalLayout.setContentsMargins(12, 12, 12, 12)
-        
-        if hasattr(self.ui, 'mainContentLayout'):
-            self.ui.mainContentLayout.setSpacing(12)
-        
-        # Improve control group box sizing to prevent text clipping
-        if hasattr(self.ui, 'controlGroupBox'):
-            self.ui.controlGroupBox.setMinimumWidth(360)
-        
-        if hasattr(self.ui, 'autoTestGroupBox'):
-            self.ui.autoTestGroupBox.setMinimumWidth(360)
-        
-        if hasattr(self.ui, 'niCurrentGroupBox'):
-            self.ui.niCurrentGroupBox.setMinimumWidth(360)
-        
-        # Set proper minimum sizes for frames to prevent text clipping
-        frame_widgets = [
-            'currentVoltageFrame', 'currentCurrentFrame', 'powerFrame',
-            'voltageInputFrame', 'testConfigFrame', 'niConnectionFrame'
-        ]
-        
-        for frame_name in frame_widgets:
-            if hasattr(self.ui, frame_name):
-                frame = getattr(self.ui, frame_name)
-                frame.setMinimumHeight(80)
-        
-        # Improve button sizing to prevent text clipping
-        buttons = [
-            'readVoltCurrent_PB', 'setVolt_PB', 'startMonitoring_PB',
-            'startAutoTest_PB', 'stopAutoTest_PB', 'multiChannelMonitor_PB'
-        ]
-        
-        for button_name in buttons:
-            if hasattr(self.ui, button_name):
-                button = getattr(self.ui, button_name)
-                button.setMinimumHeight(32)
-        
-        # Improve combo box sizing
-        combos = ['hvpm_CB', 'comport_CB', 'daqDevice_CB', 'testScenario_CB']
-        
-        for combo_name in combos:
-            if hasattr(self.ui, combo_name):
-                combo = getattr(self.ui, combo_name)
-                combo.setMinimumHeight(28)
-        
-        # Set proper word wrapping for labels to prevent clipping
-        label_titles = [
-            'currentVoltageTitle', 'currentCurrentTitle', 'powerTitle',
-            'setVoltageTitle', 'testScenarioLabel'
-        ]
-        
-        for label_name in label_titles:
-            if hasattr(self.ui, label_name):
-                label = getattr(self.ui, label_name)
-                label.setWordWrap(True)
-                label.setMinimumHeight(20)
-        
-        print("[UI] Simple and clean styling applied with improved layout")
 
     def _setup_nidaq_environment(self):
         """Setup NI-DAQmx environment paths"""
