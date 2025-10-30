@@ -53,30 +53,34 @@ class MultiChannelMonitorDialog(QtWidgets.QDialog):
         self.current_mode_rb = QtWidgets.QRadioButton("Current Mode")
         self.current_mode_rb.setChecked(True)  # Default to current mode
         
-        # Improve radio button visibility
+        # Improve radio button visibility for dark theme
         radio_style = """
             QRadioButton {
                 font-weight: bold;
-                color: #2c3e50;
-                spacing: 8px;
+                color: #ffffff;
+                spacing: 10px;
+                font-size: 13px;
             }
             QRadioButton::indicator {
-                width: 16px;
-                height: 16px;
+                width: 20px;
+                height: 20px;
+                border-radius: 10px;
             }
             QRadioButton::indicator:unchecked {
-                border: 2px solid #7f8c8d;
-                background-color: white;
-                border-radius: 8px;
+                border: 3px solid #7f8c8d;
+                background-color: #2b2b2b;
+            }
+            QRadioButton::indicator:unchecked:hover {
+                border: 3px solid #aaaaaa;
+                background-color: #3a3a3a;
             }
             QRadioButton::indicator:checked {
-                border: 2px solid #3498db;
-                background-color: #3498db;
-                border-radius: 8px;
+                border: 3px solid #42a5f5;
+                background-color: #42a5f5;
             }
             QRadioButton::indicator:checked:hover {
-                background-color: #2980b9;
-                border-color: #2980b9;
+                border: 3px solid #64b5f6;
+                background-color: #64b5f6;
             }
         """
         self.voltage_mode_rb.setStyleSheet(radio_style)
@@ -177,30 +181,35 @@ class MultiChannelMonitorDialog(QtWidgets.QDialog):
         enable_cb.setChecked(enabled)
         enable_cb.stateChanged.connect(lambda: self.update_channel_config(channel))
         
-        # Improve checkbox visibility
+        # Improve checkbox visibility for dark theme
         checkbox_style = """
             QCheckBox {
                 font-weight: bold;
-                color: #2c3e50;
-                spacing: 8px;
+                color: #ffffff;
+                spacing: 10px;
+                font-size: 13px;
             }
             QCheckBox::indicator {
-                width: 18px;
-                height: 18px;
+                width: 22px;
+                height: 22px;
+                border-radius: 4px;
             }
             QCheckBox::indicator:unchecked {
-                border: 2px solid #7f8c8d;
-                background-color: white;
-                border-radius: 3px;
+                border: 3px solid #7f8c8d;
+                background-color: #2b2b2b;
+            }
+            QCheckBox::indicator:unchecked:hover {
+                border: 3px solid #aaaaaa;
+                background-color: #3a3a3a;
             }
             QCheckBox::indicator:checked {
-                border: 2px solid #27ae60;
-                background-color: #27ae60;
-                border-radius: 3px;
+                border: 3px solid #66bb6a;
+                background-color: #66bb6a;
+                image: url(none);
             }
             QCheckBox::indicator:checked:hover {
-                background-color: #229954;
-                border-color: #229954;
+                border: 3px solid #81c784;
+                background-color: #81c784;
             }
         """
         enable_cb.setStyleSheet(checkbox_style)
