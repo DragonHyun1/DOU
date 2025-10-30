@@ -42,3 +42,8 @@ test_results/
 venv/
 env/
 ENV/
+
+# PyInstaller build files
+build/
+dist/
+*.spec.backup
