@@ -1,3 +1,8 @@
+현재 NI DAQ Control(niCurrentGroupBox)가 빨간색인지 초록색인지 Refresh 버튼으로만 업데이트 되고있는데
+Connect 버튼을 누르면 연결 되었을때도 초록색으로 업데이트 필요하고
+만약에 연결 안된다면 빨간색으로 유지같은 동작을 추가해야해
+Disconnect 버튼을 누르면 빨간색으로 변하는 것도 물론 있어야하고
+
 Waiting for screen test to start... (23s timeout remaining)
 Waiting for screen test to start... (23s timeout remaining)
 Waiting for screen test to start... (23s timeout remaining)
