@@ -933,6 +933,16 @@ class MainWindow(QtWidgets.QMainWindow):
             self.ni_service.disconnect_device()
             self.ui.daqConnect_PB.setText("Connect")
             self._log("NI DAQ disconnected", "info")
+            
+            # Update color to red after disconnect
+            if hasattr(self.ui, 'niCurrentGroupBox') and self.ui.niCurrentGroupBox:
+                self.ui.niCurrentGroupBox.setStyleSheet("""
+                    QGroupBox::title {
+                        color: #ff6b6b;
+                        font-weight: bold;
+                        font-size: 9pt;
+                    }
+                """)
         else:
             # Connect
             if not hasattr(self.ui, 'daqDevice_CB') or not hasattr(self.ui, 'daqChannel_CB'):
@@ -975,11 +985,29 @@ class MainWindow(QtWidgets.QMainWindow):
                     self._log(f"   Device: {clean_device}", "success")
                     self._log(f"   Channel: {channel}", "success")
                     self._log(f"   Voltage Range: ±{self.ni_service.voltage_range}V", "info")
+                    
+                    # Update color to green after successful connection
+                    if hasattr(self.ui, 'niCurrentGroupBox') and self.ui.niCurrentGroupBox:
+                        self.ui.niCurrentGroupBox.setStyleSheet("""
+                            QGroupBox::title {
+                                color: #4CAF50;
+                                font-weight: bold;
+                                font-size: 9pt;
+                            }
+                        """)
                 else:
                     self._log(f"ERROR: Failed to connect to {device}/{channel}", "error")
                     self._log("   Check device connections and drivers", "error")
-                    # 연결 실패 시에도 상태 업데이트 (버튼 색상 유지)
-                    self._update_ni_status()
+                    
+                    # Update color to red after failed connection
+                    if hasattr(self.ui, 'niCurrentGroupBox') and self.ui.niCurrentGroupBox:
+                        self.ui.niCurrentGroupBox.setStyleSheet("""
+                            QGroupBox::title {
+                                color: #ff6b6b;
+                                font-weight: bold;
+                                font-size: 9pt;
+                            }
+                        """)
             else:
                 if "No devices found" in device:
                     self._log("ERROR: No NI DAQ devices available", "error")
