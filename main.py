@@ -1167,29 +1167,13 @@ class MainWindow(QtWidgets.QMainWindow):
 
     # ---------- 로그 ----------
     def _log(self, msg: str, level: str = "info"):
-        """Enhanced logging with better formatting and stability - THREAD SAFE"""
-        try:
-            # Ensure this runs in the main thread
-            from PyQt6.QtCore import QThread
-            if QThread.currentThread() != self.thread():
-                # If called from worker thread, defer to main thread
-                from PyQt6.QtCore import QMetaObject, Qt
-                QMetaObject.invokeMethod(
-                    self,
-                    "_log_internal",
-                    Qt.ConnectionType.QueuedConnection,
-                    QtCore.Q_ARG(str, msg),
-                    QtCore.Q_ARG(str, level)
-                )
-                return
-            
-            self._log_internal(msg, level)
-            
-        except Exception as e:
-            print(f"Logging error: {e}")
-    
-    def _log_internal(self, msg: str, level: str = "info"):
-        """Internal logging method - must run in main thread"""
+        """
+        Enhanced logging with better formatting and stability
+        
+        THREAD SAFE: This method is connected via QueuedConnection,
+        so Qt automatically ensures it runs in the main thread.
+        No manual thread checking needed!
+        """
         try:
             timestamp = time.strftime("%H:%M:%S")
             formatted_msg = f"[{timestamp}] {msg}"
