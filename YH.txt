@@ -1,120 +1,292 @@
-프로그램은 도는 것 같은데 아래와 같이 로그가 뜨고 있어
-QMetaObject::invokeMethod: No such method MainWindow::_log_internal(QString,QString)
-Logging error: QMetaObject.invokeMethod() call failed
-
-그리고 아래 내용은 다른 AI가 조언해준건데 너 생각은 어때?
-
-[다른 AI 조언]
-QBasicTimer::start 에서 발생하는 “QBasicTimer can only be used with threads started with QThread” 오류는, 타이머를 QThread 로 생성되지 않은 스레드(예: std::thread, pthread, 혹은 QtConcurrent 로 만든 스레드)에서 사용하려 할 때 발생합니다.
-Qt 의 타이머는 스레드‑affinity 개념에 의존하는데, 타이머가 동작하려면 해당 스레드가 Qt 이벤트 루프를 가지고 있어야 하고, 그 스레드가 QThread 객체에 의해 관리돼야 합니다.
-
-왜 충돌이 일어나나요?
-원인	설명
-Qt 이벤트 루프가 없는 스레드	QBasicTimer는 내부적으로 QObject::event 를 통해 타이머 이벤트(QTimerEvent) 를 전달받습니다. 이벤트 루프가 없으면 타이머 이벤트를 전파할 수 없어 바로 qFatal 로 프로그램을 중단합니다.
-QThread 가 아닌 스레드	std::thread 등으로 만든 스레드에는 QThread 객체가 없으므로, Qt는 “이 스레드는 QThread 로 시작되지 않았다”는 경고를 내고 abort 합니다.
-타이머를 다른 스레드에 직접 생성	타이머 객체(또는 QObject 파생 객체)를 다른 스레드에 move 하지 않고 사용하면, 타이머는 현재 스레드(보통 메인 스레드)의 이벤트 루프에 연결됩니다. 그 상태에서 다른 스레드에서 start() 하면 동일 오류가 발생합니다.
-해결 방안
-1️⃣ QThread 기반 스레드 사용하기
-Qt‑전용 스레드를 만들고, 그 안에서 타이머를 사용합니다.
-
-cpp
-Copy code
-class Worker : public QObject {
-    Q_OBJECT
-public:
-    explicit Worker(QObject *parent = nullptr) : QObject(parent) {}
-
-public slots:
-    void doWork() {
-        // 여기서 QTimer / QBasicTimer 사용 가능
-        timer.start(1000, this);   // 1초마다 timeout()
-    }
-
-    void timeout() {
-        qDebug() << "tick in thread:" << QThread::currentThreadId();
-    }
-
-protected:
-    void timerEvent(QTimerEvent *e) override {
-        Q_UNUSED(e);
-        timeout();
-    }
-
-private:
-    QBasicTimer timer;
-};
-
-int main(int argc, char *argv[])
-{
-    QCoreApplication a(argc, argv);
-
-    QThread workerThread;
-    Worker  worker;
-
-    worker.moveToThread(&workerThread);
-    QObject::connect(&workerThread, &QThread::started, &worker, &Worker::doWork);
-    QObject::connect(&workerThread, &QThread::finished, &worker, &QObject::deleteLater);
-
-    workerThread.start();
-
-    return a.exec();
-}
-Worker 객체를 moveToThread() 로 QThread에 옮기면 스레드 친화성이 맞춰집니다.
-doWork() 가 workerThread 안에서 실행되므로 QBasicTimer 를 안전하게 start() 할 수 있습니다.
-2️⃣ QTimer 로 대체하기
-대부분의 경우 QBasicTimer 대신 QTimer 를 쓰는 것이 더 간편합니다.
-
-cpp
-Copy code
-class Worker : public QObject {
-    Q_OBJECT
-public:
-    explicit Worker(QObject *parent = nullptr) : QObject(parent) {
-        connect(&timer, &QTimer::timeout, this, &Worker::onTimeout);
-    }
-
-public slots:
-    void startTimer() {
-        timer.start(1000);   // 1초마다 onTimeout()
-    }
-
-private slots:
-    void onTimeout() {
-        qDebug() << "tick in thread:" << QThread::currentThreadId();
-    }
-
-private:
-    QTimer timer;
-};
-QTimer 역시 이벤트 루프가 있는 QThread 안에서만 동작하므로, moveToThread() 가 적용된 객체 안에서 사용하면 동일한 안전성을 가집니다.
-
-3️⃣ 타이머를 메인 스레드에 두고 작업 스레드에게 신호만 보내기
-타이머 자체는 메인(또는 별도 QThread)에 두고, 워커 스레드가 수행해야 할 작업을 시그널/슬롯 으로 전달합니다.
-
-cpp
-Copy code
-// 메인 스레드
-QTimer timer;
-QObject::connect(&timer, &QTimer::timeout, &worker, &Worker::doWork);
-timer.start(1000);
-타이머는 메인 스레드의 이벤트 루프를 이용하고, 워커는 Qt::QueuedConnection 을 통해 비동기적으로 작업을 수행합니다.
-4️⃣ QtConcurrent::run 사용 시 주의
-QtConcurrent::run 은 내부적으로 QThreadPool 을 사용하지만 그 스레드들은 QThread 객체와 직접 연결되지 않습니다. 따라서 그 안에서 QTimer/QBasicTimer 를 직접 쓰면 같은 오류가 발생합니다.
-
-해결: QtConcurrent::run 안에서는 타이머 대신 QEventLoop 와 QTimer::singleShot 을 이용하거나, 위에서 소개한 QThread 기반 워커 객체를 미리 만들어 놓고 run 은 그 워커에게 작업 명령만 전달하도록 설계합니다.
-
-디버깅 팁
-체크리스트	확인 방법
-현재 스레드가 QThread인가?	qDebug() << QThread::currentThread() == QThread::currentThread(); (값이 true면 QThread 내부)
-이벤트 루프가 실행 중인가?	QCoreApplication::instance()->thread() == QThread::currentThread() 로 메인 루프와 비교하거나, QThread::eventDispatcher() 가 nullptr 인지 확인
-타이머 객체가 올바른 스레드에 있는가?	QObject::thread() 로 타이머(또는 해당 QObject)의 스레드와 QThread::currentThread() 가 일치하는지 확인
-moveToThread() 호출을 잊었는가?	객체를 생성 직후 moveToThread() 호출 여부를 검토
-요약
-Qt 타이머는 반드시 QThread 기반 스레드와 그 스레드의 이벤트 루프 안에서만 사용할 수 있다.
-std::thread, QtConcurrent::run 등으로 만든 스레드에서는 타이머를 직접 쓰면 바로 abort 된다.
-해결 방법은
-QThread 를 직접 만들어 객체를 moveToThread() 시키고 그 안에서 타이머 사용,
-혹은 QTimer 로 교체하고 시그널/슬롯을 통해 작업을 전달,
-혹은 타이머를 메인/독립 스레드에 두고 작업 스레드에는 신호만 보내는 구조로 전환.
-디버깅 시 스레드 친화성(QObject::thread()), 이벤트 루프 존재 여부, moveToThread() 적용 여부를 확인한다.
-위 방법들을 적용해 보시고, 그래도 문제가 지속되면 crash dump 혹은 QThread::currentThreadId() 로 출력되는 스레드 ID를 함께 알려 주세요. 더 구체적인 코드 조각을 기반으로 추가 조언을 드릴 수 있습니다. 🚀
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+Waiting for screen test to start... (23s timeout remaining)
+✅ DAQ collected data point 4: 3.0s
+✅ DAQ collected data point 5: 4.0s
+📊 DAQ progress: 5/10 data points collected
+✅ DAQ collected data point 6: 5.0s
+DAQ monitoring: 6 points collected, 2/2 channels OK
+✅ DAQ collected data point 7: 6.0s
+✅ DAQ collected data point 8: 7.0s
+✅ DAQ collected data point 9: 8.0s
+✅ DAQ collected data point 10: 9.0s
+📊 DAQ progress: 10/10 data points collected
