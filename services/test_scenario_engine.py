@@ -1535,10 +1535,13 @@ class TestScenarioEngine(QObject):
                                     break
                             
                             # Wait for screen test to start
-                            if loop_count % 5 == 1:  # Log every 5 seconds while waiting
+                            if loop_count % 10 == 1:  # Log every 10 seconds while waiting
                                 timeout_time = getattr(self, '_monitoring_timeout', current_time + 25)  # Use dynamic timeout
                                 remaining_time = max(0, timeout_time - current_time)
                                 print(f"Waiting for screen test to start... ({remaining_time:.0f}s timeout remaining)")
+                            
+                            # Sleep before continue to avoid tight loop
+                            time.sleep(1.0)
                             continue
                         
                         # Log progress every 10 seconds
@@ -1651,6 +1654,9 @@ class TestScenarioEngine(QObject):
                             timeout_time = getattr(self, '_monitoring_timeout', current_time + 25)  # Use dynamic timeout
                             remaining = max(0, timeout_time - current_time)
                             print(f"Isolated: Waiting for screen test... ({remaining:.0f}s remaining)")
+                        
+                        # Sleep before continue to avoid tight loop
+                        time.sleep(1.0)
                         continue
                     
                     # Progress logging
