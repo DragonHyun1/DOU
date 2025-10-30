@@ -295,8 +295,8 @@ class TestScenarioEngine(QObject):
             time.sleep(sleep_time)
             remaining -= sleep_time
             
-            # Process Qt events to keep UI responsive
-            self._process_qt_events()
+            # Note: Do NOT process Qt events here as this runs in a worker thread
+            # Qt events can only be processed in the main thread
         
         return not self.stop_requested
     
