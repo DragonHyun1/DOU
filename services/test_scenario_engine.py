@@ -131,16 +131,9 @@ class TestScenarioEngine(QObject):
         """Thread-safe signal emission"""
         if QT_AVAILABLE:
             try:
-                if threading.current_thread() == threading.main_thread():
-                    # Main thread - direct emit
-                    signal.emit(*args)
-                else:
-                    # Background thread - use QMetaObject for thread safety
-                    QMetaObject.invokeMethod(
-                        self,
-                        lambda: signal.emit(*args),
-                        Qt.ConnectionType.QueuedConnection
-                    )
+                # Qt signals are thread-safe by default when using queued connections
+                # Just emit directly - Qt will handle the thread safety
+                signal.emit(*args)
             except Exception as e:
                 # Fallback to print if Qt signals fail
                 print(f"Signal emit error: {e}, args: {args}")
@@ -496,8 +489,7 @@ class TestScenarioEngine(QObject):
                     test_progress = int((elapsed_time / test_duration) * 100)
                     self._update_test_progress_only(test_progress, f"Screen Test: {elapsed_time:.1f}s / {test_duration}s")
                     
-                    # 4. Process Qt events to keep UI responsive and sleep
-                    self._process_qt_events()
+                    # 4. Sleep with stop check (no Qt events in worker thread)
                     time.sleep(0.2)  # Check every 0.2s for responsive UI but prevent over-sampling
                     
                 except Exception as cycle_error:
