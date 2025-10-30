@@ -15,4 +15,7 @@ pyqtgraph>=0.13.0
 # Development and Testing
 pytest>=7.0.0
 
+# Build and Deployment
+pyinstaller>=5.0.0
+
 # Note: NI-DAQmx drivers must be installed separately from National Instruments
