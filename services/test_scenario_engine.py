@@ -2159,11 +2159,96 @@ class TestScenarioEngine(QObject):
             # Create DataFrame with custom format
             df = pd.DataFrame(formatted_data)
             
-            # Export to Excel - simple format (no summary sheet to avoid formula errors)
-            df.to_excel(filename, sheet_name='Test_Results', index=False, engine='openpyxl')
+            # Export to Excel with xlsxwriter (includes Summary sheet)
+            if not XLSXWRITER_AVAILABLE:
+                self.log_callback("xlsxwriter not available, using simple export", "warn")
+                df.to_excel(filename, sheet_name='Test_Results', index=False, engine='openpyxl')
+                self.log_callback(f"Excel export completed (simple): {filename}", "info")
+                return True
             
-            self.log_callback(f"Excel export completed: {filename}", "info")
-            self.log_callback(f"Excel structure: Time column + {len(enabled_channels)} rail columns", "info")
+            # Use xlsxwriter for proper formatting and Summary sheet
+            with pd.ExcelWriter(filename, engine='xlsxwriter') as writer:
+                # Write main data
+                df.to_excel(writer, sheet_name='Test_Results', index=False)
+                
+                # Get workbook and worksheet for formatting
+                workbook = writer.book
+                worksheet = writer.sheets['Test_Results']
+                
+                # Format columns
+                time_format = workbook.add_format({'num_format': '0.0'})
+                value_format = workbook.add_format({'num_format': '0.000'})
+                
+                worksheet.set_column('A:A', 12, time_format)   # Time column
+                worksheet.set_column('B:Z', 15, value_format)  # Value columns
+                
+                # Create Summary sheet
+                summary_info = []
+                summary_values = []
+                
+                # Test information
+                summary_info.extend(['Test Name', 'Start Time', 'Data Points', 'Duration', 'Status'])
+                summary_values.extend([
+                    self.current_test.scenario_name if self.current_test else 'Unknown',
+                    self.current_test.start_time.strftime('%Y-%m-%d %H:%M:%S') if self.current_test else 'Unknown',
+                    len(self.daq_data),
+                    f"{len(self.daq_data)} seconds",
+                    self.status.value.upper()
+                ])
+                
+                summary_info.append('')
+                summary_values.append('')
+                
+                # Power Rail Statistics
+                summary_info.append('=== Power Rail Statistics ===')
+                summary_values.append('')
+                
+                for channel in enabled_channels:
+                    rail_name = rail_names.get(channel, f"Rail_{channel}")
+                    
+                    if measurement_mode == "current":
+                        channel_key = f'{channel}_current'
+                        unit = "A"
+                    else:
+                        channel_key = f'{channel}_voltage'
+                        unit = "V"
+                    
+                    column_name = f"{rail_name} ({unit})"
+                    if column_name in formatted_data:
+                        values = [v for v in formatted_data[column_name] if isinstance(v, (int, float))]
+                        
+                        if values:
+                            summary_info.append(f'{rail_name}:')
+                            summary_values.append('')
+                            
+                            avg_value = sum(values) / len(values)
+                            min_value = min(values)
+                            max_value = max(values)
+                            
+                            summary_info.extend(['  Average', '  Minimum', '  Maximum', '  Range'])
+                            summary_values.extend([
+                                f'{avg_value:.3f} {unit}',
+                                f'{min_value:.3f} {unit}',
+                                f'{max_value:.3f} {unit}',
+                                f'{max_value - min_value:.3f} {unit}'
+                            ])
+                    
+                    summary_info.append('')
+                    summary_values.append('')
+                
+                summary_df = pd.DataFrame({
+                    'Test Information': summary_info,
+                    'Value': summary_values
+                })
+                summary_df.to_excel(writer, sheet_name='Test_Summary', index=False)
+                
+                # Format summary sheet
+                summary_sheet = writer.sheets['Test_Summary']
+                summary_sheet.set_column('A:A', 35)
+                summary_sheet.set_column('B:B', 20)
+            
+            self.log_callback(f"Excel export completed with Summary: {filename}", "info")
+            self.log_callback(f"Excel structure: Test_Results + Test_Summary sheets", "info")
             return True
         except Exception as e:
             self.log_callback(f"Error exporting to Excel (basic): {e}", "error")
