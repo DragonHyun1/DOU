@@ -4,15 +4,44 @@
 
 ## 빠른 시작
 
-### 설치
-```bash
-pip install -r requirements.txt
-```
+### 일반 사용자 (실행 파일)
 
-### 실행
-```bash
-python main.py
-```
+1. **최신 릴리스 다운로드**
+   - Releases에서 `DoU_Auto_Test_Toolkit_vX.X.zip` 다운로드
+
+2. **필수 드라이버 설치**
+   - **NI-DAQmx**: [National Instruments](https://www.ni.com/en-us/support/downloads/drivers/download.ni-daqmx.html)에서 다운로드
+   - **ADB (선택)**: Android 기기 제어용
+
+3. **프로그램 실행**
+   - ZIP 파일 압축 해제
+   - `DoU_Auto_Test_Toolkit.exe` 더블클릭
+
+### 개발자
+
+1. **의존성 설치**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+2. **NI-DAQmx 드라이버 설치**
+   - [National Instruments](https://www.ni.com/en-us/support/downloads/drivers/download.ni-daqmx.html)에서 다운로드
+   - DAQ 기능 사용에 필수
+
+3. **프로그램 실행**
+   ```bash
+   python main.py
+   ```
+
+4. **실행 파일 빌드 (선택사항)**
+   ```bash
+   # Windows
+   build_exe.bat
+   
+   # Linux/Mac
+   ./build_exe.sh
+   ```
+   자세한 빌드 방법은 [BUILD_GUIDE.md](BUILD_GUIDE.md) 참고
 
 ## 주요 기능
 
