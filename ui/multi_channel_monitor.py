@@ -328,6 +328,19 @@ class MultiChannelMonitorDialog(QtWidgets.QDialog):
             return
         
         try:
+            # First, reset all channels to default state
+            for ch_idx in range(12):
+                channel = f"ai{ch_idx}"
+                if channel in self.channel_widgets:
+                    widgets = self.channel_widgets[channel]
+                    widgets['name_edit'].setText('-')
+                    widgets['target_spin'].setValue(0.0)
+                    widgets['shunt_spin'].setValue(0.0)
+                    widgets['enable_cb'].setChecked(False)
+                    widgets['voltage_display'].setText("----")
+                    widgets['current_display'].setText("----")
+                    self.update_channel_config(channel)
+            
             lines = text.split('\n')
             imported_count = 0
             
@@ -363,7 +376,7 @@ class MultiChannelMonitorDialog(QtWidgets.QDialog):
                         print(f"Error parsing line {i}: {line} - {e}")
                         continue
             
-            self.status_label.setText(f"Imported {imported_count} rail configurations")
+            self.status_label.setText(f"Imported {imported_count} rail configurations (previous data cleared)")
             self.paste_text.clear()
             
         except Exception as e:

@@ -143,6 +143,9 @@ class MainWindow(QtWidgets.QMainWindow):
         # Apply responsive layout management
         self._apply_responsive_layout()
         
+        # Apply enhanced UI styling
+        self._apply_enhanced_ui_styling()
+        
         # Status bar 메시지
         self.ui.statusbar.showMessage("Ready - Connect devices to start monitoring and testing", 5000)
 
@@ -293,6 +296,233 @@ class MainWindow(QtWidgets.QMainWindow):
         for layout in layouts:
             if layout:
                 self.responsive_manager.apply_responsive_margins(layout)
+
+    def _apply_enhanced_ui_styling(self):
+        """Apply enhanced visual styling and layout improvements to main window"""
+        # Enhanced Connection GroupBox styling
+        if hasattr(self.ui, 'connectionGroupBox'):
+            self.ui.connectionGroupBox.setStyleSheet("""
+                QGroupBox {
+                    font-weight: bold;
+                    font-size: 12pt;
+                    color: #4CAF50;
+                    border: 2px solid #555555;
+                    border-radius: 8px;
+                    margin-top: 12px;
+                    padding-top: 10px;
+                    background-color: #3a3a3a;
+                }
+                QGroupBox::title {
+                    subcontrol-origin: margin;
+                    left: 15px;
+                    padding: 0 8px 0 8px;
+                }
+            """)
+        
+        # Enhanced Control GroupBox styling
+        if hasattr(self.ui, 'controlGroupBox'):
+            self.ui.controlGroupBox.setStyleSheet("""
+                QGroupBox {
+                    font-weight: bold;
+                    font-size: 12pt;
+                    color: #42a5f5;
+                    border: 2px solid #555555;
+                    border-radius: 8px;
+                    margin-top: 12px;
+                    padding: 12px;
+                    background-color: #3a3a3a;
+                }
+                QGroupBox::title {
+                    subcontrol-origin: margin;
+                    left: 15px;
+                    padding: 0 8px 0 8px;
+                }
+            """)
+        
+        # Enhanced Auto Test GroupBox styling
+        if hasattr(self.ui, 'autoTestGroupBox'):
+            self.ui.autoTestGroupBox.setStyleSheet("""
+                QGroupBox {
+                    font-weight: bold;
+                    font-size: 12pt;
+                    color: #ffa726;
+                    border: 2px solid #555555;
+                    border-radius: 8px;
+                    margin-top: 12px;
+                    padding: 12px;
+                    background-color: #3a3a3a;
+                }
+                QGroupBox::title {
+                    subcontrol-origin: margin;
+                    left: 15px;
+                    padding: 0 8px 0 8px;
+                }
+            """)
+        
+        # Enhanced NI Current GroupBox styling
+        if hasattr(self.ui, 'niCurrentGroupBox'):
+            self.ui.niCurrentGroupBox.setStyleSheet("""
+                QGroupBox {
+                    font-weight: bold;
+                    font-size: 12pt;
+                    color: #66bb6a;
+                    border: 2px solid #555555;
+                    border-radius: 8px;
+                    margin-top: 12px;
+                    padding: 12px;
+                    background-color: #3a3a3a;
+                }
+                QGroupBox::title {
+                    subcontrol-origin: margin;
+                    left: 15px;
+                    padding: 0 8px 0 8px;
+                }
+            """)
+        
+        # Enhanced monitoring display frames
+        frames = [
+            ('currentVoltageFrame', '#42a5f5'),  # Blue for voltage
+            ('currentCurrentFrame', '#ffa726'),  # Orange for current
+            ('powerFrame', '#66bb6a'),           # Green for power
+        ]
+        
+        for frame_name, color in frames:
+            if hasattr(self.ui, frame_name):
+                frame = getattr(self.ui, frame_name)
+                frame.setStyleSheet(f"""
+                    QFrame {{
+                        background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                                                  stop:0 #4a4a4a, stop:1 #3a3a3a);
+                        border: 2px solid {color};
+                        border-radius: 10px;
+                        padding: 12px;
+                    }}
+                    QLabel {{
+                        color: #ffffff;
+                        background: transparent;
+                    }}
+                """)
+        
+        # Enhanced button styling with better visual feedback
+        button_styles = {
+            'daqConnect_PB': """
+                QPushButton {
+                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                                              stop:0 #2196F3, stop:1 #1976D2);
+                    color: white;
+                    font-weight: bold;
+                    border: 2px solid #1565C0;
+                    border-radius: 6px;
+                    padding: 6px 12px;
+                    font-size: 10pt;
+                }
+                QPushButton:hover {
+                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                                              stop:0 #42a5f5, stop:1 #2196F3);
+                    border: 2px solid #1976D2;
+                }
+                QPushButton:pressed {
+                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                                              stop:0 #1565C0, stop:1 #0D47A1);
+                }
+            """,
+            'port_PB': """
+                QPushButton {
+                    background-color: #4a4a4a;
+                    color: white;
+                    font-weight: bold;
+                    border: 2px solid #666666;
+                    border-radius: 6px;
+                    padding: 6px 12px;
+                    font-size: 10pt;
+                }
+                QPushButton:hover {
+                    background-color: #5a5a5a;
+                    border: 2px solid #888888;
+                }
+                QPushButton:pressed {
+                    background-color: #3a3a3a;
+                }
+            """,
+            'startMonitoring_PB': """
+                QPushButton {
+                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                                              stop:0 #66bb6a, stop:1 #43a047);
+                    color: white;
+                    font-weight: bold;
+                    border: 2px solid #2e7d32;
+                    border-radius: 6px;
+                    padding: 6px 12px;
+                    font-size: 10pt;
+                }
+                QPushButton:hover {
+                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                                              stop:0 #81c784, stop:1 #66bb6a);
+                }
+                QPushButton:pressed {
+                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                                              stop:0 #388e3c, stop:1 #2e7d32);
+                }
+            """,
+            'multiChannelMonitor_PB': """
+                QPushButton {
+                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                                              stop:0 #9c27b0, stop:1 #7b1fa2);
+                    color: white;
+                    font-weight: bold;
+                    border: 2px solid #6a1b9a;
+                    border-radius: 6px;
+                    padding: 8px 16px;
+                    font-size: 11pt;
+                }
+                QPushButton:hover {
+                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                                              stop:0 #ab47bc, stop:1 #9c27b0);
+                }
+                QPushButton:pressed {
+                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                                              stop:0 #6a1b9a, stop:1 #4a148c);
+                }
+            """
+        }
+        
+        for button_name, style in button_styles.items():
+            if hasattr(self.ui, button_name):
+                button = getattr(self.ui, button_name)
+                button.setStyleSheet(style)
+        
+        # Enhanced label styling for better readability
+        if hasattr(self.ui, 'hvpmVolt_LB'):
+            self.ui.hvpmVolt_LB.setStyleSheet("""
+                QLabel {
+                    color: #FFD700;
+                    font-size: 18pt;
+                    font-weight: bold;
+                    background: transparent;
+                }
+            """)
+        
+        if hasattr(self.ui, 'hvpmCurrent_LB'):
+            self.ui.hvpmCurrent_LB.setStyleSheet("""
+                QLabel {
+                    color: #FFA500;
+                    font-size: 18pt;
+                    font-weight: bold;
+                    background: transparent;
+                }
+            """)
+        
+        if hasattr(self.ui, 'hvpmPower_LB'):
+            self.ui.hvpmPower_LB.setStyleSheet("""
+                QLabel {
+                    color: #90EE90;
+                    font-size: 18pt;
+                    font-weight: bold;
+                    background: transparent;
+                }
+            """)
+        
+        print("[UI] Enhanced styling applied to main window")
 
     def _setup_nidaq_environment(self):
         """Setup NI-DAQmx environment paths"""
