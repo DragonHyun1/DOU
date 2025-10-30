@@ -7,7 +7,7 @@ from services.hvpm import HvpmService
 from services.auto_test import AutoTestService
 from services.test_scenario_engine import TestScenarioEngine
 from services.ni_daq import create_ni_service
-from services import theme
+from services import theme, adb
 from services.adaptive_ui import get_adaptive_ui
 from services.responsive_layout import get_responsive_manager
 from ui.test_settings_dialog import TestSettingsDialog
