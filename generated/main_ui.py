@@ -425,12 +425,6 @@ class Ui_MainWindow(object):
         self.menubar.setObjectName("menubar")
         self.menuFile = QtWidgets.QMenu(parent=self.menubar)
         self.menuFile.setObjectName("menuFile")
-        self.menuView = QtWidgets.QMenu(parent=self.menubar)
-        self.menuView.setObjectName("menuView")
-        self.menuTest = QtWidgets.QMenu(parent=self.menubar)
-        self.menuTest.setObjectName("menuTest")
-        self.menuHelp = QtWidgets.QMenu(parent=self.menubar)
-        self.menuHelp.setObjectName("menuHelp")
         MainWindow.setMenuBar(self.menubar)
         self.statusbar = QtWidgets.QStatusBar(parent=MainWindow)
         self.statusbar.setObjectName("statusbar")
@@ -452,15 +446,7 @@ class Ui_MainWindow(object):
         self.menuFile.addAction(self.actionExport_Data)
         self.menuFile.addSeparator()
         self.menuFile.addAction(self.actionExit)
-        self.menuView.addAction(self.actionToggle_Theme)
-        self.menuView.addAction(self.actionReset_Layout)
-        self.menuTest.addAction(self.actionQuick_Test)
-        self.menuTest.addAction(self.actionTest_Settings)
-        self.menuHelp.addAction(self.actionAbout)
         self.menubar.addAction(self.menuFile.menuAction())
-        self.menubar.addAction(self.menuView.menuAction())
-        self.menubar.addAction(self.menuTest.menuAction())
-        self.menubar.addAction(self.menuHelp.menuAction())
 
         self.retranslateUi(MainWindow)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
@@ -681,9 +667,6 @@ class Ui_MainWindow(object):
 "            font-size: 10pt;\n"
 "          }"))
         self.menuFile.setTitle(_translate("MainWindow", "File"))
-        self.menuView.setTitle(_translate("MainWindow", "View"))
-        self.menuTest.setTitle(_translate("MainWindow", "Test"))
-        self.menuHelp.setTitle(_translate("MainWindow", "DoU Help"))
         self.statusbar.setStyleSheet(_translate("MainWindow", "QStatusBar { \n"
 "      background-color: #3a3a3a; \n"
 "      color: #dcdcdc; \n"
