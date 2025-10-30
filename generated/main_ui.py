@@ -76,16 +76,6 @@ class Ui_MainWindow(object):
         self.daqDevice_CB.setStyleSheet("font-size: 8pt;")
         self.daqDevice_CB.setObjectName("daqDevice_CB")
         self.connectionLayout.addWidget(self.daqDevice_CB)
-        self.daqChannel_CB = QtWidgets.QComboBox(parent=self.connectionGroupBox)
-        self.daqChannel_CB.setMinimumSize(QtCore.QSize(25, 0))
-        self.daqChannel_CB.setMaximumSize(QtCore.QSize(25, 30))
-        self.daqChannel_CB.setStyleSheet("font-size: 8pt;")
-        self.daqChannel_CB.setObjectName("daqChannel_CB")
-        self.daqChannel_CB.addItem("")
-        self.daqChannel_CB.addItem("")
-        self.daqChannel_CB.addItem("")
-        self.daqChannel_CB.addItem("")
-        self.connectionLayout.addWidget(self.daqChannel_CB)
         self.daqConnect_PB = QtWidgets.QPushButton(parent=self.connectionGroupBox)
         self.daqConnect_PB.setMinimumSize(QtCore.QSize(70, 28))
         self.daqConnect_PB.setMaximumSize(QtCore.QSize(70, 32))
@@ -477,15 +467,11 @@ class Ui_MainWindow(object):
 
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
-        MainWindow.setWindowTitle(_translate("MainWindow", "HVPM Monitor - Power Measurement Tool with Auto Test"))
+        MainWindow.setWindowTitle(_translate("MainWindow", "DoU Auto Test Toolkit"))
         self.connectionGroupBox.setTitle(_translate("MainWindow", "Connection Settings"))
         self.PM_LB.setText(_translate("MainWindow", "Power Monitor:"))
         self.comport_LB.setText(_translate("MainWindow", "ADB Device:"))
         self.daqLabel.setText(_translate("MainWindow", "NI DAQ:"))
-        self.daqChannel_CB.setItemText(0, _translate("MainWindow", "ai0"))
-        self.daqChannel_CB.setItemText(1, _translate("MainWindow", "ai1"))
-        self.daqChannel_CB.setItemText(2, _translate("MainWindow", "ai2"))
-        self.daqChannel_CB.setItemText(3, _translate("MainWindow", "ai3"))
         self.daqConnect_PB.setStyleSheet(_translate("MainWindow", "QPushButton { \n"
 "            background-color: #2196F3; \n"
 "            color: white; \n"
@@ -697,7 +683,7 @@ class Ui_MainWindow(object):
         self.menuFile.setTitle(_translate("MainWindow", "File"))
         self.menuView.setTitle(_translate("MainWindow", "View"))
         self.menuTest.setTitle(_translate("MainWindow", "Test"))
-        self.menuHelp.setTitle(_translate("MainWindow", "Help"))
+        self.menuHelp.setTitle(_translate("MainWindow", "DoU Help"))
         self.statusbar.setStyleSheet(_translate("MainWindow", "QStatusBar { \n"
 "      background-color: #3a3a3a; \n"
 "      color: #dcdcdc; \n"

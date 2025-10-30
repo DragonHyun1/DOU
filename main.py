@@ -280,7 +280,6 @@ class MainWindow(QtWidgets.QMainWindow):
             getattr(self.ui, 'hvpm_CB', None),
             getattr(self.ui, 'comport_CB', None),
             getattr(self.ui, 'daqDevice_CB', None),
-            getattr(self.ui, 'daqChannel_CB', None),
             getattr(self.ui, 'testScenario_CB', None),
         ]
         self.responsive_manager.setup_responsive_combobox(*[c for c in combos if c])
@@ -605,8 +604,6 @@ class MainWindow(QtWidgets.QMainWindow):
         # NI DAQ tooltips (check if elements exist)
         if hasattr(self.ui, 'daqDevice_CB') and self.ui.daqDevice_CB:
             self.ui.daqDevice_CB.setToolTip("Select NI DAQ device")
-        if hasattr(self.ui, 'daqChannel_CB') and self.ui.daqChannel_CB:
-            self.ui.daqChannel_CB.setToolTip("Select analog input channel")
         if hasattr(self.ui, 'daqConnect_PB') and self.ui.daqConnect_PB:
             self.ui.daqConnect_PB.setToolTip("Connect/disconnect NI DAQ device")
         if hasattr(self.ui, 'niMonitor_PB') and self.ui.niMonitor_PB:
@@ -869,18 +866,8 @@ class MainWindow(QtWidgets.QMainWindow):
             self._log("ERROR: daqDevice_CB not found in UI", "error")
             return
             
-        if not hasattr(self.ui, 'daqChannel_CB') or self.ui.daqChannel_CB is None:
-            self._log("ERROR: daqChannel_CB not found in UI", "error")
-            return
-        
+        # DAQ channel is now fixed to ai0
         self._log("UI elements found, proceeding...", "info")
-        
-        # Clear and populate channels first
-        self.ui.daqChannel_CB.clear()
-        standard_channels = [f"ai{i}" for i in range(8)]
-        self.ui.daqChannel_CB.addItems(standard_channels)
-        self.ui.daqChannel_CB.setCurrentText("ai0")
-        self._log(f"Added {len(standard_channels)} channels", "info")
         
         # Clear devices and detect actual devices
         self.ui.daqDevice_CB.clear()
@@ -939,12 +926,12 @@ class MainWindow(QtWidgets.QMainWindow):
                 """)
         else:
             # Connect
-            if not hasattr(self.ui, 'daqDevice_CB') or not hasattr(self.ui, 'daqChannel_CB'):
+            if not hasattr(self.ui, 'daqDevice_CB'):
                 self._log("ERROR: NI DAQ UI elements not found", "error")
                 return
                 
             device = self.ui.daqDevice_CB.currentText().strip()
-            channel = self.ui.daqChannel_CB.currentText().strip()
+            channel = "ai0"  # Fixed to ai0
             
             self._log(f"Attempting NI DAQ connection...", "info")
             self._log(f"   Device: '{device}'", "info")
@@ -963,10 +950,6 @@ class MainWindow(QtWidgets.QMainWindow):
             if "Error:" in device or "not installed" in device:
                 self._log("ERROR: Device has error status", "error")
                 return
-            if not channel.startswith('ai'):
-                self._log(f"ERROR: Invalid channel format '{channel}' - should be 'ai0', 'ai1', etc.", "error")
-                return
-            
             if device and channel:
                 success = self.ni_service.connect_device(device, channel)
                 if success:
@@ -1894,7 +1877,7 @@ class MainWindow(QtWidgets.QMainWindow):
             
             # NI DAQ controls
             daq_controls = [
-                'daqDevice_CB', 'daqChannel_CB', 'refreshNI_PB',
+                'daqDevice_CB', 'refreshNI_PB',
                 'startDAQ_PB', 'stopDAQ_PB', 'measurementMode_CB'
             ]
             for control_name in daq_controls:
