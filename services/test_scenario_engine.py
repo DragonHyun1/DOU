@@ -2189,19 +2189,19 @@ class TestScenarioEngine(QObject):
                         'Start Time', 
                         'Data Points',
                         'Duration (s)',
-                        'Status'
+                        ''  # Empty row separator
                     ],
                     'Value': [
                         str(self.current_test.scenario_name) if self.current_test else 'Unknown',
                         str(self.current_test.start_time.strftime('%Y-%m-%d %H:%M:%S')) if self.current_test else 'Unknown',
                         int(len(self.daq_data)),
                         int(len(self.daq_data)),
-                        str(self.status.value.upper())
+                        ''  # Empty row separator
                     ]
                 }
                 
-                # Add rail statistics
-                for channel in enabled_channels:
+                # Add rail statistics with separation
+                for i, channel in enumerate(enabled_channels):
                     rail_name = rail_names.get(channel, f"Rail_{channel}")
                     
                     if measurement_mode == "current":
@@ -2221,19 +2221,27 @@ class TestScenarioEngine(QObject):
                             max_value = max(values)
                             range_value = max_value - min_value
                             
-                            # Add as separate rows with numbers only
+                            # Add rail header
+                            summary_data['Metric'].append(f'[{rail_name}]')
+                            summary_data['Value'].append('')
+                            
+                            # Add statistics
                             summary_data['Metric'].extend([
-                                f'{rail_name} Avg ({unit})',
-                                f'{rail_name} Min ({unit})',
-                                f'{rail_name} Max ({unit})',
-                                f'{rail_name} Range ({unit})'
+                                f'  Average ({unit})',
+                                f'  Minimum ({unit})',
+                                f'  Maximum ({unit})',
+                                f'  Range ({unit})'
                             ])
                             summary_data['Value'].extend([
-                                float(f'{avg_value:.6f}'),    # Store as float
-                                float(f'{min_value:.6f}'),    # Store as float
-                                float(f'{max_value:.6f}'),    # Store as float
-                                float(f'{range_value:.6f}')   # Store as float
+                                float(f'{avg_value:.6f}'),
+                                float(f'{min_value:.6f}'),
+                                float(f'{max_value:.6f}'),
+                                float(f'{range_value:.6f}')
                             ])
+                            
+                            # Add separator between rails
+                            summary_data['Metric'].append('')
+                            summary_data['Value'].append('')
                 
                 summary_df = pd.DataFrame(summary_data)
                 summary_df.to_excel(writer, sheet_name='Test_Summary', index=False)
