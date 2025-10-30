@@ -509,14 +509,18 @@ class TestScenarioEngine(QObject):
                     break
                 
                 try:
-                    # 1. Collect DAQ data at 1-second intervals (more precise timing)
+                    # 1. Collect DAQ data at exactly 1-second intervals (prevent duplicates)
                     next_data_time = data_point_count * data_interval
-                    if elapsed_time >= next_data_time and (elapsed_time - next_data_time) < 0.2:  # Within 200ms tolerance
-                        data_point = self._collect_daq_data_point(enabled_channels, measurement_mode, elapsed_time)
-                        if data_point:
-                            self.daq_data.append(data_point)
-                            data_point_count += 1
-                            self.log_callback(f"Data point {data_point_count}: {elapsed_time:.1f}s (target: {next_data_time:.1f}s)", "debug")
+                    if elapsed_time >= next_data_time:
+                        # Ensure we haven't already collected data for this second
+                        last_collected_time = (data_point_count - 1) * data_interval if data_point_count > 0 else -1
+                        if elapsed_time - last_collected_time >= 0.9:  # At least 0.9s gap to prevent duplicates
+                            # Use the target time instead of actual elapsed time for consistent intervals
+                            data_point = self._collect_daq_data_point(enabled_channels, measurement_mode, next_data_time)
+                            if data_point:
+                                self.daq_data.append(data_point)
+                                data_point_count += 1
+                                self.log_callback(f"Data point {data_point_count}: {next_data_time:.1f}s (actual: {elapsed_time:.1f}s)", "debug")
                     
                     # 2. Screen control every 2 seconds
                     screen_cycle_time = int(elapsed_time / screen_interval)
@@ -534,9 +538,9 @@ class TestScenarioEngine(QObject):
                     test_progress = int((elapsed_time / test_duration) * 100)
                     self._update_test_progress_only(test_progress, f"Screen Test: {elapsed_time:.1f}s / {test_duration}s")
                     
-                    # 4. Process Qt events to keep UI responsive and small sleep
+                    # 4. Process Qt events to keep UI responsive and sleep
                     self._process_qt_events()
-                    time.sleep(0.1)
+                    time.sleep(0.5)  # Increased from 0.1s to 0.5s to reduce unnecessary checks
                     
                 except Exception as cycle_error:
                     self.log_callback(f"Error in test loop at {elapsed_time:.1f}s: {cycle_error}", "error")
@@ -584,11 +588,12 @@ class TestScenarioEngine(QObject):
                     value = round(random.uniform(1.0, 5.0), 3)
                     channel_data[f"{channel}_voltage"] = value
             
-            # Create data point with precise timing
+            # Create data point with precise timing (ensure clean integer seconds)
+            clean_time = round(elapsed_time, 1)  # Round to 1 decimal place
             data_point = {
                 'timestamp': datetime.now(),
-                'time_elapsed': round(elapsed_time, 1),  # Round to 1 decimal place
-                'screen_test_time': round(elapsed_time, 1),
+                'time_elapsed': clean_time,
+                'screen_test_time': clean_time,
                 **channel_data
             }
             
