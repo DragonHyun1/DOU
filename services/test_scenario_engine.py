@@ -227,23 +227,29 @@ class TestScenarioEngine(QObject):
         self.status = TestStatus.INITIALIZING
         self.stop_requested = False
         
-        # Execute test in single thread (no separate thread needed)
+        # Execute test in separate thread for UI responsiveness
         self.log_callback(f"Starting test scenario: {scenario_name}", "info")
         
         try:
-            # Execute test directly in main thread
-            self._execute_test_unified(scenario)
+            # Start test in separate thread to prevent UI blocking
+            self.test_thread = threading.Thread(
+                target=self._execute_test_unified,
+                args=(scenario,),
+                daemon=True
+            )
+            self.test_thread.start()
             return True
         except Exception as e:
-            self.log_callback(f"Test execution failed: {e}", "error")
+            self.log_callback(f"Test execution failed to start: {e}", "error")
             self.status = TestStatus.FAILED
             return False
     
     def stop_test(self) -> bool:
-        """Stop current test execution (simplified for single thread)"""
+        """Stop current test execution"""
         if self.status == TestStatus.IDLE:
             return True
         
+        self.log_callback("Stopping test execution...", "info")
         self.stop_requested = True
         self.status = TestStatus.STOPPED
         
@@ -251,10 +257,17 @@ class TestScenarioEngine(QObject):
         if self.monitoring_active:
             self.monitoring_active = False
         
+        # Wait for test thread to finish
+        if hasattr(self, 'test_thread') and self.test_thread and self.test_thread.is_alive():
+            self.log_callback("Waiting for test thread to finish...", "info")
+            self.test_thread.join(timeout=3.0)
+            if self.test_thread.is_alive():
+                self.log_callback("WARNING: Test thread did not finish in time", "warn")
+        
         # Wait for monitoring thread to finish
         if hasattr(self, 'monitoring_thread') and self.monitoring_thread and self.monitoring_thread.is_alive():
             self.log_callback("Waiting for monitoring thread to finish...", "info")
-            self.monitoring_thread.join(timeout=5.0)
+            self.monitoring_thread.join(timeout=2.0)
             if self.monitoring_thread.is_alive():
                 self.log_callback("WARNING: Monitoring thread did not finish in time", "warn")
         
@@ -262,8 +275,30 @@ class TestScenarioEngine(QObject):
             self.current_test.end_time = datetime.now()
             self.current_test.status = TestStatus.STOPPED
         
-        self.log_callback("Test execution stop requested", "info")
+        self.log_callback("Test execution stopped", "info")
         return True
+    
+    def _interruptible_sleep(self, duration: float) -> bool:
+        """
+        Sleep for the given duration while checking for stop requests.
+        Returns True if completed normally, False if interrupted.
+        """
+        if duration <= 0:
+            return True
+        
+        # Sleep in small chunks to allow quick response to stop requests
+        chunk_size = 0.1  # Check every 100ms
+        remaining = duration
+        
+        while remaining > 0 and not self.stop_requested:
+            sleep_time = min(chunk_size, remaining)
+            time.sleep(sleep_time)
+            remaining -= sleep_time
+            
+            # Process Qt events to keep UI responsive
+            self._process_qt_events()
+        
+        return not self.stop_requested
     
     def _execute_test_unified(self, scenario: TestConfig):
         """Execute test scenario in single thread (unified approach)"""
@@ -313,10 +348,12 @@ class TestScenarioEngine(QObject):
                     self._emit_signal_safe(self.test_completed, False, f"Test failed at step: {step.name}")
                     return
                 
-                # Wait for step duration (simplified - no separate progress thread)
+                # Wait for step duration with interruptible sleep
                 if step.duration > 0:
                     self.log_callback(f"Waiting {step.duration}s for step completion", "info")
-                    time.sleep(step.duration)
+                    if not self._interruptible_sleep(step.duration):
+                        self.log_callback("Step duration interrupted by stop request", "info")
+                        break
             
             # Test completed successfully
             self.status = TestStatus.COMPLETED
@@ -2309,7 +2346,8 @@ class TestScenarioEngine(QObject):
                 return False
             
             # Wait a moment for DAQ to stabilize
-            time.sleep(1)
+            if not self._interruptible_sleep(1):
+                return False
             
             # Initialize screen test timing for DAQ data collection
             test_start_time = time.time()
@@ -2330,21 +2368,28 @@ class TestScenarioEngine(QObject):
             if not self.adb_service.turn_screen_on():
                 self.log_callback("Failed to turn screen on", "error")
             
-            time.sleep(0.5)
+            if not self._interruptible_sleep(0.5):
+                self._step_stop_daq_monitoring()
+                return False
             
             if not self.adb_service.open_phone_app():
                 self.log_callback("Failed to open Phone app", "error")
             
             # 5초 대기
             self.log_callback("Waiting 5 seconds in Phone app...", "info")
-            time.sleep(5)
+            if not self._interruptible_sleep(5):
+                self.log_callback("Phone app wait interrupted", "info")
+                self._step_stop_daq_monitoring()
+                return False
             
             # 5초: Back key 눌러서 홈 화면으로 이동
             self.log_callback("Step 2: Press back key to go to home screen", "info")
             if not self.adb_service.press_back_key():
                 self.log_callback("Failed to press back key", "error")
             
-            time.sleep(0.5)
+            if not self._interruptible_sleep(0.5):
+                self._step_stop_daq_monitoring()
+                return False
             
             # 홈 화면으로 확실히 이동
             if not self.adb_service.press_home_key():
@@ -2352,7 +2397,10 @@ class TestScenarioEngine(QObject):
             
             # 5초 더 대기 (총 10초)
             self.log_callback("Waiting 5 more seconds on home screen...", "info")
-            time.sleep(5)
+            if not self._interruptible_sleep(5):
+                self.log_callback("Home screen wait interrupted", "info")
+                self._step_stop_daq_monitoring()
+                return False
             
             self.log_callback("=== Phone App Test Sequence Completed ===", "info")
             
@@ -2361,7 +2409,8 @@ class TestScenarioEngine(QObject):
             self._step_stop_daq_monitoring()
             
             # Wait for DAQ to finish
-            time.sleep(2)
+            if not self._interruptible_sleep(2):
+                return False
             
             self.log_callback("Phone app test with DAQ monitoring completed", "info")
             return True
@@ -2403,21 +2452,25 @@ class TestScenarioEngine(QObject):
             if not self.adb_service.turn_screen_on():
                 self.log_callback("Failed to turn screen on", "error")
             
-            time.sleep(0.5)
+            if not self._interruptible_sleep(0.5):
+                return False
             
             if not self.adb_service.open_phone_app():
                 self.log_callback("Failed to open Phone app", "error")
             
             # 5초 대기
             self.log_callback("Waiting 5 seconds in Phone app...", "info")
-            time.sleep(5)
+            if not self._interruptible_sleep(5):
+                self.log_callback("Phone app wait interrupted", "info")
+                return False
             
             # 5초: Back key 눌러서 홈 화면으로 이동
             self.log_callback("Step 2: Press back key to go to home screen", "info")
             if not self.adb_service.press_back_key():
                 self.log_callback("Failed to press back key", "error")
             
-            time.sleep(0.5)
+            if not self._interruptible_sleep(0.5):
+                return False
             
             # 홈 화면으로 확실히 이동
             if not self.adb_service.press_home_key():
@@ -2425,12 +2478,15 @@ class TestScenarioEngine(QObject):
             
             # 5초 더 대기 (총 10초)
             self.log_callback("Waiting 5 more seconds on home screen...", "info")
-            time.sleep(5)
+            if not self._interruptible_sleep(5):
+                self.log_callback("Home screen wait interrupted", "info")
+                return False
             
             self.log_callback("=== Phone App Test Sequence Completed ===", "info")
             
             # Wait for DAQ to finish collecting data
-            time.sleep(2)
+            if not self._interruptible_sleep(2):
+                return False
             
             self.log_callback("Phone app test completed (DAQ still running)", "info")
             return True
@@ -2452,25 +2508,29 @@ class TestScenarioEngine(QObject):
             self.log_callback("Step 1: Turn screen ON", "info")
             if not self.adb_service.turn_screen_on():
                 self.log_callback("Failed to turn screen on", "error")
-            time.sleep(1)
+            if not self._interruptible_sleep(1):
+                return False
             
             # 2. Press Home button
             self.log_callback("Step 2: Press Home button", "info")
             if not self.adb_service.press_home_key():
                 self.log_callback("Failed to press home key", "error")
-            time.sleep(1)
+            if not self._interruptible_sleep(1):
+                return False
             
             # 3. Clear all recent apps
             self.log_callback("Step 3: Clear all recent apps", "info")
             if not self.adb_service.clear_recent_apps():
                 self.log_callback("Failed to clear recent apps", "error")
-            time.sleep(2)
+            if not self._interruptible_sleep(2):
+                return False
             
             # 4. Screen OFF
             self.log_callback("Step 4: Turn screen OFF", "info")
             if not self.adb_service.turn_screen_off():
                 self.log_callback("Failed to turn screen off", "error")
-            time.sleep(1)
+            if not self._interruptible_sleep(1):
+                return False
             
             self.log_callback("Init mode screen/app setup completed", "info")
             return True
@@ -2492,7 +2552,8 @@ class TestScenarioEngine(QObject):
             self.log_callback("Step 7: Turn screen ON (post-stabilization)", "info")
             if not self.adb_service.turn_screen_on():
                 self.log_callback("Failed to turn screen on", "error")
-            time.sleep(1)
+            if not self._interruptible_sleep(1):
+                return False
             
             # Start DAQ monitoring
             self.log_callback("Step 7.1: Starting DAQ monitoring", "info")
@@ -2501,7 +2562,9 @@ class TestScenarioEngine(QObject):
                 return False
             
             # Wait for DAQ to stabilize
-            time.sleep(1)
+            if not self._interruptible_sleep(1):
+                self._step_stop_daq_monitoring()
+                return False
             
             # Initialize screen test timing for DAQ data collection
             test_start_time = time.time()
@@ -2521,17 +2584,24 @@ class TestScenarioEngine(QObject):
             self.log_callback("0s: Opening Phone app", "info")
             if not self.adb_service.open_phone_app():
                 self.log_callback("Failed to open Phone app", "error")
-            time.sleep(0.5)
+            if not self._interruptible_sleep(0.5):
+                self._step_stop_daq_monitoring()
+                return False
             
             # 5초 대기 (Phone app에서)
             self.log_callback("Waiting 5 seconds in Phone app...", "info")
-            time.sleep(5)
+            if not self._interruptible_sleep(5):
+                self.log_callback("Phone app wait interrupted", "info")
+                self._step_stop_daq_monitoring()
+                return False
             
             # 5초: Back key로 홈 화면 이동
             self.log_callback("5s: Press back key to go to home screen", "info")
             if not self.adb_service.press_back_key():
                 self.log_callback("Failed to press back key", "error")
-            time.sleep(0.5)
+            if not self._interruptible_sleep(0.5):
+                self._step_stop_daq_monitoring()
+                return False
             
             # 홈 화면으로 확실히 이동
             if not self.adb_service.press_home_key():
@@ -2539,7 +2609,10 @@ class TestScenarioEngine(QObject):
             
             # 5초 더 대기 (총 10초)
             self.log_callback("Waiting 5 more seconds on home screen...", "info")
-            time.sleep(4.5)  # 0.5초는 이미 대기했으므로 4.5초만 더
+            if not self._interruptible_sleep(4.5):  # 0.5초는 이미 대기했으므로 4.5초만 더
+                self.log_callback("Home screen wait interrupted", "info")
+                self._step_stop_daq_monitoring()
+                return False
             
             self.log_callback("=== Phone App Test Completed (10s) ===", "info")
             
@@ -2548,7 +2621,8 @@ class TestScenarioEngine(QObject):
             self._step_stop_daq_monitoring()
             
             # Wait for DAQ to finish
-            time.sleep(2)
+            if not self._interruptible_sleep(2):
+                return False
             
             self.log_callback("Optimized Phone app test with DAQ completed", "info")
             return True
@@ -2598,25 +2672,29 @@ class TestScenarioEngine(QObject):
             self.log_callback("Step 1: Turn LCD ON", "info")
             if not self.adb_service.turn_screen_on():
                 self.log_callback("Failed to turn screen on", "error")
-            time.sleep(1)
+            if not self._interruptible_sleep(1):
+                return False
             
             # 2. Unlock screen
             self.log_callback("Step 2: Unlock screen", "info")
             if not self.adb_service.unlock_screen():
                 self.log_callback("Failed to unlock screen", "error")
-            time.sleep(1)
+            if not self._interruptible_sleep(1):
+                return False
             
             # 3. Press Home button
             self.log_callback("Step 3: Press Home button", "info")
             if not self.adb_service.press_home_key():
                 self.log_callback("Failed to press home key", "error")
-            time.sleep(1)
+            if not self._interruptible_sleep(1):
+                return False
             
             # 4. Clear all recent apps
             self.log_callback("Step 4: Clear all recent apps", "info")
             if not self.adb_service.clear_recent_apps():
                 self.log_callback("Failed to clear recent apps", "error")
-            time.sleep(2)
+            if not self._interruptible_sleep(2):
+                return False
             
             self.log_callback("Init mode LCD/unlock/clear setup completed", "info")
             return True
@@ -2789,14 +2867,16 @@ class TestScenarioEngine(QObject):
             if not self.adb_service.turn_screen_on():
                 self.log_callback("Failed to turn screen on", "error")
                 return False
-            time.sleep(1)
+            if not self._interruptible_sleep(1):
+                return False
             
             # Step 2: 스크린 잠금 해제 (unlock screen)
             self.log_callback("Step 2: Unlocking screen", "info")
             if not self.adb_service.unlock_screen():
                 self.log_callback("Failed to unlock screen", "error")
                 return False
-            time.sleep(1)
+            if not self._interruptible_sleep(1):
+                return False
             
             # Step 3: Home 버튼 클릭
             self.log_callback("Step 3: Pressing home button", "info")
@@ -2804,7 +2884,8 @@ class TestScenarioEngine(QObject):
             if result is None:
                 self.log_callback("Failed to press home button", "error")
                 return False
-            time.sleep(1)
+            if not self._interruptible_sleep(1):
+                return False
             
             # Step 4: App clear all 진행
             self.log_callback("Step 4: Clearing all apps", "info")
@@ -2832,7 +2913,9 @@ class TestScenarioEngine(QObject):
                 
                 progress = int((i + 1) / 10 * 100)
                 self.log_callback(f"Current stabilization: {i+1}/10 seconds ({progress}%)", "info")
-                time.sleep(1)
+                if not self._interruptible_sleep(1):
+                    self.log_callback("Current stabilization interrupted", "info")
+                    return False
             
             self.log_callback("Current stabilization completed", "info")
             return True
