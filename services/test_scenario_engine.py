@@ -484,8 +484,12 @@ class TestScenarioEngine(QObject):
             data_interval = 1.0   # 1 second intervals
             screen_interval = 2.0 # Screen changes every 2 seconds
             
+            # Define actual test data collection period (exclude setup/teardown)
+            test_data_start = 2.0  # Start collecting data after 2s setup
+            test_data_end = 12.0   # Stop collecting data at 12s (10s of actual test data)
+            
             self.log_callback("Starting screen on/off cycle with integrated DAQ monitoring", "info")
-            self.log_callback(f"Test duration: {test_duration}s, Data interval: {data_interval}s", "info")
+            self.log_callback(f"Test duration: {test_duration}s, Data collection: {test_data_start}s-{test_data_end}s", "info")
             
             # Start with screen on
             self.adb_service.turn_screen_on()
@@ -509,30 +513,37 @@ class TestScenarioEngine(QObject):
                     break
                 
                 try:
-                    # 1. Collect DAQ data at exactly 1-second intervals (prevent duplicates)
-                    next_data_time = data_point_count * data_interval
-                    if elapsed_time >= next_data_time:
-                        # Ensure we haven't already collected data for this second
-                        last_collected_time = (data_point_count - 1) * data_interval if data_point_count > 0 else -1
-                        if elapsed_time - last_collected_time >= 0.9:  # At least 0.9s gap to prevent duplicates
-                            # Use the target time instead of actual elapsed time for consistent intervals
-                            data_point = self._collect_daq_data_point(enabled_channels, measurement_mode, next_data_time)
-                            if data_point:
-                                self.daq_data.append(data_point)
-                                data_point_count += 1
-                                self.log_callback(f"Data point {data_point_count}: {next_data_time:.1f}s (actual: {elapsed_time:.1f}s)", "debug")
+                    # 1. Collect DAQ data ONLY during actual test period (exclude setup/teardown)
+                    if test_data_start <= elapsed_time <= test_data_end:
+                        # Calculate data point index relative to test start
+                        test_elapsed = elapsed_time - test_data_start
+                        next_data_time = data_point_count * data_interval
+                        
+                        if test_elapsed >= next_data_time:
+                            # Ensure we haven't already collected data for this second
+                            last_collected_time = (data_point_count - 1) * data_interval if data_point_count > 0 else -1
+                            if test_elapsed - last_collected_time >= 0.9:  # At least 0.9s gap to prevent duplicates
+                                # Use test-relative time (0.0s, 1.0s, 2.0s, ..., 9.0s)
+                                data_point = self._collect_daq_data_point(enabled_channels, measurement_mode, next_data_time)
+                                if data_point:
+                                    self.daq_data.append(data_point)
+                                    data_point_count += 1
+                                    self.log_callback(f"Test data point {data_point_count}: {next_data_time:.1f}s (total elapsed: {elapsed_time:.1f}s)", "debug")
                     
-                    # 2. Screen control every 2 seconds
-                    screen_cycle_time = int(elapsed_time / screen_interval)
-                    if screen_cycle_time > last_screen_change:
-                        screen_state = not screen_state
-                        if screen_state:
-                            self.adb_service.turn_screen_on()
-                            self.log_callback(f"Screen ON at {elapsed_time:.1f}s", "info")
-                        else:
-                            self.adb_service.turn_screen_off()
-                            self.log_callback(f"Screen OFF at {elapsed_time:.1f}s", "info")
-                        last_screen_change = screen_cycle_time
+                    # 2. Screen control every 2 seconds (only during test period)
+                    if test_data_start <= elapsed_time <= test_data_end:
+                        # Calculate screen cycle relative to test start
+                        test_elapsed = elapsed_time - test_data_start
+                        screen_cycle_time = int(test_elapsed / screen_interval)
+                        if screen_cycle_time > last_screen_change:
+                            screen_state = not screen_state
+                            if screen_state:
+                                self.adb_service.turn_screen_on()
+                                self.log_callback(f"Screen ON at test time {test_elapsed:.1f}s (total: {elapsed_time:.1f}s)", "info")
+                            else:
+                                self.adb_service.turn_screen_off()
+                                self.log_callback(f"Screen OFF at test time {test_elapsed:.1f}s (total: {elapsed_time:.1f}s)", "info")
+                            last_screen_change = screen_cycle_time
                     
                     # 3. Update progress (pure test progress only)
                     test_progress = int((elapsed_time / test_duration) * 100)
@@ -547,15 +558,11 @@ class TestScenarioEngine(QObject):
                     time.sleep(0.1)
                     continue
             
-            # Final data collection
-            final_elapsed = time.time() - start_time
-            final_data = self._collect_daq_data_point(enabled_channels, measurement_mode, final_elapsed)
-            if final_data:
-                self.daq_data.append(final_data)
-            
+            # Test completed - no final data collection (only test period data)
             self.monitoring_active = False
             data_count = len(self.daq_data)
-            self.log_callback(f"Unified screen test completed. Collected {data_count} data points", "info")
+            test_data_duration = test_data_end - test_data_start
+            self.log_callback(f"Unified screen test completed. Collected {data_count} data points over {test_data_duration}s test period", "info")
             
             # Final progress update
             self._update_progress_safe("Screen test completed, preparing export")
