@@ -1314,9 +1314,14 @@ class TestScenarioEngine(QObject):
             return False
     
     def _step_export_to_csv(self) -> bool:
-        """Export DAQ data to CSV (fast and simple)"""
+        """Export DAQ data to Excel (with scenario-based filename)"""
         try:
-            self.log_callback("Starting CSV export...", "info")
+            # Check if test was stopped - don't save if stopped
+            if self.stop_requested or self.status == TestStatus.STOPPED:
+                self.log_callback("Test was stopped - skipping data export", "info")
+                return True
+            
+            self.log_callback("Starting Excel export...", "info")
             
             # Check if we have data to export
             data_count = len(self.daq_data) if self.daq_data else 0
@@ -1340,7 +1345,10 @@ class TestScenarioEngine(QObject):
                 self.log_callback(f"Created directory: {results_dir}", "info")
             
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            excel_filename = f"{results_dir}/screen_onoff_test_{timestamp}.xlsx"
+            # Use scenario name for filename
+            scenario_name = self.current_test.scenario_name if self.current_test else "test"
+            safe_name = scenario_name.replace(" ", "_").replace("/", "_").replace("\\", "_")
+            excel_filename = f"{results_dir}/{safe_name}_{timestamp}.xlsx"
             
             self.log_callback(f"Exporting to Excel file: {excel_filename}", "info")
             
@@ -2117,12 +2125,12 @@ class TestScenarioEngine(QObject):
             # Create custom formatted data
             formatted_data = {}
             
-            # First column: Time (in seconds from screen test start)
-            formatted_data['Time'] = []
+            # First column: Time as NUMBER (fixes Excel corruption warning)
+            formatted_data['Time (s)'] = []
             for data_point in self.daq_data:
                 # Use screen_test_time if available, otherwise use time_elapsed
                 screen_time = data_point.get('screen_test_time', data_point.get('time_elapsed', 0.0))
-                formatted_data['Time'].append(f"{screen_time:.1f}s")  # 0.0s, 1.0s, 2.0s...
+                formatted_data['Time (s)'].append(round(screen_time, 1))  # Store as number, not string
             
             # Additional columns: Rail data based on measurement mode
             for channel in enabled_channels:
