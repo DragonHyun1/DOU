@@ -61,7 +61,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.test_scenario_engine = TestScenarioEngine(
             hvpm_service=self.hvpm_service,
             daq_service=self.ni_service,
-            log_callback=self._log
+            log_callback=None  # Use default signal-based logging (thread-safe)
         )
         
         # Connect test scenario engine signals
