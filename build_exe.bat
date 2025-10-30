@@ -7,20 +7,43 @@ echo DoU Auto Test Toolkit - Build Script
 echo ========================================
 echo.
 
-REM Check if Python is installed
+REM Check if Python is installed (try multiple methods)
 python --version >nul 2>&1
-if errorlevel 1 (
-    echo ERROR: Python is not installed or not in PATH
-    echo Please install Python 3.8 or higher
-    pause
-    exit /b 1
+if not errorlevel 1 (
+    set PYTHON_CMD=python
+    goto :python_found
 )
 
+py --version >nul 2>&1
+if not errorlevel 1 (
+    set PYTHON_CMD=py
+    goto :python_found
+)
+
+python3 --version >nul 2>&1
+if not errorlevel 1 (
+    set PYTHON_CMD=python3
+    goto :python_found
+)
+
+echo ERROR: Python is not installed or not in PATH
+echo Please install Python 3.8 or higher
+echo.
+echo If Python is already installed, try adding it to PATH or use:
+echo   - Windows: py launcher (usually pre-installed)
+echo   - Or add Python to system PATH
+pause
+exit /b 1
+
+:python_found
+echo Found Python: %PYTHON_CMD%
+%PYTHON_CMD% --version
+
 echo [1/5] Checking/Installing PyInstaller...
-pip show pyinstaller >nul 2>&1
+%PYTHON_CMD% -m pip show pyinstaller >nul 2>&1
 if errorlevel 1 (
     echo Installing PyInstaller...
-    pip install pyinstaller
+    %PYTHON_CMD% -m pip install pyinstaller
 ) else (
     echo PyInstaller is already installed
 )
@@ -32,7 +55,7 @@ if exist "dist" rmdir /s /q dist
 
 echo.
 echo [3/5] Building executable with PyInstaller...
-pyinstaller build_exe.spec --clean --noconfirm
+%PYTHON_CMD% -m PyInstaller build_exe.spec --clean --noconfirm
 
 if errorlevel 1 (
     echo.
