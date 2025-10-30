@@ -1,3 +1,10 @@
+프로그램은 도는 것 같은데 아래와 같이 로그가 뜨고 있어
+QMetaObject::invokeMethod: No such method MainWindow::_log_internal(QString,QString)
+Logging error: QMetaObject.invokeMethod() call failed
+
+그리고 아래 내용은 다른 AI가 조언해준건데 너 생각은 어때?
+
+[다른 AI 조언]
 QBasicTimer::start 에서 발생하는 “QBasicTimer can only be used with threads started with QThread” 오류는, 타이머를 QThread 로 생성되지 않은 스레드(예: std::thread, pthread, 혹은 QtConcurrent 로 만든 스레드)에서 사용하려 할 때 발생합니다.
 Qt 의 타이머는 스레드‑affinity 개념에 의존하는데, 타이머가 동작하려면 해당 스레드가 Qt 이벤트 루프를 가지고 있어야 하고, 그 스레드가 QThread 객체에 의해 관리돼야 합니다.
 
