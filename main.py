@@ -67,7 +67,9 @@ class MainWindow(QtWidgets.QMainWindow):
         # Connect test scenario engine signals
         self.test_scenario_engine.connect_progress_callback(self._on_auto_test_progress)
         self.test_scenario_engine.test_completed.connect(self._on_auto_test_completed)
-        self.test_scenario_engine.log_message.connect(self._log)
+        # Use QueuedConnection to ensure _log runs in main thread
+        from PyQt6.QtCore import Qt
+        self.test_scenario_engine.log_message.connect(self._log, Qt.ConnectionType.QueuedConnection)
         
         # 측정 모드 추적 (독립적 제어)
         self._hvpm_monitoring = False
@@ -1165,7 +1167,29 @@ class MainWindow(QtWidgets.QMainWindow):
 
     # ---------- 로그 ----------
     def _log(self, msg: str, level: str = "info"):
-        """Enhanced logging with better formatting and stability"""
+        """Enhanced logging with better formatting and stability - THREAD SAFE"""
+        try:
+            # Ensure this runs in the main thread
+            from PyQt6.QtCore import QThread
+            if QThread.currentThread() != self.thread():
+                # If called from worker thread, defer to main thread
+                from PyQt6.QtCore import QMetaObject, Qt
+                QMetaObject.invokeMethod(
+                    self,
+                    "_log_internal",
+                    Qt.ConnectionType.QueuedConnection,
+                    QtCore.Q_ARG(str, msg),
+                    QtCore.Q_ARG(str, level)
+                )
+                return
+            
+            self._log_internal(msg, level)
+            
+        except Exception as e:
+            print(f"Logging error: {e}")
+    
+    def _log_internal(self, msg: str, level: str = "info"):
+        """Internal logging method - must run in main thread"""
         try:
             timestamp = time.strftime("%H:%M:%S")
             formatted_msg = f"[{timestamp}] {msg}"
