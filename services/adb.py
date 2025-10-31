@@ -1,4 +1,11 @@
 import subprocess
+import sys
+
+# Windows에서 cmd 창 안 뜨게 하는 설정
+if sys.platform == 'win32':
+    SUBPROCESS_FLAGS = subprocess.CREATE_NO_WINDOW
+else:
+    SUBPROCESS_FLAGS = 0
 
 
 def list_devices():
@@ -7,7 +14,7 @@ def list_devices():
     정상적으로 연결된 디바이스만 추출.
     """
     try:
-        result = subprocess.check_output(["adb", "devices"], text=True)
+        result = subprocess.check_output(["adb", "devices"], text=True, creationflags=SUBPROCESS_FLAGS)
         lines = result.strip().splitlines()[1:]  # 첫 줄은 'List of devices attached'
         devices = [line.split()[0] for line in lines if "\tdevice" in line]
         return devices if devices else []
@@ -25,7 +32,8 @@ def run_command(device: str, command: str) -> str:
     try:
         result = subprocess.check_output(
             ["adb", "-s", device] + command.split(),
-            text=True
+            text=True,
+            creationflags=SUBPROCESS_FLAGS
         )
         return result.strip()
     except subprocess.CalledProcessError as e:
@@ -41,7 +49,8 @@ def install_apk(device: str, apk_path: str) -> str:
     try:
         result = subprocess.check_output(
             ["adb", "-s", device, "install", "-r", apk_path],
-            text=True
+            text=True,
+            creationflags=SUBPROCESS_FLAGS
         )
         return result.strip()
     except Exception as e:
@@ -56,7 +65,7 @@ def reboot_device(device: str, mode: str = None) -> str:
         cmd = ["adb", "-s", device, "reboot"]
         if mode:
             cmd.append(mode)
-        result = subprocess.check_output(cmd, text=True)
+        result = subprocess.check_output(cmd, text=True, creationflags=SUBPROCESS_FLAGS)
         return result.strip() if result else f"Rebooting {device}..."
     except Exception as e:
         return f"ADB reboot error: {e}"
@@ -69,7 +78,8 @@ def push_file(device: str, local_path: str, remote_path: str) -> str:
     try:
         result = subprocess.check_output(
             ["adb", "-s", device, "push", local_path, remote_path],
-            text=True
+            text=True,
+            creationflags=SUBPROCESS_FLAGS
         )
         return result.strip()
     except Exception as e:
@@ -83,7 +93,8 @@ def pull_file(device: str, remote_path: str, local_path: str) -> str:
     try:
         result = subprocess.check_output(
             ["adb", "-s", device, "pull", remote_path, local_path],
-            text=True
+            text=True,
+            creationflags=SUBPROCESS_FLAGS
         )
         return result.strip()
     except Exception as e:
@@ -101,7 +112,8 @@ def execute_command(device: str, command: str) -> bool:
         subprocess.check_output(
             ["adb", "-s", device, "shell", command],
             text=True,
-            stderr=subprocess.STDOUT
+            stderr=subprocess.STDOUT,
+            creationflags=SUBPROCESS_FLAGS
         )
         return True
     except subprocess.CalledProcessError:
@@ -120,7 +132,8 @@ def execute_command_with_output(device: str, command: str) -> tuple[bool, str]:
         result = subprocess.check_output(
             ["adb", "-s", device, "shell", command],
             text=True,
-            stderr=subprocess.STDOUT
+            stderr=subprocess.STDOUT,
+            creationflags=SUBPROCESS_FLAGS
         )
         return True, result.strip()
     except subprocess.CalledProcessError as e:

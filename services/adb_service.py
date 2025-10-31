@@ -7,7 +7,14 @@ Handles ADB commands for test automation
 import subprocess
 import time
 import logging
+import sys
 from typing import Optional, List, Dict, Any
+
+# Windows에서 cmd 창 안 뜨게 하는 설정
+if sys.platform == 'win32':
+    SUBPROCESS_FLAGS = subprocess.CREATE_NO_WINDOW
+else:
+    SUBPROCESS_FLAGS = 0
 
 
 class ADBService:
@@ -22,7 +29,8 @@ class ADBService:
         """Get list of connected ADB devices"""
         try:
             result = subprocess.run(['adb', 'devices'], 
-                                  capture_output=True, text=True, timeout=10)
+                                  capture_output=True, text=True, timeout=10,
+                                  creationflags=SUBPROCESS_FLAGS)
             if result.returncode != 0:
                 self.logger.error(f"ADB devices command failed: {result.stderr}")
                 return []
@@ -103,7 +111,8 @@ class ADBService:
             self.logger.debug(f"Executing ADB command: {' '.join(full_command)}")
             
             result = subprocess.run(full_command, 
-                                  capture_output=True, text=True, timeout=timeout)
+                                  capture_output=True, text=True, timeout=timeout,
+                                  creationflags=SUBPROCESS_FLAGS)
             
             if result.returncode != 0:
                 self.logger.error(f"ADB command failed: {' '.join(full_command)}")
