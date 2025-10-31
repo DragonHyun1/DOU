@@ -52,9 +52,12 @@
 
 ## 문서
 
-상세한 사용법과 시스템 구조는 다음 문서를 참고하세요:
+### 📚 사용자 가이드
+- **[⚡ 빠른 시작 가이드](docs/QUICK_START.md)** - 5분 안에 시작하기
+- **[📖 사용자 매뉴얼](docs/USER_MANUAL.md)** - 전체 기능 설명 및 문제 해결
 
-- **[📘 프로젝트 개요](docs/PROJECT_OVERVIEW.md)** - 전체 시스템 소개 및 사용법
+### 🔧 개발 문서
+- **[📘 프로젝트 개요](docs/PROJECT_OVERVIEW.md)** - 전체 시스템 소개 및 아키텍처
 - [자동 테스트 가이드](docs/AUTO_TEST_GUIDE.md)
 - [UI 개선 사항](docs/UI_IMPROVEMENTS.md)
 - [테스트 시나리오 구조](docs/TEST_SCENARIOS_ORGANIZATION_SUMMARY.md)
@@ -86,6 +89,18 @@
 
 (라이센스 정보)
 
+## 배포 버전 사용
+
+실행 파일 버전을 사용하는 경우:
+
+```
+1. dist/DoU_Auto_Test_Toolkit/ 폴더 열기
+2. DoU_Auto_Test_Toolkit.exe 실행
+3. 빠른 시작 가이드 참조
+```
+
+> 📘 **처음 사용하시나요?** [빠른 시작 가이드](docs/QUICK_START.md)를 확인하세요!
+
 ---
 
-**최종 업데이트**: 2025-10-30
+**최종 업데이트**: 2025-10-31
