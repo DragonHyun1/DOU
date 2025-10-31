@@ -39,22 +39,33 @@ exit /b 1
 echo Found Python: %PYTHON_CMD%
 %PYTHON_CMD% --version
 
-echo [1/5] Checking/Installing PyInstaller...
-%PYTHON_CMD% -m pip show pyinstaller >nul 2>&1
+echo [1/6] Installing required dependencies...
+echo Installing packages from requirements.txt...
+%PYTHON_CMD% -m pip install -r requirements.txt
 if errorlevel 1 (
-    echo Installing PyInstaller...
-    %PYTHON_CMD% -m pip install pyinstaller
-) else (
-    echo PyInstaller is already installed
+    echo WARNING: Some packages failed to install
+    echo The build will continue, but may fail if critical packages are missing
 )
 
 echo.
-echo [2/5] Cleaning previous build...
+echo [2/6] Verifying PyInstaller installation...
+%PYTHON_CMD% -m pip show pyinstaller >nul 2>&1
+if errorlevel 1 (
+    echo ERROR: PyInstaller is not installed!
+    echo Please check the requirements.txt installation
+    pause
+    exit /b 1
+) else (
+    echo PyInstaller is ready
+)
+
+echo.
+echo [3/6] Cleaning previous build...
 if exist "build" rmdir /s /q build
 if exist "dist" rmdir /s /q dist
 
 echo.
-echo [3/5] Building executable with PyInstaller...
+echo [4/6] Building executable with PyInstaller...
 %PYTHON_CMD% -m PyInstaller build_exe.spec --clean --noconfirm
 
 if errorlevel 1 (
@@ -65,7 +76,7 @@ if errorlevel 1 (
 )
 
 echo.
-echo [4/5] Verifying build...
+echo [5/6] Verifying build...
 if exist "dist\DoU_Auto_Test_Toolkit\DoU_Auto_Test_Toolkit.exe" (
     echo Build successful!
     echo.
@@ -77,7 +88,7 @@ if exist "dist\DoU_Auto_Test_Toolkit\DoU_Auto_Test_Toolkit.exe" (
 )
 
 echo.
-echo [5/5] Creating README for distribution...
+echo [6/6] Creating README for distribution...
 (
 echo DoU Auto Test Toolkit - Standalone Application
 echo ================================================

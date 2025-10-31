@@ -18,4 +18,7 @@ pytest>=7.0.0
 # Build and Deployment
 pyinstaller>=5.0.0
 
+# Hardware SDK
+monsoon  # Monsoon Power Monitor SDK
+
 # Note: NI-DAQmx drivers must be installed separately from National Instruments
