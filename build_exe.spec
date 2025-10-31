@@ -18,6 +18,12 @@ hiddenimports = [
     'pandas',
     'openpyxl',
     'xlsxwriter',
+    # Monsoon Power Monitor SDK
+    'Monsoon',
+    'Monsoon.HVPM',
+    'Monsoon.sampleEngine',
+    'MSPM',
+    # Services
     'services',
     'services.adaptive_ui',
     'services.adb_service',

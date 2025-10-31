@@ -86,6 +86,10 @@ echo REQUIREMENTS:
 echo - NI-DAQmx drivers must be installed separately
 echo   Download from: https://www.ni.com/en-us/support/downloads/drivers/download.ni-daqmx.html
 echo.
+echo - Monsoon Power Monitor SDK (if using HVPM device)
+echo   Download from: https://www.msoon.com/downloads
+echo   Install the SDK to include Python library support
+echo.
 echo - ADB (Android Debug Bridge) for Android device control
 echo   Usually included with Android SDK Platform Tools
 echo.
