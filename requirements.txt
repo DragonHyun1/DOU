@@ -15,8 +15,4 @@ pyqtgraph>=0.13.0
 # Development and Testing
 pytest>=7.0.0
 
-# Monsoon Power Monitor SDK
-# Note: Install Monsoon HVPM SDK from https://www.msoon.com/downloads
-# The package name may vary: MSPM, Monsoon.HVPM, or manual installation required
-
 # Note: NI-DAQmx drivers must be installed separately from National Instruments
