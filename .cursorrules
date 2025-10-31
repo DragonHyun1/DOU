@@ -1,0 +1,10 @@
+# Cursor Rules
+
+## File Modification Rules
+
+### Protected Files
+- **YH.txt**: This is a personal file used by the user. DO NOT modify, edit, or delete this file under any circumstances.
+
+## General Guidelines
+- Always respect protected files and directories
+- When making changes, avoid touching personal configuration files
