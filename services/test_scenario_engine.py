@@ -1483,12 +1483,12 @@ class TestScenarioEngine(QObject):
                                     data_collection_start_time = current_time
                                     print(f"Data collection started at screen test time: {screen_test_elapsed:.1f}s")
                                 
-                                # Calculate sample-based time (starts at 0.000 and increments by 0.001)
+                                # Calculate sample-based time (starts at 0 and increments by 1ms)
                                 current_sample_count = len(self.daq_data) if hasattr(self, 'daq_data') else 0
-                                sample_time = current_sample_count * 0.001  # 0.000, 0.001, 0.002, ...
+                                sample_time_ms = current_sample_count  # 0, 1, 2, 3, ... (in ms)
                                 
-                                # Only collect data during test period (0-10 seconds)
-                                if sample_time < 10.0:
+                                # Only collect data during test period (0-10000 ms = 10 seconds)
+                                if sample_time_ms < 10000:
                                     # Collect EVERY loop iteration (1ms interval = 10,000 samples in 10s)
                                     
                                     # Validate channel_data before adding
@@ -1499,13 +1499,21 @@ class TestScenarioEngine(QObject):
                                     if current_sample_count % 1000 == 0 and current_sample_count > 0:
                                         all_zero = all(v == 0.0 for v in channel_data.values() if isinstance(v, (int, float)))
                                         if all_zero:
-                                            print(f"WARNING: All channel values are 0 at {sample_time:.3f}s")
+                                            print(f"WARNING: All channel values are 0 at {sample_time_ms}ms")
+                                    
+                                    # Convert current from A to mA (multiply by 1000)
+                                    channel_data_mA = {}
+                                    for key, value in channel_data.items():
+                                        if '_current' in key:
+                                            channel_data_mA[key] = value * 1000  # A ? mA
+                                        else:
+                                            channel_data_mA[key] = value
                                     
                                     data_point = {
                                         'timestamp': datetime.now(),
-                                        'time_elapsed': sample_time,  # Exact: 0.000, 0.001, 0.002, ...
-                                        'screen_test_time': sample_time,  # Same as elapsed time
-                                        **channel_data
+                                        'time_elapsed': sample_time_ms,  # Integer ms: 0, 1, 2, 3, ...
+                                        'screen_test_time': sample_time_ms,  # Same as elapsed time
+                                        **channel_data_mA
                                     }
                                     
                                     # Thread-safe data append
@@ -1514,12 +1522,12 @@ class TestScenarioEngine(QObject):
                                         
                                         # Log progress every 1000 samples (=1 second)
                                         if len(self.daq_data) % 1000 == 0:
-                                            # Show first 2 channels only in log
-                                            channel_preview = ', '.join([f"{k}={v:.6f}" for k, v in list(channel_data.items())[:2]])
-                                            print(f"DAQ: {len(self.daq_data)} samples, {sample_time:.3f}s [{channel_preview}...]")
-                                elif sample_time >= 10.0:
+                                            # Show first 2 channels only in log (in mA)
+                                            channel_preview = ', '.join([f"{k}={v:.3f}mA" for k, v in list(channel_data_mA.items())[:2]])
+                                            print(f"DAQ: {len(self.daq_data)} samples, {sample_time_ms}ms [{channel_preview}...]")
+                                elif sample_time_ms >= 10000:
                                     # Stop collecting data after 10 seconds (10,000 samples)
-                                    print(f"Data collection completed ({len(self.daq_data)} samples, {sample_time:.1f}s), stopping monitoring")
+                                    print(f"Data collection completed ({len(self.daq_data)} samples, {sample_time_ms}ms), stopping monitoring")
                                     self.monitoring_active = False
                                     break
                             else:
@@ -1539,11 +1547,11 @@ class TestScenarioEngine(QObject):
                                     data_collection_start_time = current_time
                                     print("Fallback: Starting data collection without screen test signal")
                                 
-                                # Calculate sample-based time (starts at 0.000 and increments by 0.001)
+                                # Calculate sample-based time (starts at 0 and increments by 1ms)
                                 current_sample_count = len(self.daq_data) if hasattr(self, 'daq_data') else 0
-                                sample_time = current_sample_count * 0.001  # 0.000, 0.001, 0.002, ...
+                                sample_time_ms = current_sample_count  # 0, 1, 2, 3, ... (in ms)
                                 
-                                if sample_time < 10.0:  # Only collect for 10 seconds
+                                if sample_time_ms < 10000:  # Only collect for 10 seconds (10,000ms)
                                     # Collect EVERY loop iteration (1ms interval = 10,000 samples in 10s)
                                     
                                     # Validate channel_data before adding
@@ -1554,13 +1562,21 @@ class TestScenarioEngine(QObject):
                                     if current_sample_count % 1000 == 0 and current_sample_count > 0:
                                         all_zero = all(v == 0.0 for v in channel_data.values() if isinstance(v, (int, float)))
                                         if all_zero:
-                                            print(f"WARNING: All channel values are 0 at {sample_time:.3f}s (fallback)")
+                                            print(f"WARNING: All channel values are 0 at {sample_time_ms}ms (fallback)")
+                                    
+                                    # Convert current from A to mA (multiply by 1000)
+                                    channel_data_mA = {}
+                                    for key, value in channel_data.items():
+                                        if '_current' in key:
+                                            channel_data_mA[key] = value * 1000  # A ? mA
+                                        else:
+                                            channel_data_mA[key] = value
                                     
                                     data_point = {
                                         'timestamp': datetime.now(),
-                                        'time_elapsed': sample_time,  # Exact: 0.000, 0.001, 0.002, ...
-                                        'screen_test_time': sample_time,  # Fallback timing
-                                        **channel_data
+                                        'time_elapsed': sample_time_ms,  # Integer ms: 0, 1, 2, 3, ...
+                                        'screen_test_time': sample_time_ms,  # Fallback timing
+                                        **channel_data_mA
                                     }
                                     
                                     # Thread-safe data append
@@ -1569,12 +1585,12 @@ class TestScenarioEngine(QObject):
                                         
                                         # Log progress every 1000 samples (=1 second)
                                         if len(self.daq_data) % 1000 == 0:
-                                            # Show first 2 channels only in log
-                                            channel_preview = ', '.join([f"{k}={v:.6f}" for k, v in list(channel_data.items())[:2]])
-                                            print(f"Fallback: {len(self.daq_data)} samples, {sample_time:.3f}s [{channel_preview}...]")
+                                            # Show first 2 channels only in log (in mA)
+                                            channel_preview = ', '.join([f"{k}={v:.3f}mA" for k, v in list(channel_data_mA.items())[:2]])
+                                            print(f"Fallback: {len(self.daq_data)} samples, {sample_time_ms}ms [{channel_preview}...]")
                                 else:
                                     # Stop fallback collection after 10 seconds (10,000 samples)
-                                    print(f"Fallback data collection completed ({len(self.daq_data)} samples, {sample_time:.1f}s)")
+                                    print(f"Fallback data collection completed ({len(self.daq_data)} samples, {sample_time_ms}ms)")
                                     self.monitoring_active = False
                                     break
                             
@@ -1768,7 +1784,7 @@ class TestScenarioEngine(QObject):
                 
                 if measurement_mode == "current":
                     original_key = f"{channel}_current"
-                    new_key = f"{rail_name}_Current(A)"
+                    new_key = f"{rail_name}_Current(mA)"  # Changed to mA
                 else:
                     original_key = f"{channel}_voltage"
                     new_key = f"{rail_name}_Voltage(V)"
@@ -1853,7 +1869,7 @@ class TestScenarioEngine(QObject):
                 
                 if measurement_mode == "current":
                     original_key = f"{channel}_current"
-                    new_key = f"{rail_name}_Current(A)"
+                    new_key = f"{rail_name}_Current(mA)"  # Changed to mA
                 else:
                     original_key = f"{channel}_voltage"
                     new_key = f"{rail_name}_Voltage(V)"
@@ -2113,7 +2129,7 @@ class TestScenarioEngine(QObject):
                 
                 if measurement_mode == "current":
                     channel_key = f'{channel}_current'
-                    unit = "A"
+                    unit = "mA"  # Changed to milliAmperes
                     unit_name = "Current"
                 else:
                     channel_key = f'{channel}_voltage'
@@ -2191,19 +2207,19 @@ class TestScenarioEngine(QObject):
             # Create custom formatted data
             formatted_data = {}
             
-            # First column: Time as NUMBER (fixes Excel corruption warning)
-            formatted_data['Time (s)'] = []
+            # First column: Time in ms as INTEGER (0, 1, 2, 3, ...)
+            formatted_data['Time (ms)'] = []
             for data_point in self.daq_data:
-                # Use screen_test_time if available, otherwise use time_elapsed
-                screen_time = data_point.get('screen_test_time', data_point.get('time_elapsed', 0.0))
-                formatted_data['Time (s)'].append(round(screen_time, 1))  # Store as number, not string
+                # Use time_elapsed which is already in ms (integer)
+                time_ms = data_point.get('time_elapsed', 0)
+                formatted_data['Time (ms)'].append(int(time_ms))  # Store as integer ms
             
             # Additional columns: Rail data based on measurement mode
             for channel in enabled_channels:
                 rail_name = rail_names.get(channel, f"Rail_{channel}")
                 
                 if measurement_mode == "current":
-                    column_name = f"{rail_name} (A)"  # Current in Amperes
+                    column_name = f"{rail_name} (mA)"  # Current in milliAmperes
                     data_key = f"{channel}_current"
                 else:
                     column_name = f"{rail_name} (V)"  # Voltage in Volts
@@ -2213,6 +2229,7 @@ class TestScenarioEngine(QObject):
                 
                 for data_point in self.daq_data:
                     value = data_point.get(data_key, 0.0)
+                    # Note: value is already in mA from data collection
                     formatted_data[column_name].append(value)
             
             # Create DataFrame with custom format
@@ -2265,7 +2282,7 @@ class TestScenarioEngine(QObject):
                     
                     if measurement_mode == "current":
                         channel_key = f'{channel}_current'
-                        unit = "A"
+                        unit = "mA"  # Changed to milliAmperes
                     else:
                         channel_key = f'{channel}_voltage'
                         unit = "V"
