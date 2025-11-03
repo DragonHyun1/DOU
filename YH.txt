@@ -1,5 +1,14 @@
-Traceback (most recent call last):
-  File "main.py", line 6, in <module>
-  File "pyimod02_importers.py", line 457, in exec_module
-  File "services\hvpm.py", line 4, in <module>
-ModuleNotFoundError: No module named 'Monsoon'
+[16:19:13] Step 3/12: init_flight_mode
+[16:19:14] Flight mode enabled
+[16:19:14] Waiting 2.0s for step completion
+[16:19:16] Step 4/12: init_wifi_2g
+[16:19:16] === Connecting to 2.4GHz WiFi ===
+[16:19:16] Enabling WiFi...
+[16:19:19] Connecting to 2.4GHz network...
+[16:19:20] WiFi status: mWifiInfo SSID: <unknown ssid>, BSSID: <none>, MAC: 02:00:00:00:00:00, IP: null, Security type: -1, ...
+[16:19:20] 2.4GHz WiFi connection completed
+[16:19:20] Waiting 8.0s for step completion
+[16:19:28] Step 5/12: init_bluetooth
+[16:19:28] === Enabling Bluetooth ===
+[16:19:31] Bluetooth enabled successfully
+[16:19:31] Waiting 3.0s for step completion
