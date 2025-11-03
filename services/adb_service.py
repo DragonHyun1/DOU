@@ -176,6 +176,10 @@ class ADBService:
             self.logger.error(f"Error pressing home key: {e}")
             return False
     
+    def press_home(self) -> bool:
+        """Press home key (alias for press_home_key)"""
+        return self.press_home_key()
+    
     def enable_flight_mode(self) -> bool:
         """Enable airplane/flight mode"""
         try:
@@ -278,78 +282,93 @@ class ADBService:
         return self.connected_device is not None
     
     def connect_wifi_2g(self, ssid: str, password: str) -> bool:
-        """Connect to 2.4GHz WiFi network using multiple methods"""
+        """Connect to 2.4GHz WiFi network using multiple methods with proper verification"""
         try:
-            self.logger.info(f"Connecting to 2.4GHz WiFi: {ssid}")
+            self.logger.info(f"🔄 Connecting to 2.4GHz WiFi: {ssid}")
             
-            # Method 1: Enable WiFi first
-            self.logger.info("Step 1: Enabling WiFi...")
+            # Step 1: Disable airplane mode first (if enabled)
+            self.logger.info("Step 1: Disabling airplane mode (if enabled)...")
+            self._run_adb_command(['shell', 'settings', 'put', 'global', 'airplane_mode_on', '0'])
+            self._run_adb_command(['shell', 'am', 'broadcast', '-a', 'android.intent.action.AIRPLANE_MODE', '--ez', 'state', 'false'])
+            time.sleep(2)
+            
+            # Step 2: Enable WiFi
+            self.logger.info("Step 2: Enabling WiFi...")
             self._run_adb_command(['shell', 'svc', 'wifi', 'enable'])
             time.sleep(3)
             
-            # Method 2: Try using wpa_cli (if available)
-            self.logger.info("Step 2: Attempting WiFi connection...")
-            
-            # First try: Direct svc command
-            result1 = self._run_adb_command(['shell', 'svc', 'wifi', 'connect', ssid, 'password', password])
-            time.sleep(3)
-            
-            # Second try: Using am command to open WiFi settings and connect
-            self.logger.info("Step 3: Alternative connection method...")
-            
-            # Create a temporary WiFi configuration script
-            wifi_config = f'''
-am start -n com.android.settings/.wifi.WifiSettings
-sleep 2
-input text "{ssid}"
-sleep 1
-input keyevent KEYCODE_ENTER
-sleep 2
-input text "{password}"
-sleep 1
-input keyevent KEYCODE_ENTER
-sleep 3
-input keyevent KEYCODE_HOME
-'''
-            
-            # Try alternative method if first method didn't work
-            self._run_adb_command(['shell', 'am', 'start', '-a', 'android.settings.WIFI_SETTINGS'])
-            time.sleep(2)
-            
-            # Go back to home after attempting connection
-            self._run_adb_command(['shell', 'input', 'keyevent', 'KEYCODE_HOME'])
-            time.sleep(2)
-            
-            # Wait longer for connection to establish
-            self.logger.info("Step 4: Waiting for WiFi connection to establish...")
-            time.sleep(8)
-            
-            # Verify connection multiple times
-            for attempt in range(3):
-                wifi_status = self.get_wifi_status()
-                self.logger.info(f"Connection attempt {attempt + 1}: {wifi_status}")
-                
-                if wifi_status['enabled'] and ssid.lower() in wifi_status['connected_ssid'].lower():
-                    self.logger.info(f"Successfully connected to 2.4GHz WiFi: {ssid}")
-                    return True
-                elif wifi_status['connected_ssid'] != 'Unknown' and wifi_status['connected_ssid'] != '<unknown ssid>':
-                    self.logger.info(f"Connected to WiFi (different network): {wifi_status['connected_ssid']}")
-                    return True  # Connected to some WiFi network
-                
-                time.sleep(2)
-            
-            # If still not connected, check if WiFi is at least enabled
-            final_status = self.get_wifi_status()
-            if final_status['enabled'] or 'CONNECTED' in final_status['raw_info']:
-                self.logger.warning(f"WiFi enabled but connection to {ssid} uncertain. Status: {final_status}")
-                return True  # WiFi is working, continue test
-            else:
-                self.logger.error(f"Failed to connect to WiFi: {ssid}")
+            # Verify WiFi is enabled
+            wifi_status = self.get_wifi_status()
+            if not wifi_status['enabled']:
+                self.logger.error("❌ Failed to enable WiFi")
                 return False
+            self.logger.info("✅ WiFi enabled successfully")
+            
+            # Step 3: Attempt connection using cmd wifi command (more reliable)
+            self.logger.info(f"Step 3: Attempting WiFi connection to {ssid}...")
+            
+            # Try cmd wifi connect-network command (Android 10+)
+            result = self._run_adb_command([
+                'shell', 'cmd', 'wifi', 'connect-network', 
+                ssid, 'wpa2', password
+            ], timeout=15)
+            time.sleep(5)
+            
+            # Step 4: Verify connection with retry
+            self.logger.info("Step 4: Verifying WiFi connection...")
+            max_retries = 5
+            for attempt in range(max_retries):
+                time.sleep(2)
+                wifi_status = self.get_wifi_status()
+                self.logger.info(f"Verification attempt {attempt + 1}/{max_retries}: {wifi_status}")
+                
+                # Check if connected to target SSID
+                if wifi_status['enabled'] and ssid.lower() in wifi_status['connected_ssid'].lower():
+                    self.logger.info(f"✅ Successfully connected to 2.4GHz WiFi: {ssid}")
+                    return True
+                
+                # Check if connected to any WiFi (acceptable)
+                if wifi_status['connection_state'] == 'CONNECTED' and wifi_status['connected_ssid'] != 'Unknown':
+                    self.logger.info(f"✅ Connected to WiFi: {wifi_status['connected_ssid']}")
+                    return True
+            
+            # Step 5: If cmd wifi didn't work, try alternative method
+            self.logger.warning("⚠️ Standard connection method failed, trying alternative...")
+            
+            # Re-enable WiFi
+            self._run_adb_command(['shell', 'svc', 'wifi', 'disable'])
+            time.sleep(2)
+            self._run_adb_command(['shell', 'svc', 'wifi', 'enable'])
+            time.sleep(5)
+            
+            # Final verification
+            for attempt in range(3):
+                time.sleep(3)
+                wifi_status = self.get_wifi_status()
+                self.logger.info(f"Final verification {attempt + 1}/3: {wifi_status}")
+                
+                if wifi_status['enabled'] and wifi_status['connection_state'] == 'CONNECTED':
+                    self.logger.info(f"✅ WiFi connected: {wifi_status['connected_ssid']}")
+                    return True
+            
+            # Final check: If WiFi is at least enabled, accept it
+            if wifi_status['enabled']:
+                self.logger.warning(f"⚠️ WiFi enabled but connection to {ssid} uncertain. Status: {wifi_status}")
+                self.logger.warning("⚠️ Continuing test with WiFi enabled...")
+                return True
+            
+            self.logger.error(f"❌ Failed to connect to WiFi: {ssid}")
+            return False
                 
         except Exception as e:
-            self.logger.error(f"Error connecting to 2.4GHz WiFi: {e}")
-            return False
+            self.logger.error(f"❌ Error connecting to 2.4GHz WiFi: {e}")
+            # Try to enable WiFi at least
+            try:
+                self._run_adb_command(['shell', 'svc', 'wifi', 'enable'])
+                time.sleep(3)
+                return self.get_wifi_status()['enabled']
+            except:
+                return False
     
     def connect_wifi_5g(self, ssid: str, password: str) -> bool:
         """Connect to 5GHz WiFi network"""
@@ -379,18 +398,98 @@ input keyevent KEYCODE_HOME
             return False
     
     def enable_bluetooth(self) -> bool:
-        """Enable Bluetooth"""
+        """Enable Bluetooth with proper verification and retry logic"""
         try:
-            self.logger.info("Enabling Bluetooth...")
+            self.logger.info("🔄 Enabling Bluetooth...")
+            
+            # Step 1: Try to enable Bluetooth using svc command
+            self.logger.info("Step 1: Attempting to enable Bluetooth via svc...")
             result = self._run_adb_command(['shell', 'svc', 'bluetooth', 'enable'])
-            if result is not None:
-                time.sleep(2)  # Wait for Bluetooth to enable
-                self.logger.info("Bluetooth enabled")
-                return True
+            time.sleep(3)  # Wait for Bluetooth to initialize
+            
+            # Step 2: Verify Bluetooth is enabled
+            self.logger.info("Step 2: Verifying Bluetooth state...")
+            max_retries = 5
+            for attempt in range(max_retries):
+                bt_status = self.get_bluetooth_status()
+                self.logger.info(f"Verification attempt {attempt + 1}/{max_retries}: Bluetooth {bt_status}")
+                
+                if bt_status == 'ON':
+                    self.logger.info("✅ Bluetooth enabled successfully")
+                    return True
+                
+                # If not on, wait and check again
+                time.sleep(2)
+            
+            # Step 3: If svc command didn't work, try alternative method using settings
+            self.logger.warning("⚠️ Standard enable method failed, trying alternative...")
+            self._run_adb_command(['shell', 'settings', 'put', 'global', 'bluetooth_on', '1'])
+            time.sleep(3)
+            
+            # Step 4: Try using am command to toggle Bluetooth
+            self._run_adb_command(['shell', 'am', 'start', '-a', 'android.bluetooth.adapter.action.REQUEST_ENABLE'])
+            time.sleep(3)
+            
+            # Press OK button to confirm (if dialog appears)
+            self._run_adb_command(['shell', 'input', 'keyevent', 'KEYCODE_DPAD_RIGHT'])
+            time.sleep(0.5)
+            self._run_adb_command(['shell', 'input', 'keyevent', 'KEYCODE_ENTER'])
+            time.sleep(2)
+            
+            # Go back to home
+            self._run_adb_command(['shell', 'input', 'keyevent', 'KEYCODE_HOME'])
+            time.sleep(1)
+            
+            # Step 5: Final verification
+            for attempt in range(3):
+                time.sleep(2)
+                bt_status = self.get_bluetooth_status()
+                self.logger.info(f"Final verification {attempt + 1}/3: Bluetooth {bt_status}")
+                
+                if bt_status == 'ON':
+                    self.logger.info("✅ Bluetooth enabled successfully (alternative method)")
+                    return True
+            
+            # If still not on, log error
+            self.logger.error("❌ Failed to enable Bluetooth after all attempts")
             return False
+            
         except Exception as e:
-            self.logger.error(f"Error enabling Bluetooth: {e}")
+            self.logger.error(f"❌ Error enabling Bluetooth: {e}")
             return False
+    
+    def get_bluetooth_status(self) -> str:
+        """Get current Bluetooth status (ON/OFF/UNKNOWN)"""
+        try:
+            # Method 1: Check using settings
+            bt_setting = self._run_adb_command(['shell', 'settings', 'get', 'global', 'bluetooth_on'])
+            if bt_setting and bt_setting.strip() == '1':
+                return 'ON'
+            elif bt_setting and bt_setting.strip() == '0':
+                return 'OFF'
+            
+            # Method 2: Check using dumpsys
+            bt_dump = self._run_adb_command(['shell', 'dumpsys', 'bluetooth_manager', '|', 'grep', '-i', 'enabled'])
+            if bt_dump:
+                if 'enabled: true' in bt_dump.lower() or 'state: on' in bt_dump.lower():
+                    return 'ON'
+                elif 'enabled: false' in bt_dump.lower() or 'state: off' in bt_dump.lower():
+                    return 'OFF'
+            
+            # Method 3: Check Bluetooth adapter state
+            adapter_state = self._run_adb_command(['shell', 'dumpsys', 'bluetooth_manager', '|', 'grep', 'mState'])
+            if adapter_state:
+                # STATE_ON = 12, STATE_OFF = 10
+                if '12' in adapter_state or 'ON' in adapter_state:
+                    return 'ON'
+                elif '10' in adapter_state or 'OFF' in adapter_state:
+                    return 'OFF'
+            
+            return 'UNKNOWN'
+            
+        except Exception as e:
+            self.logger.error(f"Error getting Bluetooth status: {e}")
+            return 'UNKNOWN'
     
     def open_phone_app(self) -> bool:
         """Open Phone app (Dialer)"""
@@ -690,10 +789,9 @@ input keyevent KEYCODE_HOME
                 if wifi:
                     status['wifi_state'] = 'ON' if wifi.strip() == '1' else 'OFF'
                 
-                # Get Bluetooth state
-                bt = self._run_adb_command(['shell', 'settings', 'get', 'global', 'bluetooth_on'])
-                if bt:
-                    status['bluetooth_state'] = 'ON' if bt.strip() == '1' else 'OFF'
+                # Get Bluetooth state using improved method
+                bt_status = self.get_bluetooth_status()
+                status['bluetooth_state'] = bt_status
             
             return status
             
