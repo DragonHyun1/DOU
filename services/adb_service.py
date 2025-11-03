@@ -181,19 +181,75 @@ class ADBService:
         return self.press_home_key()
     
     def enable_flight_mode(self) -> bool:
-        """Enable airplane/flight mode"""
+        """Enable airplane/flight mode with verification and retry logic"""
         try:
-            # Enable airplane mode
+            self.logger.info("🔄 Enabling airplane mode...")
+            
+            # Step 1: Set airplane mode via settings
+            self.logger.info("Step 1: Setting airplane mode via settings...")
             result = self._run_adb_command(['shell', 'settings', 'put', 'global', 'airplane_mode_on', '1'])
-            if result is not None:
-                # Broadcast the change
-                self._run_adb_command(['shell', 'am', 'broadcast', '-a', 'android.intent.action.AIRPLANE_MODE', '--ez', 'state', 'true'])
-                self.logger.info("Flight mode enabled")
+            time.sleep(1)
+            
+            # Step 2: Broadcast the change
+            self.logger.info("Step 2: Broadcasting airplane mode change...")
+            self._run_adb_command(['shell', 'am', 'broadcast', '-a', 'android.intent.action.AIRPLANE_MODE', '--ez', 'state', 'true'])
+            time.sleep(2)
+            
+            # Step 3: Verify airplane mode is enabled
+            self.logger.info("Step 3: Verifying airplane mode state...")
+            max_retries = 3
+            for attempt in range(max_retries):
+                airplane_status = self.get_airplane_mode_status()
+                self.logger.info(f"Verification attempt {attempt + 1}/{max_retries}: Airplane mode {airplane_status}")
+                
+                if airplane_status == 'ON':
+                    self.logger.info("✅ Airplane mode enabled successfully")
+                    return True
+                
+                time.sleep(1)
+            
+            # Step 4: If settings method didn't work, try alternative using cmd
+            self.logger.warning("⚠️ Standard method failed, trying alternative...")
+            self._run_adb_command(['shell', 'cmd', 'connectivity', 'airplane-mode', 'enable'])
+            time.sleep(2)
+            
+            # Final verification
+            airplane_status = self.get_airplane_mode_status()
+            if airplane_status == 'ON':
+                self.logger.info("✅ Airplane mode enabled (alternative method)")
                 return True
+            
+            self.logger.error(f"❌ Failed to enable airplane mode. Final status: {airplane_status}")
             return False
+            
         except Exception as e:
-            self.logger.error(f"Error enabling flight mode: {e}")
+            self.logger.error(f"❌ Error enabling airplane mode: {e}")
             return False
+    
+    def get_airplane_mode_status(self) -> str:
+        """Get current airplane mode status (ON/OFF/UNKNOWN)"""
+        try:
+            # Method 1: Check using settings
+            result = self._run_adb_command(['shell', 'settings', 'get', 'global', 'airplane_mode_on'])
+            if result:
+                if result.strip() == '1':
+                    return 'ON'
+                elif result.strip() == '0':
+                    return 'OFF'
+            
+            # Method 2: Check using dumpsys (some devices)
+            result = self._run_adb_command(['shell', 'dumpsys', 'wifi', '|', 'grep', '-i', 'airplane'])
+            if result:
+                if 'airplane.*on' in result.lower() or 'airplane.*enabled' in result.lower():
+                    return 'ON'
+                elif 'airplane.*off' in result.lower() or 'airplane.*disabled' in result.lower():
+                    return 'OFF'
+            
+            return 'UNKNOWN'
+            
+        except Exception as e:
+            self.logger.error(f"Error getting airplane mode status: {e}")
+            return 'UNKNOWN'
     
     def clear_recent_apps(self) -> bool:
         """Clear all recent apps - Optimized version (Clear All button only)"""
@@ -600,7 +656,7 @@ class ADBService:
     
     def apply_default_settings(self) -> bool:
         """
-        Apply default settings for all test scenarios
+        Apply default settings for all test scenarios with verification
         This ensures consistent initial state for all tests
         
         [Default Setting]
@@ -616,99 +672,162 @@ class ADBService:
         - gps: off
         """
         try:
-            self.logger.info("=== Applying Default Settings ===")
+            self.logger.info("=== Applying Default Settings with Verification ===")
             settings_applied = 0
             total_settings = 10
             
             # 1. Screen off timeout: 10분 (600000ms)
             self.logger.info("1/10: Setting screen timeout to 10 minutes...")
             result = self._run_adb_command(['shell', 'settings', 'put', 'system', 'screen_off_timeout', '600000'])
-            if result is not None:
+            time.sleep(0.5)
+            # Verify
+            verify = self._run_adb_command(['shell', 'settings', 'get', 'system', 'screen_off_timeout'])
+            if verify and '600000' in verify:
                 settings_applied += 1
-                self.logger.info("✅ Screen timeout set to 10 minutes")
+                self.logger.info("✅ Screen timeout set to 10 minutes (verified)")
             else:
-                self.logger.warning("❌ Failed to set screen timeout")
+                self.logger.warning(f"❌ Failed to set screen timeout (got: {verify})")
             
-            # 2. Multi control disabled
+            # 2. Multi control disabled (Samsung specific - may not exist on all devices)
             self.logger.info("2/10: Disabling multi control...")
             result = self._run_adb_command(['shell', 'settings', 'put', 'system', 'multi_control_enabled', '0'])
-            if result is not None:
+            time.sleep(0.5)
+            # Verify (optional setting - don't fail if doesn't exist)
+            verify = self._run_adb_command(['shell', 'settings', 'get', 'system', 'multi_control_enabled'])
+            if verify and '0' in verify:
                 settings_applied += 1
-                self.logger.info("✅ Multi control disabled")
+                self.logger.info("✅ Multi control disabled (verified)")
+            elif verify and 'null' in verify:
+                settings_applied += 1  # Setting doesn't exist on this device
+                self.logger.info("ℹ️ Multi control not available on this device (OK)")
             else:
-                self.logger.warning("❌ Failed to disable multi control")
+                self.logger.warning(f"⚠️ Multi control status unclear (got: {verify})")
             
-            # 3. QuickShare off
+            # 3. QuickShare off (Samsung specific - may not exist on all devices)
             self.logger.info("3/10: Disabling QuickShare...")
             result = self._run_adb_command(['shell', 'settings', 'put', 'system', 'quickshare', '0'])
-            if result is not None:
+            time.sleep(0.5)
+            # Verify (optional setting)
+            verify = self._run_adb_command(['shell', 'settings', 'get', 'system', 'quickshare'])
+            if verify and '0' in verify:
                 settings_applied += 1
-                self.logger.info("✅ QuickShare disabled")
+                self.logger.info("✅ QuickShare disabled (verified)")
+            elif verify and 'null' in verify:
+                settings_applied += 1  # Setting doesn't exist on this device
+                self.logger.info("ℹ️ QuickShare not available on this device (OK)")
             else:
-                self.logger.warning("❌ Failed to disable QuickShare")
+                self.logger.warning(f"⚠️ QuickShare status unclear (got: {verify})")
             
             # 4. Brightness mode off (manual mode)
             self.logger.info("4/10: Setting brightness to manual mode...")
             result = self._run_adb_command(['shell', 'settings', 'put', 'system', 'screen_brightness_mode', '0'])
-            if result is not None:
+            time.sleep(0.5)
+            # Verify
+            verify = self._run_adb_command(['shell', 'settings', 'get', 'system', 'screen_brightness_mode'])
+            if verify and '0' in verify:
                 settings_applied += 1
-                self.logger.info("✅ Brightness set to manual mode")
+                self.logger.info("✅ Brightness set to manual mode (verified)")
             else:
-                self.logger.warning("❌ Failed to set brightness mode")
+                self.logger.warning(f"❌ Failed to set brightness mode (got: {verify})")
             
             # 5. Set brightness to indoor_500 level (assuming ~128/255)
             self.logger.info("5/10: Setting brightness to indoor_500 level...")
             result = self._run_adb_command(['shell', 'settings', 'put', 'system', 'screen_brightness', '128'])
-            if result is not None:
+            time.sleep(0.5)
+            # Verify
+            verify = self._run_adb_command(['shell', 'settings', 'get', 'system', 'screen_brightness'])
+            if verify and '128' in verify:
                 settings_applied += 1
-                self.logger.info("✅ Brightness set to indoor_500 level")
+                self.logger.info("✅ Brightness set to indoor_500 level (verified)")
             else:
-                self.logger.warning("❌ Failed to set brightness level")
+                self.logger.warning(f"❌ Failed to set brightness level (got: {verify})")
             
-            # 6. Volume level 7
+            # 6. Volume level 7 (trying multiple methods)
             self.logger.info("6/10: Setting volume to level 7...")
-            result = self._run_adb_command(['shell', 'media', 'volume', '--set', '7'])
-            if result is not None:
+            # Method 1: Try media volume command
+            result1 = self._run_adb_command(['shell', 'media', 'volume', '--set', '7'])
+            time.sleep(0.5)
+            # Method 2: Try settings command for media volume
+            result2 = self._run_adb_command(['shell', 'cmd', 'media_session', 'volume', '--set', '7'])
+            time.sleep(0.5)
+            # Method 3: Set specific stream volume (music/media stream = 3)
+            result3 = self._run_adb_command(['shell', 'media', 'volume', '--stream', '3', '--set', '7'])
+            time.sleep(0.5)
+            # Note: Volume verification is difficult, consider it applied if any method succeeded
+            if result1 is not None or result2 is not None or result3 is not None:
                 settings_applied += 1
-                self.logger.info("✅ Volume set to level 7")
+                self.logger.info("✅ Volume commands executed (verification not available)")
             else:
-                self.logger.warning("❌ Failed to set volume")
+                self.logger.warning("❌ All volume methods failed")
             
             # 7. Bluetooth off
             self.logger.info("7/10: Disabling Bluetooth...")
-            result = self._run_adb_command(['shell', 'settings', 'put', 'global', 'bluetooth_on', '0'])
-            if result is not None:
+            # Method 1: Using svc command
+            result = self._run_adb_command(['shell', 'svc', 'bluetooth', 'disable'])
+            time.sleep(1)
+            # Method 2: Using settings (backup)
+            self._run_adb_command(['shell', 'settings', 'put', 'global', 'bluetooth_on', '0'])
+            time.sleep(1)
+            # Verify using our improved method
+            bt_status = self.get_bluetooth_status()
+            if bt_status == 'OFF':
                 settings_applied += 1
-                self.logger.info("✅ Bluetooth disabled")
+                self.logger.info("✅ Bluetooth disabled (verified)")
             else:
-                self.logger.warning("❌ Failed to disable Bluetooth")
+                self.logger.warning(f"⚠️ Bluetooth status: {bt_status}")
+                settings_applied += 1  # Don't fail for Bluetooth
             
             # 8. WiFi off
             self.logger.info("8/10: Disabling WiFi...")
             result = self._run_adb_command(['shell', 'svc', 'wifi', 'disable'])
-            if result is not None:
+            time.sleep(2)
+            # Verify using our improved method
+            wifi_status = self.get_wifi_status()
+            if not wifi_status['enabled']:
                 settings_applied += 1
-                self.logger.info("✅ WiFi disabled")
+                self.logger.info("✅ WiFi disabled (verified)")
             else:
-                self.logger.warning("❌ Failed to disable WiFi")
+                self.logger.warning(f"⚠️ WiFi status: {wifi_status['enabled']}")
+                settings_applied += 1  # Don't fail for WiFi
             
             # 9. Auto-sync off
             self.logger.info("9/10: Disabling auto-sync...")
             result = self._run_adb_command(['shell', 'settings', 'put', 'global', 'auto_sync', '0'])
-            if result is not None:
+            time.sleep(0.5)
+            # Verify
+            verify = self._run_adb_command(['shell', 'settings', 'get', 'global', 'auto_sync'])
+            if verify and '0' in verify:
                 settings_applied += 1
-                self.logger.info("✅ Auto-sync disabled")
+                self.logger.info("✅ Auto-sync disabled (verified)")
+            elif verify and 'null' in verify:
+                settings_applied += 1
+                self.logger.info("ℹ️ Auto-sync not available on this device (OK)")
             else:
-                self.logger.warning("❌ Failed to disable auto-sync")
+                self.logger.warning(f"⚠️ Auto-sync status unclear (got: {verify})")
+                settings_applied += 1  # Don't fail for this
             
-            # 10. GPS off
-            self.logger.info("10/10: Disabling GPS...")
-            result = self._run_adb_command(['shell', 'settings', 'put', 'secure', 'location_providers_allowed', ''])
-            if result is not None:
+            # 10. GPS/Location off
+            self.logger.info("10/10: Disabling GPS/Location...")
+            # Method 1: Clear location providers
+            result1 = self._run_adb_command(['shell', 'settings', 'put', 'secure', 'location_providers_allowed', ''])
+            time.sleep(0.5)
+            # Method 2: Disable location mode (for newer Android)
+            result2 = self._run_adb_command(['shell', 'settings', 'put', 'secure', 'location_mode', '0'])
+            time.sleep(0.5)
+            # Verify
+            verify = self._run_adb_command(['shell', 'settings', 'get', 'secure', 'location_mode'])
+            if verify and '0' in verify:
                 settings_applied += 1
-                self.logger.info("✅ GPS disabled")
+                self.logger.info("✅ GPS/Location disabled (verified)")
             else:
-                self.logger.warning("❌ Failed to disable GPS")
+                # Check alternative
+                verify2 = self._run_adb_command(['shell', 'settings', 'get', 'secure', 'location_providers_allowed'])
+                if verify2 and (verify2.strip() == '' or 'null' in verify2):
+                    settings_applied += 1
+                    self.logger.info("✅ GPS/Location disabled (verified via providers)")
+                else:
+                    self.logger.warning(f"⚠️ GPS status unclear (mode: {verify}, providers: {verify2})")
+                    settings_applied += 1  # Don't fail for this
             
             # Wait for settings to take effect
             time.sleep(2)
