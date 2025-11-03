@@ -216,12 +216,19 @@ python3 test_scenarios/scripts/test_phone_app_scenario.py
 ---
 
 ## 변경된 파일
-- `services/adb_service.py` (총 4개 메서드 수정/추가)
-  - `connect_wifi_2g()` - 완전 재작성
-  - `enable_bluetooth()` - 완전 재작성
-  - `get_bluetooth_status()` - 신규 추가
-  - `press_home()` - 신규 추가
-  - `get_device_status()` - Bluetooth 상태 체크 개선
+
+### 1. `services/adb_service.py` (총 5개 메서드 수정/추가)
+  - `connect_wifi_2g()` - 완전 재작성 (line 280-367)
+  - `enable_bluetooth()` - 완전 재작성 (line 396-455)
+  - `get_bluetooth_status()` - 신규 추가 (line 457-488)
+  - `press_home()` - 신규 추가 (line 179-181)
+  - `get_device_status()` - Bluetooth 상태 체크 개선 (line 788-790)
+
+### 2. `services/test_scenario_engine.py` (총 2개 메서드 수정)
+  - `_step_connect_wifi_2g()` - 개선된 ADB 메서드 사용 (line 2785-2821)
+  - `_step_enable_bluetooth()` - 개선된 ADB 메서드 사용 (line 2823-2849)
+
+**중요:** `test_scenario_engine.py`가 직접 ADB 명령을 실행하던 것을 개선된 `adb_service.py` 메서드를 호출하도록 변경했습니다.
 
 ---
 
@@ -242,6 +249,52 @@ python3 test_scenarios/scripts/test_phone_app_scenario.py
 
 ---
 
+---
+
+## 추가 수정 (2차 - test_scenario_engine.py)
+
+### 문제 발견
+실제 테스트를 돌려보니 `test_scenario_engine.py`가 개선된 ADB Service 메서드를 사용하지 않고 있었습니다:
+- WiFi: 단순히 `svc wifi enable`만 실행하고 실제 네트워크 연결은 하지 않음
+- Bluetooth: `settings put`만 하고 실제 활성화 검증 부족
+
+### 해결 방법
+`test_scenario_engine.py`의 `_step_connect_wifi_2g()`와 `_step_enable_bluetooth()` 메서드를 완전히 재작성:
+
+#### WiFi 연결 개선
+```python
+# 이전: 직접 ADB 명령 실행
+result = self.adb_service._run_adb_command(['shell', 'svc', 'wifi', 'enable'])
+# 연결 없이 상태만 확인
+
+# 수정 후: 개선된 메서드 사용
+from test_scenarios.configs.wifi_config import WiFiConfig
+wifi_2g = WiFiConfig.get_2g_primary()
+success = self.adb_service.connect_wifi_2g(wifi_2g['ssid'], wifi_2g['password'])
+wifi_status = self.adb_service.get_wifi_status()
+```
+
+#### Bluetooth 활성화 개선
+```python
+# 이전: settings만 변경하고 간단한 검증
+result = self.adb_service._run_adb_command(['shell', 'settings', 'put', 'global', 'bluetooth_on', '1'])
+bt_status = self.adb_service._run_adb_command(['shell', 'settings', 'get', 'global', 'bluetooth_on'])
+
+# 수정 후: 개선된 메서드 사용 (검증 및 재시도 포함)
+success = self.adb_service.enable_bluetooth()
+bt_status = self.adb_service.get_bluetooth_status()
+```
+
+### 결과
+이제 실제로 개선된 WiFi/Bluetooth 연결 로직이 사용되며:
+- ✅ WiFi 실제 네트워크 연결 시도
+- ✅ Bluetooth 실제 활성화 검증 및 재시도
+- ✅ 명확한 상태 로그 (이모지 포함)
+- ✅ WiFi 설정 파일에서 자동으로 SSID/비밀번호 가져오기
+
+---
+
 **작성일:** 2025-11-03  
+**최종 수정:** 2025-11-03  
 **작성자:** Cursor AI Assistant  
 **브랜치:** cursor/debug-wifi-and-bluetooth-connectivity-issues-872e
