@@ -415,9 +415,12 @@ class TestScenarioEngine(QObject):
                 measurement_mode = self._get_measurement_mode()
                 
                 if not enabled_channels:
-                    self.log_callback("WARNING: No enabled channels found, using defaults", "warn")
-                    enabled_channels = ['ai0', 'ai1']
-                    rail_names = {'ai0': 'Rail_A', 'ai1': 'Rail_B'}
+                    self.log_callback("WARNING: No enabled channels found, using defaults (ai0-ai5)", "warn")
+                    enabled_channels = ['ai0', 'ai1', 'ai2', 'ai3', 'ai4', 'ai5']
+                    rail_names = {
+                        'ai0': 'VDD_CORE', 'ai1': 'VDD_MEM', 'ai2': 'VDD_GPU',
+                        'ai3': 'VDD_NPU', 'ai4': 'VDD_CAM', 'ai5': 'VDD_DISP'
+                    }
                 
                 self.log_callback(f"Monitoring {len(enabled_channels)} channels in {measurement_mode} mode", "info")
             except Exception as e:
@@ -897,9 +900,12 @@ class TestScenarioEngine(QObject):
                 measurement_mode = self._get_measurement_mode()
                 
                 if not enabled_channels:
-                    self.log_callback("WARNING: No enabled channels found, using defaults", "warn")
-                    enabled_channels = ['ai0', 'ai1']
-                    rail_names = {'ai0': 'Rail_A', 'ai1': 'Rail_B'}
+                    self.log_callback("WARNING: No enabled channels found, using defaults (ai0-ai5)", "warn")
+                    enabled_channels = ['ai0', 'ai1', 'ai2', 'ai3', 'ai4', 'ai5']
+                    rail_names = {
+                        'ai0': 'VDD_CORE', 'ai1': 'VDD_MEM', 'ai2': 'VDD_GPU',
+                        'ai3': 'VDD_NPU', 'ai4': 'VDD_CAM', 'ai5': 'VDD_DISP'
+                    }
                 
                 self.log_callback(f"Monitoring {len(enabled_channels)} channels in {measurement_mode} mode: {enabled_channels}", "info")
                 for channel in enabled_channels:
@@ -1393,7 +1399,7 @@ class TestScenarioEngine(QObject):
             loop_count = 0
             data_collection_start_time = None  # Track when data collection actually starts
             # Use pre-stored configuration (thread-safe)
-            enabled_channels = getattr(self, '_monitoring_channels', ['ai0', 'ai1'])
+            enabled_channels = getattr(self, '_monitoring_channels', ['ai0', 'ai1', 'ai2', 'ai3', 'ai4', 'ai5'])
             measurement_mode = getattr(self, '_monitoring_mode', 'current')
             
             if not enabled_channels:
@@ -1626,7 +1632,7 @@ class TestScenarioEngine(QObject):
             
             loop_count = 0
             data_collection_start_time = None  # Track when data collection actually starts
-            enabled_channels = getattr(self, '_monitoring_channels', ['ai0', 'ai1'])
+            enabled_channels = getattr(self, '_monitoring_channels', ['ai0', 'ai1', 'ai2', 'ai3', 'ai4', 'ai5'])
             measurement_mode = getattr(self, '_monitoring_mode', 'current')
             
             print(f"Isolated monitoring {len(enabled_channels)} channels in {measurement_mode} mode")
@@ -1974,7 +1980,7 @@ class TestScenarioEngine(QObject):
         if not self.multi_channel_monitor:
             # Return default channels if no monitor available
             self.log_callback("No multi-channel monitor available, using default channels", "warn")
-            return ['ai0', 'ai1']
+            return ['ai0', 'ai1', 'ai2', 'ai3', 'ai4', 'ai5']
         
         try:
             enabled_channels = []
@@ -1985,17 +1991,20 @@ class TestScenarioEngine(QObject):
             
             if not enabled_channels:
                 self.log_callback("No enabled channels found in multi-channel monitor, using defaults", "warn")
-                return ['ai0', 'ai1']
+                return ['ai0', 'ai1', 'ai2', 'ai3', 'ai4', 'ai5']
                 
             return enabled_channels
         except Exception as e:
             self.log_callback(f"Error getting enabled channels: {e}", "error")
-            return ['ai0', 'ai1']
+            return ['ai0', 'ai1', 'ai2', 'ai3', 'ai4', 'ai5']
     
     def _get_channel_rail_names(self) -> Dict[str, str]:
         """Get rail names for enabled channels"""
         if not self.multi_channel_monitor:
-            return {'ai0': 'VDD_CORE', 'ai1': 'VDD_MEM'}
+            return {
+                'ai0': 'VDD_CORE', 'ai1': 'VDD_MEM', 'ai2': 'VDD_GPU',
+                'ai3': 'VDD_NPU', 'ai4': 'VDD_CAM', 'ai5': 'VDD_DISP'
+            }
         
         try:
             rail_names = {}
@@ -2030,12 +2039,18 @@ class TestScenarioEngine(QObject):
                         rail_names[channel] = f'VDD_{channel.upper()}'
             
             if not rail_names:
-                return {'ai0': 'VDD_CORE', 'ai1': 'VDD_MEM'}
+                return {
+                'ai0': 'VDD_CORE', 'ai1': 'VDD_MEM', 'ai2': 'VDD_GPU',
+                'ai3': 'VDD_NPU', 'ai4': 'VDD_CAM', 'ai5': 'VDD_DISP'
+            }
                 
             return rail_names
         except Exception as e:
             self.log_callback(f"Error getting rail names: {e}", "error")
-            return {'ai0': 'VDD_CORE', 'ai1': 'VDD_MEM'}
+            return {
+                'ai0': 'VDD_CORE', 'ai1': 'VDD_MEM', 'ai2': 'VDD_GPU',
+                'ai3': 'VDD_NPU', 'ai4': 'VDD_CAM', 'ai5': 'VDD_DISP'
+            }
     
     def _get_measurement_mode(self) -> str:
         """Get current measurement mode from multi-channel monitor"""
