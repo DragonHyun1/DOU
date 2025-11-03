@@ -339,7 +339,7 @@ class TestScenarioEngine(QObject):
                     self.monitoring_active = False
                     old_status = self.status
                     self.status = TestStatus.IDLE
-                    self.log_callback(f"Auto test status changed after step failure: {old_status.value} → {self.status.value}", "info")
+                    self.log_callback(f"Auto test status changed after step failure: {old_status.value} ? {self.status.value}", "info")
                     
                     # Emit failure signal after state reset
                     self._emit_signal_safe(self.test_completed, False, f"Test failed at step: {step.name}")
@@ -365,7 +365,7 @@ class TestScenarioEngine(QObject):
             self.monitoring_active = False
             old_status = self.status
             self.status = TestStatus.IDLE
-            self.log_callback(f"Auto test status changed: {old_status.value} → {self.status.value}", "info")
+            self.log_callback(f"Auto test status changed: {old_status.value} ? {self.status.value}", "info")
             
             # Emit completion signal after state reset
             self._emit_signal_safe(self.test_completed, True, "Test completed successfully")
@@ -381,7 +381,7 @@ class TestScenarioEngine(QObject):
             self.monitoring_active = False
             old_status = self.status
             self.status = TestStatus.IDLE
-            self.log_callback(f"Auto test status changed after error: {old_status.value} → {self.status.value}", "info")
+            self.log_callback(f"Auto test status changed after error: {old_status.value} ? {self.status.value}", "info")
             
             # Emit failure signal after state reset
             self._emit_signal_safe(self.test_completed, False, f"Test failed: {e}")
@@ -392,7 +392,7 @@ class TestScenarioEngine(QObject):
             if self.status != TestStatus.IDLE:
                 old_status = self.status
                 self.status = TestStatus.IDLE
-                self.log_callback(f"Final auto test state reset: {old_status.value} → {self.status.value}", "info")
+                self.log_callback(f"Final auto test state reset: {old_status.value} ? {self.status.value}", "info")
 
     def _unified_screen_test_with_daq(self) -> bool:
         """Unified screen test with DAQ monitoring in single thread"""
@@ -475,7 +475,7 @@ class TestScenarioEngine(QObject):
                                 self.daq_data.append(data_point)
                                 data_point_count += 1
                                 last_data_collection_time = target_data_time  # Update last collection time
-                                self.log_callback(f"✅ Collected data point {data_point_count}: {target_data_time}.0s (elapsed: {elapsed_time:.1f}s)", "info")
+                                self.log_callback(f"? Collected data point {data_point_count}: {target_data_time}.0s (elapsed: {elapsed_time:.1f}s)", "info")
                     
                     # 2. Screen control every 2 seconds (only during test period)
                     if test_data_start <= elapsed_time <= test_data_end:
@@ -1477,11 +1477,11 @@ class TestScenarioEngine(QObject):
                                         # Thread-safe data append
                                         if hasattr(self, 'daq_data'):
                                             self.daq_data.append(data_point)
-                                            print(f"✅ DAQ collected data point {len(self.daq_data)}: {target_second}.0s")
+                                            print(f"? DAQ collected data point {len(self.daq_data)}: {target_second}.0s")
                                         
                                         # Log progress
                                         if len(self.daq_data) % 5 == 0:
-                                            print(f"📊 DAQ progress: {len(self.daq_data)}/10 data points collected")
+                                            print(f"?? DAQ progress: {len(self.daq_data)}/10 data points collected")
                                 elif data_elapsed_time > 10.0:
                                     # Stop collecting data after 10 seconds
                                     print(f"Data collection completed ({data_elapsed_time:.1f}s), stopping monitoring")
@@ -1523,11 +1523,11 @@ class TestScenarioEngine(QObject):
                                         # Thread-safe data append
                                         if hasattr(self, 'daq_data'):
                                             self.daq_data.append(data_point)
-                                            print(f"✅ Fallback collected data point {len(self.daq_data)}: {target_second}.0s")
+                                            print(f"? Fallback collected data point {len(self.daq_data)}: {target_second}.0s")
                                         
                                         # Log progress
                                         if len(self.daq_data) % 5 == 0:
-                                            print(f"📊 Fallback progress: {len(self.daq_data)}/10 data points collected")
+                                            print(f"?? Fallback progress: {len(self.daq_data)}/10 data points collected")
                                 else:
                                     # Stop fallback collection after 10 seconds
                                     print("Fallback data collection completed (10s)")
@@ -2272,9 +2272,9 @@ class TestScenarioEngine(QObject):
     def _step_connect_wifi_2g(self) -> bool:
         """Connect to 2.4GHz WiFi network"""
         try:
-            # 실제 WiFi 정보 사용
-            wifi_ssid = "0_WIFIFW_RAX40_2nd_2G"  # 실제 2G WiFi 이름
-            wifi_password = "cppower12"  # 실제 WiFi 비밀번호
+            # ?? WiFi ?? ??
+            wifi_ssid = "0_WIFIFW_RAX40_2nd_2G"  # ?? 2G WiFi ??
+            wifi_password = "cppower12"  # ?? WiFi ????
             
             self.log_callback(f"Connecting to 2.4GHz WiFi: {wifi_ssid}", "info")
             
@@ -2353,7 +2353,7 @@ class TestScenarioEngine(QObject):
             
             # Debug: Check if method exists
             if hasattr(self, '_step_start_daq_monitoring'):
-                self.log_callback("✅ _step_start_daq_monitoring method exists", "info")
+                self.log_callback("? _step_start_daq_monitoring method exists", "info")
                 try:
                     result = self._step_start_daq_monitoring()
                     self.log_callback(f"DAQ monitoring start result: {result}", "info")
@@ -2366,7 +2366,7 @@ class TestScenarioEngine(QObject):
                     self.log_callback(f"DAQ start traceback: {traceback.format_exc()}", "error")
                     return False
             else:
-                self.log_callback("❌ _step_start_daq_monitoring method does not exist", "error")
+                self.log_callback("? _step_start_daq_monitoring method does not exist", "error")
                 return False
             
             # Wait a moment for DAQ to stabilize
@@ -2380,14 +2380,14 @@ class TestScenarioEngine(QObject):
             # Signal DAQ monitoring that test has started
             if hasattr(self, '_screen_test_started'):
                 self._screen_test_started.set()
-                self.log_callback("✅ Phone app test start signal sent to DAQ monitoring", "info")
+                self.log_callback("? Phone app test start signal sent to DAQ monitoring", "info")
             else:
-                self.log_callback("⚠️ Warning: _screen_test_started event not found", "warn")
+                self.log_callback("?? Warning: _screen_test_started event not found", "warn")
             
             # Execute Phone app test sequence
             self.log_callback("=== Phone App Test Sequence Started ===", "info")
             
-            # 0초: LCD ON 및 Phone app 열기
+            # 0?: LCD ON ? Phone app ??
             self.log_callback("Step 1: Turn on LCD and open Phone app", "info")
             if not self.adb_service.turn_screen_on():
                 self.log_callback("Failed to turn screen on", "error")
@@ -2399,14 +2399,14 @@ class TestScenarioEngine(QObject):
             if not self.adb_service.open_phone_app():
                 self.log_callback("Failed to open Phone app", "error")
             
-            # 5초 대기
+            # 5? ??
             self.log_callback("Waiting 5 seconds in Phone app...", "info")
             if not self._interruptible_sleep(5):
                 self.log_callback("Phone app wait interrupted", "info")
                 self._step_stop_daq_monitoring()
                 return False
             
-            # 5초: Back key 눌러서 홈 화면으로 이동
+            # 5?: Back key ??? ? ???? ??
             self.log_callback("Step 2: Press back key to go to home screen", "info")
             if not self.adb_service.press_back_key():
                 self.log_callback("Failed to press back key", "error")
@@ -2415,11 +2415,11 @@ class TestScenarioEngine(QObject):
                 self._step_stop_daq_monitoring()
                 return False
             
-            # 홈 화면으로 확실히 이동
+            # ? ???? ??? ??
             if not self.adb_service.press_home_key():
                 self.log_callback("Failed to press home key", "error")
             
-            # 5초 더 대기 (총 10초)
+            # 5? ? ?? (? 10?)
             self.log_callback("Waiting 5 more seconds on home screen...", "info")
             if not self._interruptible_sleep(5):
                 self.log_callback("Home screen wait interrupted", "info")
@@ -2464,14 +2464,14 @@ class TestScenarioEngine(QObject):
             # Signal DAQ monitoring that test has started
             if hasattr(self, '_screen_test_started'):
                 self._screen_test_started.set()
-                self.log_callback("✅ Phone app test start signal sent to DAQ monitoring", "info")
+                self.log_callback("? Phone app test start signal sent to DAQ monitoring", "info")
             else:
-                self.log_callback("⚠️ Warning: _screen_test_started event not found", "warn")
+                self.log_callback("?? Warning: _screen_test_started event not found", "warn")
             
             # Execute Phone app test sequence
             self.log_callback("=== Phone App Test Sequence Started ===", "info")
             
-            # 0초: LCD ON 및 Phone app 열기
+            # 0?: LCD ON ? Phone app ??
             self.log_callback("Step 1: Turn on LCD and open Phone app", "info")
             if not self.adb_service.turn_screen_on():
                 self.log_callback("Failed to turn screen on", "error")
@@ -2482,13 +2482,13 @@ class TestScenarioEngine(QObject):
             if not self.adb_service.open_phone_app():
                 self.log_callback("Failed to open Phone app", "error")
             
-            # 5초 대기
+            # 5? ??
             self.log_callback("Waiting 5 seconds in Phone app...", "info")
             if not self._interruptible_sleep(5):
                 self.log_callback("Phone app wait interrupted", "info")
                 return False
             
-            # 5초: Back key 눌러서 홈 화면으로 이동
+            # 5?: Back key ??? ? ???? ??
             self.log_callback("Step 2: Press back key to go to home screen", "info")
             if not self.adb_service.press_back_key():
                 self.log_callback("Failed to press back key", "error")
@@ -2496,11 +2496,11 @@ class TestScenarioEngine(QObject):
             if not self._interruptible_sleep(0.5):
                 return False
             
-            # 홈 화면으로 확실히 이동
+            # ? ???? ??? ??
             if not self.adb_service.press_home_key():
                 self.log_callback("Failed to press home key", "error")
             
-            # 5초 더 대기 (총 10초)
+            # 5? ? ?? (? 10?)
             self.log_callback("Waiting 5 more seconds on home screen...", "info")
             if not self._interruptible_sleep(5):
                 self.log_callback("Home screen wait interrupted", "info")
@@ -2597,14 +2597,14 @@ class TestScenarioEngine(QObject):
             # Signal DAQ monitoring that test has started
             if hasattr(self, '_screen_test_started'):
                 self._screen_test_started.set()
-                self.log_callback("✅ Phone app test start signal sent to DAQ monitoring", "info")
+                self.log_callback("? Phone app test start signal sent to DAQ monitoring", "info")
             else:
-                self.log_callback("⚠️ Warning: _screen_test_started event not found", "warn")
+                self.log_callback("?? Warning: _screen_test_started event not found", "warn")
             
             # 8. Phone App Test (10 seconds)
             self.log_callback("=== Step 8: Phone App Test Started (10s) ===", "info")
             
-            # 0초: Phone app 열기
+            # 0?: Phone app ??
             self.log_callback("0s: Opening Phone app", "info")
             if not self.adb_service.open_phone_app():
                 self.log_callback("Failed to open Phone app", "error")
@@ -2612,14 +2612,14 @@ class TestScenarioEngine(QObject):
                 self._step_stop_daq_monitoring()
                 return False
             
-            # 5초 대기 (Phone app에서)
+            # 5? ?? (Phone app??)
             self.log_callback("Waiting 5 seconds in Phone app...", "info")
             if not self._interruptible_sleep(5):
                 self.log_callback("Phone app wait interrupted", "info")
                 self._step_stop_daq_monitoring()
                 return False
             
-            # 5초: Back key로 홈 화면 이동
+            # 5?: Back key? ? ?? ??
             self.log_callback("5s: Press back key to go to home screen", "info")
             if not self.adb_service.press_back_key():
                 self.log_callback("Failed to press back key", "error")
@@ -2627,13 +2627,13 @@ class TestScenarioEngine(QObject):
                 self._step_stop_daq_monitoring()
                 return False
             
-            # 홈 화면으로 확실히 이동
+            # ? ???? ??? ??
             if not self.adb_service.press_home_key():
                 self.log_callback("Failed to press home key", "error")
             
-            # 5초 더 대기 (총 10초)
+            # 5? ? ?? (? 10?)
             self.log_callback("Waiting 5 more seconds on home screen...", "info")
-            if not self._interruptible_sleep(4.5):  # 0.5초는 이미 대기했으므로 4.5초만 더
+            if not self._interruptible_sleep(4.5):  # 0.5?? ?? ?????? 4.5?? ?
                 self.log_callback("Home screen wait interrupted", "info")
                 self._step_stop_daq_monitoring()
                 return False
@@ -2743,34 +2743,34 @@ class TestScenarioEngine(QObject):
             # Signal DAQ monitoring that test has started
             if hasattr(self, '_screen_test_started'):
                 self._screen_test_started.set()
-                self.log_callback("✅ Phone app test start signal sent to DAQ monitoring", "info")
+                self.log_callback("? Phone app test start signal sent to DAQ monitoring", "info")
             else:
-                self.log_callback("⚠️ Warning: _screen_test_started event not found", "warn")
+                self.log_callback("?? Warning: _screen_test_started event not found", "warn")
             
             # Phone App Scenario Test (10 seconds)
             self.log_callback("[Phone App Scenario] Starting 10-second test", "info")
             
-            # 0초: Phone app 클릭
+            # 0?: Phone app ??
             self.log_callback("0s: Click Phone app", "info")
             if not self.adb_service.open_phone_app():
                 self.log_callback("Failed to open Phone app", "error")
             time.sleep(0.5)
             
-            # 5초까지 대기 (Phone app에서)
+            # 5??? ?? (Phone app??)
             self.log_callback("Waiting until 5s in Phone app...", "info")
-            time.sleep(4.5)  # 0.5초는 이미 대기했으므로 4.5초 더
+            time.sleep(4.5)  # 0.5?? ?? ?????? 4.5? ?
             
-            # 5초: Back key 클릭
+            # 5?: Back key ??
             self.log_callback("5s: Click back key", "info")
             if not self.adb_service.press_back_key():
                 self.log_callback("Failed to press back key", "error")
             time.sleep(0.5)
             
-            # 10초까지 대기 (홈 화면에서)
+            # 10??? ?? (? ????)
             self.log_callback("Waiting until 10s on home screen...", "info")
-            time.sleep(4.5)  # 0.5초는 이미 대기했으므로 4.5초 더
+            time.sleep(4.5)  # 0.5?? ?? ?????? 4.5? ?
             
-            # 10초: Test end
+            # 10?: Test end
             self.log_callback("10s: Test end", "info")
             
             self.log_callback("=== Phone App Scenario Test Completed ===", "info")
@@ -2783,7 +2783,7 @@ class TestScenarioEngine(QObject):
     # ===== NEW PHONE APP TEST STEP METHODS =====
     
     def _step_connect_wifi_2g(self) -> bool:
-        """Connect to 2.4GHz WiFi"""
+        """Connect to 2.4GHz WiFi using improved ADB service method"""
         try:
             self.log_callback("=== Connecting to 2.4GHz WiFi ===", "info")
             
@@ -2791,34 +2791,37 @@ class TestScenarioEngine(QObject):
                 self.log_callback("ADB service not available", "error")
                 return False
             
-            # Enable WiFi first
-            self.log_callback("Enabling WiFi...", "info")
-            result = self.adb_service._run_adb_command(['shell', 'svc', 'wifi', 'enable'])
-            if result is None:
-                self.log_callback("Failed to enable WiFi", "error")
+            # Use WiFi config from test_scenarios/configs/wifi_config.py
+            try:
+                from test_scenarios.configs.wifi_config import WiFiConfig
+                wifi_2g = WiFiConfig.get_2g_primary()
+                ssid = wifi_2g['ssid']
+                password = wifi_2g['password']
+                self.log_callback(f"Using WiFi network: {ssid}", "info")
+            except Exception as e:
+                # Fallback to hardcoded values
+                self.log_callback(f"WiFi config not available, using default: {e}", "warn")
+                ssid = "0_WIFIFW_RAX40_2nd_2G"
+                password = "cppower12"
+            
+            # Use improved connect_wifi_2g method from ADB service
+            success = self.adb_service.connect_wifi_2g(ssid, password)
+            
+            if success:
+                # Get final WiFi status
+                wifi_status = self.adb_service.get_wifi_status()
+                self.log_callback(f"? WiFi Status: {wifi_status['connection_state']} - {wifi_status['connected_ssid']}", "info")
+                return True
+            else:
+                self.log_callback("? Failed to connect to 2.4GHz WiFi", "error")
                 return False
             
-            time.sleep(3)  # Wait for WiFi to initialize
-            
-            # Connect to 2.4GHz network (assuming network is available)
-            self.log_callback("Connecting to 2.4GHz network...", "info")
-            # Note: This assumes the 2.4GHz network is already configured
-            # In real implementation, you might need to configure the network first
-            
-            # Check WiFi status
-            wifi_status = self.adb_service._run_adb_command(['shell', 'dumpsys', 'wifi', '|', 'grep', 'mWifiInfo'])
-            if wifi_status:
-                self.log_callback(f"WiFi status: {wifi_status[:100]}...", "info")
-            
-            self.log_callback("2.4GHz WiFi connection completed", "info")
-            return True
-            
         except Exception as e:
-            self.log_callback(f"Error connecting to 2.4GHz WiFi: {e}", "error")
+            self.log_callback(f"? Error connecting to 2.4GHz WiFi: {e}", "error")
             return False
     
     def _step_enable_bluetooth(self) -> bool:
-        """Enable Bluetooth"""
+        """Enable Bluetooth using improved ADB service method"""
         try:
             self.log_callback("=== Enabling Bluetooth ===", "info")
             
@@ -2826,25 +2829,23 @@ class TestScenarioEngine(QObject):
                 self.log_callback("ADB service not available", "error")
                 return False
             
-            # Enable Bluetooth using settings
-            result = self.adb_service._run_adb_command(['shell', 'settings', 'put', 'global', 'bluetooth_on', '1'])
-            if result is None:
-                self.log_callback("Failed to enable Bluetooth", "error")
-                return False
+            # Use improved enable_bluetooth method from ADB service
+            # This method includes proper verification and retry logic
+            success = self.adb_service.enable_bluetooth()
             
-            time.sleep(2)  # Wait for Bluetooth to initialize
-            
-            # Verify Bluetooth status
-            bt_status = self.adb_service._run_adb_command(['shell', 'settings', 'get', 'global', 'bluetooth_on'])
-            if bt_status and '1' in bt_status:
-                self.log_callback("Bluetooth enabled successfully", "info")
+            if success:
+                # Get final Bluetooth status
+                bt_status = self.adb_service.get_bluetooth_status()
+                self.log_callback(f"? Bluetooth Status: {bt_status}", "info")
                 return True
             else:
-                self.log_callback("Bluetooth enable verification failed", "warn")
+                # Get status even on failure for debugging
+                bt_status = self.adb_service.get_bluetooth_status()
+                self.log_callback(f"? Failed to enable Bluetooth. Status: {bt_status}", "error")
                 return False
             
         except Exception as e:
-            self.log_callback(f"Error enabling Bluetooth: {e}", "error")
+            self.log_callback(f"? Error enabling Bluetooth: {e}", "error")
             return False
     
     def _step_set_screen_timeout_10min(self) -> bool:
@@ -2878,7 +2879,7 @@ class TestScenarioEngine(QObject):
             return False
     
     def _step_lcd_on_unlock_home_clear_apps(self) -> bool:
-        """LCD on -> 스크린 잠금 해제 -> home 버튼 클릭 -> App clear all 진행"""
+        """LCD on -> ??? ?? ?? -> home ?? ?? -> App clear all ??"""
         try:
             self.log_callback("=== LCD ON + Unlock + Home + Clear Apps ===", "info")
             
@@ -2894,7 +2895,7 @@ class TestScenarioEngine(QObject):
             if not self._interruptible_sleep(1):
                 return False
             
-            # Step 2: 스크린 잠금 해제 (unlock screen)
+            # Step 2: ??? ?? ?? (unlock screen)
             self.log_callback("Step 2: Unlocking screen", "info")
             if not self.adb_service.unlock_screen():
                 self.log_callback("Failed to unlock screen", "error")
@@ -2902,7 +2903,7 @@ class TestScenarioEngine(QObject):
             if not self._interruptible_sleep(1):
                 return False
             
-            # Step 3: Home 버튼 클릭
+            # Step 3: Home ?? ??
             self.log_callback("Step 3: Pressing home button", "info")
             result = self.adb_service._run_adb_command(['shell', 'input', 'keyevent', 'KEYCODE_HOME'])
             if result is None:
@@ -2911,7 +2912,7 @@ class TestScenarioEngine(QObject):
             if not self._interruptible_sleep(1):
                 return False
             
-            # Step 4: App clear all 진행
+            # Step 4: App clear all ??
             self.log_callback("Step 4: Clearing all apps", "info")
             if not self.adb_service.clear_recent_apps():
                 self.log_callback("Failed to clear all apps", "error")
@@ -2925,11 +2926,11 @@ class TestScenarioEngine(QObject):
             return False
     
     def _step_wait_current_stabilization(self) -> bool:
-        """전류 안정화 대기 시간 10초"""
+        """?? ??? ?? ?? 10?"""
         try:
             self.log_callback("=== Waiting for current stabilization (10 seconds) ===", "info")
             
-            # 10초 동안 대기하면서 진행 상황 표시
+            # 10? ?? ????? ?? ?? ??
             for i in range(10):
                 if self.stop_requested:
                     self.log_callback("Stop requested during stabilization", "warn")
@@ -2964,11 +2965,11 @@ class TestScenarioEngine(QObject):
             # Signal DAQ monitoring that test has started
             if hasattr(self, '_screen_test_started'):
                 self._screen_test_started.set()
-                self.log_callback("✅ Phone app test start signal sent to DAQ monitoring", "info")
+                self.log_callback("? Phone app test start signal sent to DAQ monitoring", "info")
             else:
-                self.log_callback("⚠️ Warning: _screen_test_started event not found", "warn")
+                self.log_callback("?? Warning: _screen_test_started event not found", "warn")
             
-            # 0초: Phone app 클릭
+            # 0?: Phone app ??
             self.log_callback("0s: Clicking Phone app", "info")
             # Open phone app using intent
             result = self.adb_service._run_adb_command(['shell', 'am', 'start', '-a', 'android.intent.action.CALL_BUTTON'])
@@ -2992,7 +2993,7 @@ class TestScenarioEngine(QObject):
                 progress = int((elapsed / 10.0) * 100)
                 self.log_callback(f"Phone app test progress: {elapsed:.1f}s/10s ({progress}%)", "info")
             
-            # 5초: Back key 클릭
+            # 5?: Back key ??
             self.log_callback("5s: Pressing back key", "info")
             result = self.adb_service._run_adb_command(['shell', 'input', 'keyevent', 'KEYCODE_BACK'])
             if result is None:
@@ -3011,7 +3012,7 @@ class TestScenarioEngine(QObject):
                 progress = int((elapsed / 10.0) * 100)
                 self.log_callback(f"Phone app test progress: {elapsed:.1f}s/10s ({progress}%)", "info")
             
-            # 10초: Test end
+            # 10?: Test end
             self.log_callback("10s: Phone app test completed", "info")
             
             # Record test completion time
@@ -3036,30 +3037,30 @@ class TestScenarioEngine(QObject):
             
             # Verify device connection before applying settings
             if not self.adb_service.verify_device_connection():
-                self.log_callback("❌ Device connection verification failed", "error")
+                self.log_callback("? Device connection verification failed", "error")
                 return False
             
             # Get initial device status
             initial_status = self.adb_service.get_device_status()
-            self.log_callback(f"📱 Initial device status: {initial_status}", "info")
+            self.log_callback(f"?? Initial device status: {initial_status}", "info")
             
             # Apply default settings using ADB service
             success = self.adb_service.apply_default_settings()
             
             # Get final device status after applying settings
             final_status = self.adb_service.get_device_status()
-            self.log_callback(f"📱 Final device status: {final_status}", "info")
+            self.log_callback(f"?? Final device status: {final_status}", "info")
             
             if success:
-                self.log_callback("✅ Default settings applied successfully", "info")
+                self.log_callback("? Default settings applied successfully", "info")
                 self.log_callback("Device is now in consistent initial state for testing", "info")
                 return True
             else:
-                self.log_callback("⚠️ Default settings partially applied", "warn")
+                self.log_callback("?? Default settings partially applied", "warn")
                 self.log_callback("Continuing with test (some settings may not be optimal)", "warn")
                 return True  # Continue even if some settings failed
                 
         except Exception as e:
-            self.log_callback(f"❌ Error applying default settings: {e}", "error")
+            self.log_callback(f"? Error applying default settings: {e}", "error")
             self.log_callback("Continuing with test (device may not be in optimal state)", "warn")
             return True  # Don't fail the entire test for default settings
