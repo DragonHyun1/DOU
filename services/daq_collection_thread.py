@@ -27,14 +27,14 @@ class DAQCollectionThread:
         self.collection_end_time = None
         
         # Configuration
-        self.collection_interval = 1.0  # seconds
+        self.collection_interval = 0.001  # 1ms (1000 samples per second)
         self.enabled_channels = []
         
     def _default_log(self, message: str, level: str = "info"):
         """Default logging function"""
         print(f"[DAQ-{level.upper()}] {message}")
     
-    def configure(self, enabled_channels: List[str], interval: float = 1.0):
+    def configure(self, enabled_channels: List[str], interval: float = 0.001):
         """Configure DAQ collection parameters"""
         self.enabled_channels = enabled_channels
         self.collection_interval = interval

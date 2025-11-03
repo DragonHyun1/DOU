@@ -61,7 +61,7 @@ class TestConfig:
     description: str
     hvpm_voltage: float = 4.0
     stabilization_time: float = 20.0
-    monitoring_interval: float = 1.0
+    monitoring_interval: float = 0.001  # 1ms interval
     test_duration: float = 20.0
     steps: List[TestStep] = None
 
@@ -428,7 +428,7 @@ class TestScenarioEngine(QObject):
             
             # Start screen test with integrated DAQ monitoring
             test_duration = 20.0  # 20 seconds total
-            data_interval = 1.0   # 1 second intervals
+            data_interval = 0.001  # 1ms intervals (1000 samples per second)
             screen_interval = 2.0 # Screen changes every 2 seconds
             
             # Define actual test data collection period (exclude setup/teardown)
@@ -1585,8 +1585,8 @@ class TestScenarioEngine(QObject):
                                 remaining_time = max(0, timeout_time - current_time)
                                 print(f"Waiting for screen test to start... ({remaining_time:.0f}s timeout remaining)")
                             
-                            # Sleep before continue to avoid tight loop
-                            time.sleep(1.0)
+                            # Sleep before continue to avoid tight loop (longer wait for screen test)
+                            time.sleep(1.0)  # Keep 1s for waiting state
                             continue
                         
                         # Log progress every 10 seconds
@@ -1599,14 +1599,14 @@ class TestScenarioEngine(QObject):
                     
                     # Safe sleep
                     try:
-                        time.sleep(1.0)  # 1-second interval
+                        time.sleep(0.001)  # 1ms interval
                     except Exception:
                         break  # Exit if sleep fails
                         
                 except Exception as loop_error:
                     # Log loop error but continue monitoring
                     print(f"Error in monitoring loop iteration {loop_count}: {loop_error}")
-                    time.sleep(1.0)  # Wait before retry
+                    time.sleep(0.001)  # Wait before retry
                     
         except Exception as e:
             print(f"Critical error in DAQ monitoring loop: {e}")
@@ -1700,8 +1700,8 @@ class TestScenarioEngine(QObject):
                             remaining = max(0, timeout_time - current_time)
                             print(f"Isolated: Waiting for screen test... ({remaining:.0f}s remaining)")
                         
-                        # Sleep before continue to avoid tight loop
-                        time.sleep(1.0)
+                        # Sleep before continue to avoid tight loop (longer wait for screen test)
+                        time.sleep(1.0)  # Keep 1s for waiting state
                         continue
                     
                     # Progress logging
@@ -1710,11 +1710,11 @@ class TestScenarioEngine(QObject):
                         print(f"Isolated DAQ: {data_count} points, {successful_reads}/{len(enabled_channels)} channels OK")
                     
                     # Sleep
-                    time.sleep(1.0)
+                    time.sleep(0.001)  # 1ms interval
                     
                 except Exception as loop_error:
                     print(f"Isolated DAQ loop error: {loop_error}")
-                    time.sleep(1.0)
+                    time.sleep(0.001)  # 1ms interval
                     
         except Exception as e:
             print(f"Isolated DAQ critical error: {e}")
