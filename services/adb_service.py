@@ -227,24 +227,41 @@ class ADBService:
             return False
     
     def get_airplane_mode_status(self) -> str:
-        """Get current airplane mode status (ON/OFF/UNKNOWN)"""
+        """Get current airplane mode status (ON/OFF/UNKNOWN) with multiple verification methods"""
         try:
-            # Method 1: Check using settings
+            # Method 1: Check using settings (most reliable)
             result = self._run_adb_command(['shell', 'settings', 'get', 'global', 'airplane_mode_on'])
-            if result:
-                if result.strip() == '1':
+            if result and result.strip():
+                value = result.strip()
+                if value == '1':
+                    self.logger.debug("Airplane mode: ON (via settings)")
                     return 'ON'
-                elif result.strip() == '0':
+                elif value == '0':
+                    self.logger.debug("Airplane mode: OFF (via settings)")
                     return 'OFF'
             
-            # Method 2: Check using dumpsys (some devices)
-            result = self._run_adb_command(['shell', 'dumpsys', 'wifi', '|', 'grep', '-i', 'airplane'])
-            if result:
-                if 'airplane.*on' in result.lower() or 'airplane.*enabled' in result.lower():
+            # Method 2: Check WiFi state (airplane mode disables WiFi)
+            wifi_status = self.get_wifi_status()
+            if not wifi_status['enabled'] and wifi_status['connection_state'] == 'DISCONNECTED':
+                # WiFi is off, might be airplane mode
+                # Check Bluetooth too
+                bt_status = self.get_bluetooth_status()
+                if bt_status == 'OFF':
+                    # Both WiFi and BT off - likely airplane mode
+                    self.logger.debug("Airplane mode: likely ON (WiFi+BT off)")
                     return 'ON'
-                elif 'airplane.*off' in result.lower() or 'airplane.*disabled' in result.lower():
+            
+            # Method 3: Check using dumpsys (backup)
+            result = self._run_adb_command(['shell', 'dumpsys', 'connectivity', '|', 'grep', '-i', 'airplane'])
+            if result:
+                if 'airplane.*on' in result.lower() or 'airplane.*true' in result.lower():
+                    self.logger.debug("Airplane mode: ON (via dumpsys)")
+                    return 'ON'
+                elif 'airplane.*off' in result.lower() or 'airplane.*false' in result.lower():
+                    self.logger.debug("Airplane mode: OFF (via dumpsys)")
                     return 'OFF'
             
+            self.logger.warning("Airplane mode status: UNKNOWN (all methods failed)")
             return 'UNKNOWN'
             
         except Exception as e:

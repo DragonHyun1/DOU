@@ -1411,19 +1411,40 @@ class TestScenarioEngine(QObject):
                     successful_reads = 0
                     
                     if measurement_mode == "current":
-                        # Current mode - use safe simulation to avoid Qt signal issues
+                        # Current mode - try real DAQ first, then simulation
                         try:
-                            import random
-                            for channel in enabled_channels:
-                                current = round(random.uniform(-0.05, 0.05), 6)  # Simulate microamp values
-                                channel_data[f"{channel}_current"] = current
-                                successful_reads += 1
-                                if loop_count == 1:
-                                    print(f"Simulated current from {channel}: {current}A")
+                            # Try reading from real DAQ service
+                            if self.daq_service and hasattr(self.daq_service, 'read_current'):
+                                for channel in enabled_channels:
+                                    try:
+                                        current = self._read_current_from_channel(channel)
+                                        channel_data[f"{channel}_current"] = current
+                                        successful_reads += 1
+                                        if loop_count == 1:
+                                            print(f"Real DAQ current from {channel}: {current}A")
+                                    except Exception as read_err:
+                                        print(f"DAQ read error for {channel}: {read_err}, using fallback")
+                                        # Fallback to simulation for this channel
+                                        import random
+                                        current = round(random.uniform(-0.05, 0.05), 6)
+                                        channel_data[f"{channel}_current"] = current
+                                        successful_reads += 1
+                            else:
+                                # No real DAQ, use simulation
+                                import random
+                                for channel in enabled_channels:
+                                    current = round(random.uniform(-0.05, 0.05), 6)  # Simulate microamp values
+                                    channel_data[f"{channel}_current"] = current
+                                    successful_reads += 1
+                                    if loop_count == 1:
+                                        print(f"Simulated current from {channel}: {current}A")
                         except Exception as e:
-                            print(f"Error in current simulation: {e}")
+                            print(f"Error in current collection: {e}")
+                            # Ensure all channels have data even on error
                             for channel in enabled_channels:
-                                channel_data[f"{channel}_current"] = 0.0
+                                if f"{channel}_current" not in channel_data:
+                                    channel_data[f"{channel}_current"] = 0.0
+                                    print(f"?? WARNING: {channel}_current set to 0.0 due to error")
                     
                     else:  # voltage mode
                         # Voltage mode - use safe simulation to avoid Qt signal issues
@@ -1467,6 +1488,16 @@ class TestScenarioEngine(QObject):
                                     
                                     # Only collect if we haven't collected for this second yet
                                     if target_second == current_data_count and target_second < 10:
+                                        # Validate channel_data before adding
+                                        if not channel_data:
+                                            print(f"?? WARNING: Empty channel_data at {target_second}s, skipping")
+                                            continue
+                                        
+                                        # Check if all values are 0 (suspicious)
+                                        all_zero = all(v == 0.0 for v in channel_data.values() if isinstance(v, (int, float)))
+                                        if all_zero and loop_count > 1:
+                                            print(f"?? WARNING: All channel values are 0 at {target_second}s")
+                                        
                                         data_point = {
                                             'timestamp': datetime.now(),
                                             'time_elapsed': float(target_second),  # Exact integer seconds (0.0, 1.0, 2.0, ...)
@@ -1477,7 +1508,9 @@ class TestScenarioEngine(QObject):
                                         # Thread-safe data append
                                         if hasattr(self, 'daq_data'):
                                             self.daq_data.append(data_point)
-                                            print(f"? DAQ collected data point {len(self.daq_data)}: {target_second}.0s")
+                                            # Log channel values for debugging
+                                            channel_values_str = ', '.join([f"{k}={v:.6f}" for k, v in channel_data.items()])
+                                            print(f"? DAQ collected data point {len(self.daq_data)}: {target_second}.0s [{channel_values_str}]")
                                         
                                         # Log progress
                                         if len(self.daq_data) % 5 == 0:
@@ -1513,6 +1546,16 @@ class TestScenarioEngine(QObject):
                                     
                                     # Only collect if we haven't collected for this second yet
                                     if target_second == current_data_count and target_second < 10:
+                                        # Validate channel_data before adding
+                                        if not channel_data:
+                                            print(f"?? WARNING: Empty channel_data at {target_second}s (fallback), skipping")
+                                            continue
+                                        
+                                        # Check if all values are 0 (suspicious)
+                                        all_zero = all(v == 0.0 for v in channel_data.values() if isinstance(v, (int, float)))
+                                        if all_zero and loop_count > 1:
+                                            print(f"?? WARNING: All channel values are 0 at {target_second}s (fallback)")
+                                        
                                         data_point = {
                                             'timestamp': datetime.now(),
                                             'time_elapsed': float(target_second),  # Exact integer seconds (0.0, 1.0, 2.0, ...)
@@ -1523,7 +1566,9 @@ class TestScenarioEngine(QObject):
                                         # Thread-safe data append
                                         if hasattr(self, 'daq_data'):
                                             self.daq_data.append(data_point)
-                                            print(f"? Fallback collected data point {len(self.daq_data)}: {target_second}.0s")
+                                            # Log channel values for debugging
+                                            channel_values_str = ', '.join([f"{k}={v:.6f}" for k, v in channel_data.items()])
+                                            print(f"? Fallback collected data point {len(self.daq_data)}: {target_second}.0s [{channel_values_str}]")
                                         
                                         # Log progress
                                         if len(self.daq_data) % 5 == 0:
