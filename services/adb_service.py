@@ -359,11 +359,12 @@ class ADBService:
         try:
             self.logger.info(f"🔄 Connecting to 2.4GHz WiFi: {ssid}")
             
-            # Step 1: Disable airplane mode first (if enabled)
-            self.logger.info("Step 1: Disabling airplane mode (if enabled)...")
-            self._run_adb_command(['shell', 'settings', 'put', 'global', 'airplane_mode_on', '0'])
-            self._run_adb_command(['shell', 'am', 'broadcast', '-a', 'android.intent.action.AIRPLANE_MODE', '--ez', 'state', 'false'])
-            time.sleep(2)
+            # Step 1: Check if airplane mode is on, keep WiFi available in airplane mode
+            self.logger.info("Step 1: Checking airplane mode status...")
+            airplane_status = self.get_airplane_mode_status()
+            self.logger.info(f"Airplane mode status: {airplane_status}")
+            # Note: Don't disable airplane mode - WiFi can work in airplane mode on most devices
+            # If needed, airplane mode will be handled separately
             
             # Step 2: Enable WiFi
             self.logger.info("Step 2: Enabling WiFi...")

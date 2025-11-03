@@ -1398,6 +1398,7 @@ class TestScenarioEngine(QObject):
         try:
             loop_count = 0
             data_collection_start_time = None  # Track when data collection actually starts
+            last_sample_time = -1  # Track last collected sample time to avoid duplicates
             # Use pre-stored configuration (thread-safe)
             enabled_channels = getattr(self, '_monitoring_channels', ['ai0', 'ai1', 'ai2', 'ai3', 'ai4', 'ai5'])
             measurement_mode = getattr(self, '_monitoring_mode', 'current')
@@ -1407,6 +1408,7 @@ class TestScenarioEngine(QObject):
                 return
             
             print(f"Monitoring {len(enabled_channels)} channels in {measurement_mode} mode: {enabled_channels}")
+            print(f"Target: 10,000 samples over 10 seconds (1 sample per 1ms)")
             
             while self.monitoring_active and not self.stop_requested:
                 try:
@@ -1483,23 +1485,24 @@ class TestScenarioEngine(QObject):
                                     data_collection_start_time = current_time
                                     print(f"Data collection started at screen test time: {screen_test_elapsed:.1f}s")
                                 
-                                # Calculate sample-based time (starts at 0 and increments by 1ms)
-                                current_sample_count = len(self.daq_data) if hasattr(self, 'daq_data') else 0
-                                sample_time_ms = current_sample_count  # 0, 1, 2, 3, ... (in ms)
+                                # Calculate actual elapsed time in ms (real-time based)
+                                actual_elapsed_ms = int((current_time - data_collection_start_time) * 1000)
                                 
-                                # Only collect data during test period (0-10000 ms = 10 seconds)
-                                if sample_time_ms < 10000:
-                                    # Collect EVERY loop iteration (1ms interval = 10,000 samples in 10s)
+                                # Only collect data during test period (0-9999 ms = 10 seconds)
+                                # Collect one sample per ms: sample at 0ms, 1ms, 2ms, ..., 9999ms
+                                if actual_elapsed_ms < 10000 and actual_elapsed_ms > last_sample_time:
+                                    # Collect one sample per actual ms elapsed
+                                    last_sample_time = actual_elapsed_ms
                                     
                                     # Validate channel_data before adding
                                     if not channel_data:
                                         continue  # Skip empty data
                                     
                                     # Check if all values are 0 (suspicious) - warn occasionally
-                                    if current_sample_count % 1000 == 0 and current_sample_count > 0:
+                                    if actual_elapsed_ms % 1000 == 0 and actual_elapsed_ms > 0:
                                         all_zero = all(v == 0.0 for v in channel_data.values() if isinstance(v, (int, float)))
                                         if all_zero:
-                                            print(f"WARNING: All channel values are 0 at {sample_time_ms}ms")
+                                            print(f"WARNING: All channel values are 0 at {actual_elapsed_ms}ms")
                                     
                                     # Convert current from A to mA (multiply by 1000)
                                     channel_data_mA = {}
@@ -1511,8 +1514,8 @@ class TestScenarioEngine(QObject):
                                     
                                     data_point = {
                                         'timestamp': datetime.now(),
-                                        'time_elapsed': sample_time_ms,  # Integer ms: 0, 1, 2, 3, ...
-                                        'screen_test_time': sample_time_ms,  # Same as elapsed time
+                                        'time_elapsed': actual_elapsed_ms,  # Actual elapsed ms: 0, 1, 2, 3, ..., 9999
+                                        'screen_test_time': actual_elapsed_ms,
                                         **channel_data_mA
                                     }
                                     
@@ -1524,10 +1527,10 @@ class TestScenarioEngine(QObject):
                                         if len(self.daq_data) % 1000 == 0:
                                             # Show first 2 channels only in log (in mA)
                                             channel_preview = ', '.join([f"{k}={v:.3f}mA" for k, v in list(channel_data_mA.items())[:2]])
-                                            print(f"DAQ: {len(self.daq_data)} samples, {sample_time_ms}ms [{channel_preview}...]")
-                                elif sample_time_ms >= 10000:
-                                    # Stop collecting data after 10 seconds (10,000 samples)
-                                    print(f"Data collection completed ({len(self.daq_data)} samples, {sample_time_ms}ms), stopping monitoring")
+                                            print(f"DAQ: {len(self.daq_data)} samples at {actual_elapsed_ms}ms [{channel_preview}...]")
+                                elif actual_elapsed_ms >= 10000:
+                                    # Stop collecting data after 10 seconds (reached 10,000ms)
+                                    print(f"Data collection completed ({len(self.daq_data)} samples, {actual_elapsed_ms}ms), stopping monitoring")
                                     self.monitoring_active = False
                                     break
                             else:
@@ -1612,11 +1615,24 @@ class TestScenarioEngine(QObject):
                     except Exception as e:
                         print(f"Error creating data point: {e}")
                     
-                    # Safe sleep
+                    # Precise timing control: wait until next 1ms boundary
                     try:
-                        time.sleep(0.001)  # 1ms interval
+                        # Calculate how long this loop took
+                        loop_elapsed = time.time() - loop_start
+                        # Calculate sleep time to maintain 1ms interval
+                        target_interval = 0.001  # 1ms
+                        sleep_time = max(0, target_interval - loop_elapsed)
+                        
+                        if sleep_time > 0:
+                            time.sleep(sleep_time)
+                        
+                        # Additional check: if we're running too fast, add minimum delay
+                        actual_elapsed = time.time() - loop_start
+                        if actual_elapsed < 0.0005:  # Less than 0.5ms is too fast
+                            time.sleep(0.001)  # Force minimum 1ms
+                            
                     except Exception:
-                        break  # Exit if sleep fails
+                        time.sleep(0.001)  # Fallback
                         
                 except Exception as loop_error:
                     # Log loop error but continue monitoring
