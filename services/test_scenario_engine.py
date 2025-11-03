@@ -1483,11 +1483,12 @@ class TestScenarioEngine(QObject):
                                     data_collection_start_time = current_time
                                     print(f"Data collection started at screen test time: {screen_test_elapsed:.1f}s")
                                 
-                                # Calculate data collection elapsed time (always starts from 0)
-                                data_elapsed_time = current_time - data_collection_start_time
+                                # Calculate sample-based time (starts at 0.000 and increments by 0.001)
+                                current_sample_count = len(self.daq_data) if hasattr(self, 'daq_data') else 0
+                                sample_time = current_sample_count * 0.001  # 0.000, 0.001, 0.002, ...
                                 
-                                # Only collect data during test period (0-10 seconds for Phone app test)  
-                                if screen_test_elapsed >= 0 and screen_test_elapsed <= 10.0 and data_elapsed_time <= 10.0:
+                                # Only collect data during test period (0-10 seconds)
+                                if sample_time < 10.0:
                                     # Collect EVERY loop iteration (1ms interval = 10,000 samples in 10s)
                                     
                                     # Validate channel_data before adding
@@ -1495,15 +1496,15 @@ class TestScenarioEngine(QObject):
                                         continue  # Skip empty data
                                     
                                     # Check if all values are 0 (suspicious) - warn occasionally
-                                    if loop_count % 1000 == 0:  # Every 1000 samples
+                                    if current_sample_count % 1000 == 0 and current_sample_count > 0:
                                         all_zero = all(v == 0.0 for v in channel_data.values() if isinstance(v, (int, float)))
                                         if all_zero:
-                                            print(f"WARNING: All channel values are 0 at {data_elapsed_time:.3f}s")
+                                            print(f"WARNING: All channel values are 0 at {sample_time:.3f}s")
                                     
                                     data_point = {
                                         'timestamp': datetime.now(),
-                                        'time_elapsed': round(data_elapsed_time, 3),  # ms precision (0.001, 0.002, ...)
-                                        'screen_test_time': round(screen_test_elapsed, 3),
+                                        'time_elapsed': sample_time,  # Exact: 0.000, 0.001, 0.002, ...
+                                        'screen_test_time': sample_time,  # Same as elapsed time
                                         **channel_data
                                     }
                                     
@@ -1513,13 +1514,12 @@ class TestScenarioEngine(QObject):
                                         
                                         # Log progress every 1000 samples (=1 second)
                                         if len(self.daq_data) % 1000 == 0:
-                                            sample_time = data_elapsed_time
                                             # Show first 2 channels only in log
                                             channel_preview = ', '.join([f"{k}={v:.6f}" for k, v in list(channel_data.items())[:2]])
-                                            print(f"DAQ: {len(self.daq_data)} samples, {sample_time:.1f}s [{channel_preview}...]")
-                                elif data_elapsed_time > 10.0:
-                                    # Stop collecting data after 10 seconds
-                                    print(f"Data collection completed ({data_elapsed_time:.1f}s), stopping monitoring")
+                                            print(f"DAQ: {len(self.daq_data)} samples, {sample_time:.3f}s [{channel_preview}...]")
+                                elif sample_time >= 10.0:
+                                    # Stop collecting data after 10 seconds (10,000 samples)
+                                    print(f"Data collection completed ({len(self.daq_data)} samples, {sample_time:.1f}s), stopping monitoring")
                                     self.monitoring_active = False
                                     break
                             else:
@@ -1539,9 +1539,11 @@ class TestScenarioEngine(QObject):
                                     data_collection_start_time = current_time
                                     print("Fallback: Starting data collection without screen test signal")
                                 
-                                # Calculate proper elapsed time from data collection start
-                                fallback_elapsed = current_time - data_collection_start_time
-                                if fallback_elapsed <= 10.0:  # Only collect for 10 seconds
+                                # Calculate sample-based time (starts at 0.000 and increments by 0.001)
+                                current_sample_count = len(self.daq_data) if hasattr(self, 'daq_data') else 0
+                                sample_time = current_sample_count * 0.001  # 0.000, 0.001, 0.002, ...
+                                
+                                if sample_time < 10.0:  # Only collect for 10 seconds
                                     # Collect EVERY loop iteration (1ms interval = 10,000 samples in 10s)
                                     
                                     # Validate channel_data before adding
@@ -1549,15 +1551,15 @@ class TestScenarioEngine(QObject):
                                         continue  # Skip empty data
                                     
                                     # Check if all values are 0 (suspicious) - warn occasionally
-                                    if loop_count % 1000 == 0:  # Every 1000 samples
+                                    if current_sample_count % 1000 == 0 and current_sample_count > 0:
                                         all_zero = all(v == 0.0 for v in channel_data.values() if isinstance(v, (int, float)))
                                         if all_zero:
-                                            print(f"WARNING: All channel values are 0 at {fallback_elapsed:.3f}s (fallback)")
+                                            print(f"WARNING: All channel values are 0 at {sample_time:.3f}s (fallback)")
                                     
                                     data_point = {
                                         'timestamp': datetime.now(),
-                                        'time_elapsed': round(fallback_elapsed, 3),  # ms precision
-                                        'screen_test_time': round(fallback_elapsed, 3),  # Fallback timing
+                                        'time_elapsed': sample_time,  # Exact: 0.000, 0.001, 0.002, ...
+                                        'screen_test_time': sample_time,  # Fallback timing
                                         **channel_data
                                     }
                                     
@@ -1569,10 +1571,10 @@ class TestScenarioEngine(QObject):
                                         if len(self.daq_data) % 1000 == 0:
                                             # Show first 2 channels only in log
                                             channel_preview = ', '.join([f"{k}={v:.6f}" for k, v in list(channel_data.items())[:2]])
-                                            print(f"Fallback: {len(self.daq_data)} samples, {fallback_elapsed:.1f}s [{channel_preview}...]")
+                                            print(f"Fallback: {len(self.daq_data)} samples, {sample_time:.3f}s [{channel_preview}...]")
                                 else:
-                                    # Stop fallback collection after 10 seconds
-                                    print("Fallback data collection completed (10s)")
+                                    # Stop fallback collection after 10 seconds (10,000 samples)
+                                    print(f"Fallback data collection completed ({len(self.daq_data)} samples, {sample_time:.1f}s)")
                                     self.monitoring_active = False
                                     break
                             
