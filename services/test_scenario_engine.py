@@ -1488,39 +1488,35 @@ class TestScenarioEngine(QObject):
                                 
                                 # Only collect data during test period (0-10 seconds for Phone app test)  
                                 if screen_test_elapsed >= 0 and screen_test_elapsed <= 10.0 and data_elapsed_time <= 10.0:
-                                    # Collect data only at integer second intervals (0, 1, 2, ..., 9)
-                                    target_second = int(data_elapsed_time)
-                                    current_data_count = len(self.daq_data) if hasattr(self, 'daq_data') else 0
+                                    # Collect EVERY loop iteration (1ms interval = 10,000 samples in 10s)
                                     
-                                    # Only collect if we haven't collected for this second yet
-                                    if target_second == current_data_count and target_second < 10:
-                                        # Validate channel_data before adding
-                                        if not channel_data:
-                                            print(f"?? WARNING: Empty channel_data at {target_second}s, skipping")
-                                            continue
-                                        
-                                        # Check if all values are 0 (suspicious)
+                                    # Validate channel_data before adding
+                                    if not channel_data:
+                                        continue  # Skip empty data
+                                    
+                                    # Check if all values are 0 (suspicious) - warn occasionally
+                                    if loop_count % 1000 == 0:  # Every 1000 samples
                                         all_zero = all(v == 0.0 for v in channel_data.values() if isinstance(v, (int, float)))
-                                        if all_zero and loop_count > 1:
-                                            print(f"?? WARNING: All channel values are 0 at {target_second}s")
+                                        if all_zero:
+                                            print(f"WARNING: All channel values are 0 at {data_elapsed_time:.3f}s")
+                                    
+                                    data_point = {
+                                        'timestamp': datetime.now(),
+                                        'time_elapsed': round(data_elapsed_time, 3),  # ms precision (0.001, 0.002, ...)
+                                        'screen_test_time': round(screen_test_elapsed, 3),
+                                        **channel_data
+                                    }
+                                    
+                                    # Thread-safe data append
+                                    if hasattr(self, 'daq_data'):
+                                        self.daq_data.append(data_point)
                                         
-                                        data_point = {
-                                            'timestamp': datetime.now(),
-                                            'time_elapsed': float(target_second),  # Exact integer seconds (0.0, 1.0, 2.0, ...)
-                                            'screen_test_time': float(target_second),  # Same as elapsed time
-                                            **channel_data
-                                        }
-                                        
-                                        # Thread-safe data append
-                                        if hasattr(self, 'daq_data'):
-                                            self.daq_data.append(data_point)
-                                            # Log channel values for debugging
-                                            channel_values_str = ', '.join([f"{k}={v:.6f}" for k, v in channel_data.items()])
-                                            print(f"? DAQ collected data point {len(self.daq_data)}: {target_second}.0s [{channel_values_str}]")
-                                        
-                                        # Log progress
-                                        if len(self.daq_data) % 5 == 0:
-                                            print(f"?? DAQ progress: {len(self.daq_data)}/10 data points collected")
+                                        # Log progress every 1000 samples (=1 second)
+                                        if len(self.daq_data) % 1000 == 0:
+                                            sample_time = data_elapsed_time
+                                            # Show first 2 channels only in log
+                                            channel_preview = ', '.join([f"{k}={v:.6f}" for k, v in list(channel_data.items())[:2]])
+                                            print(f"DAQ: {len(self.daq_data)} samples, {sample_time:.1f}s [{channel_preview}...]")
                                 elif data_elapsed_time > 10.0:
                                     # Stop collecting data after 10 seconds
                                     print(f"Data collection completed ({data_elapsed_time:.1f}s), stopping monitoring")
@@ -1546,39 +1542,34 @@ class TestScenarioEngine(QObject):
                                 # Calculate proper elapsed time from data collection start
                                 fallback_elapsed = current_time - data_collection_start_time
                                 if fallback_elapsed <= 10.0:  # Only collect for 10 seconds
-                                    # Collect data only at integer second intervals (0, 1, 2, ..., 9)
-                                    target_second = int(fallback_elapsed)
-                                    current_data_count = len(self.daq_data) if hasattr(self, 'daq_data') else 0
+                                    # Collect EVERY loop iteration (1ms interval = 10,000 samples in 10s)
                                     
-                                    # Only collect if we haven't collected for this second yet
-                                    if target_second == current_data_count and target_second < 10:
-                                        # Validate channel_data before adding
-                                        if not channel_data:
-                                            print(f"?? WARNING: Empty channel_data at {target_second}s (fallback), skipping")
-                                            continue
-                                        
-                                        # Check if all values are 0 (suspicious)
+                                    # Validate channel_data before adding
+                                    if not channel_data:
+                                        continue  # Skip empty data
+                                    
+                                    # Check if all values are 0 (suspicious) - warn occasionally
+                                    if loop_count % 1000 == 0:  # Every 1000 samples
                                         all_zero = all(v == 0.0 for v in channel_data.values() if isinstance(v, (int, float)))
-                                        if all_zero and loop_count > 1:
-                                            print(f"?? WARNING: All channel values are 0 at {target_second}s (fallback)")
+                                        if all_zero:
+                                            print(f"WARNING: All channel values are 0 at {fallback_elapsed:.3f}s (fallback)")
+                                    
+                                    data_point = {
+                                        'timestamp': datetime.now(),
+                                        'time_elapsed': round(fallback_elapsed, 3),  # ms precision
+                                        'screen_test_time': round(fallback_elapsed, 3),  # Fallback timing
+                                        **channel_data
+                                    }
+                                    
+                                    # Thread-safe data append
+                                    if hasattr(self, 'daq_data'):
+                                        self.daq_data.append(data_point)
                                         
-                                        data_point = {
-                                            'timestamp': datetime.now(),
-                                            'time_elapsed': float(target_second),  # Exact integer seconds (0.0, 1.0, 2.0, ...)
-                                            'screen_test_time': float(target_second),  # Fallback timing
-                                            **channel_data
-                                        }
-                                        
-                                        # Thread-safe data append
-                                        if hasattr(self, 'daq_data'):
-                                            self.daq_data.append(data_point)
-                                            # Log channel values for debugging
-                                            channel_values_str = ', '.join([f"{k}={v:.6f}" for k, v in channel_data.items()])
-                                            print(f"? Fallback collected data point {len(self.daq_data)}: {target_second}.0s [{channel_values_str}]")
-                                        
-                                        # Log progress
-                                        if len(self.daq_data) % 5 == 0:
-                                            print(f"?? Fallback progress: {len(self.daq_data)}/10 data points collected")
+                                        # Log progress every 1000 samples (=1 second)
+                                        if len(self.daq_data) % 1000 == 0:
+                                            # Show first 2 channels only in log
+                                            channel_preview = ', '.join([f"{k}={v:.6f}" for k, v in list(channel_data.items())[:2]])
+                                            print(f"Fallback: {len(self.daq_data)} samples, {fallback_elapsed:.1f}s [{channel_preview}...]")
                                 else:
                                     # Stop fallback collection after 10 seconds
                                     print("Fallback data collection completed (10s)")
@@ -1976,27 +1967,27 @@ class TestScenarioEngine(QObject):
             self._emit_signal_safe(self.progress_updated, progress, step_name)
     
     def _get_enabled_channels_from_monitor(self) -> List[str]:
-        """Get enabled channels from multi-channel monitor"""
+        """Get enabled channels from multi-channel monitor (ONLY enabled channels, no fallback)"""
         if not self.multi_channel_monitor:
-            # Return default channels if no monitor available
-            self.log_callback("No multi-channel monitor available, using default channels", "warn")
-            return ['ai0', 'ai1', 'ai2', 'ai3', 'ai4', 'ai5']
+            self.log_callback("?? No multi-channel monitor available", "warn")
+            return []
         
         try:
             enabled_channels = []
             for channel, config in self.multi_channel_monitor.channel_configs.items():
                 if config.get('enabled', False):
                     enabled_channels.append(channel)
-                    self.log_callback(f"Found enabled channel: {channel} -> {config.get('name', 'Unknown')}", "info")
+                    self.log_callback(f"? Found enabled channel: {channel} -> {config.get('name', 'Unknown')}", "info")
             
             if not enabled_channels:
-                self.log_callback("No enabled channels found in multi-channel monitor, using defaults", "warn")
-                return ['ai0', 'ai1', 'ai2', 'ai3', 'ai4', 'ai5']
-                
+                self.log_callback("?? No channels enabled in multi-channel monitor", "warn")
+                return []
+            
+            self.log_callback(f"?? Total enabled channels from monitor: {enabled_channels}", "info")
             return enabled_channels
         except Exception as e:
-            self.log_callback(f"Error getting enabled channels: {e}", "error")
-            return ['ai0', 'ai1', 'ai2', 'ai3', 'ai4', 'ai5']
+            self.log_callback(f"? Error getting enabled channels: {e}", "error")
+            return []
     
     def _get_channel_rail_names(self) -> Dict[str, str]:
         """Get rail names for enabled channels"""
