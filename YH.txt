@@ -1,1 +1,20 @@
-WiFi config not available, using default: No module named 'test_scenarios.configs.wifi_config'
+Monitoring 2 channels in current mode: ['ai0', 'ai1']
+Simulated current from ai0: -0.042396A
+Simulated current from ai1: 0.032811A
+Waiting for screen test to start... (25s timeout remaining)
+Data collection started at screen test time: 0.9s
+? DAQ collected data point 1: 0.0s [ai0_current=0.039471, ai1_current=-0.002325]
+? DAQ collected data point 2: 1.0s [ai0_current=-0.049514, ai1_current=0.046858]
+? DAQ collected data point 3: 2.0s [ai0_current=-0.014251, ai1_current=0.005457]
+? DAQ collected data point 4: 3.0s [ai0_current=0.043640, ai1_current=0.040367]
+? DAQ collected data point 5: 4.0s [ai0_current=0.037877, ai1_current=-0.047769]
+?? DAQ progress: 5/10 data points collected
+? DAQ collected data point 6: 5.0s [ai0_current=0.005474, ai1_current=0.021538]
+? DAQ collected data point 7: 6.0s [ai0_current=0.005238, ai1_current=-0.018706]
+DAQ monitoring: 7 points collected, 2/2 channels OK
+? DAQ collected data point 8: 7.0s [ai0_current=0.010132, ai1_current=-0.010846]
+? DAQ collected data point 9: 8.0s [ai0_current=0.032286, ai1_current=0.015425]
+? DAQ collected data point 10: 9.0s [ai0_current=-0.006289, ai1_current=-0.042929]
+?? DAQ progress: 10/10 data points collected
+Data collection completed (10.1s), stopping monitoring
+DAQ monitoring loop ended
