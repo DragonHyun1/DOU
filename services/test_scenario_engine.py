@@ -1361,19 +1361,19 @@ class TestScenarioEngine(QObject):
             # Use scenario name for filename
             scenario_name = self.current_test.scenario_name if self.current_test else "test"
             safe_name = scenario_name.replace(" ", "_").replace("/", "_").replace("\\", "_")
-            excel_filename = f"{results_dir}/{safe_name}_{timestamp}.xlsx"
+            csv_filename = f"{results_dir}/{safe_name}_{timestamp}.csv"
             
-            self.log_callback(f"Exporting to Excel file: {excel_filename}", "info")
+            self.log_callback(f"Exporting to CSV file: {csv_filename}", "info")
             
-            # Export to Excel with enhanced formatting (XLSX only)
-            excel_success = self._export_to_excel_basic(excel_filename)
+            # Export to CSV (fast and lightweight, suitable for large datasets)
+            csv_success = self._export_to_csv(csv_filename)
             
-            if excel_success:
-                self.log_callback(f"SUCCESS: Test data exported to {excel_filename}", "success")
+            if csv_success:
+                self.log_callback(f"SUCCESS: Test data exported to {csv_filename}", "success")
             else:
-                self.log_callback("FAILED: Could not export Excel data", "error")
+                self.log_callback("FAILED: Could not export CSV data", "error")
             
-            return excel_success
+            return csv_success
         except Exception as e:
             self.log_callback(f"CRITICAL ERROR in CSV export: {e}", "error")
             import traceback
@@ -2187,6 +2187,72 @@ class TestScenarioEngine(QObject):
             
         except Exception as e:
             self.log_callback(f"Error creating summary sheet: {e}", "error")
+    
+    def _export_to_csv(self, filename: str) -> bool:
+        """Export data to CSV file (lightweight and fast)"""
+        try:
+            import pandas as pd
+            import csv
+            
+            if not self.daq_data:
+                self.log_callback("No data to export", "warn")
+                return True
+            
+            # Get enabled channels, rail names, and measurement mode
+            enabled_channels = self._get_enabled_channels_from_monitor()
+            rail_names = self._get_channel_rail_names()
+            measurement_mode = getattr(self, '_monitoring_mode', 'current')
+            
+            self.log_callback(f"CSV export - Enabled channels: {enabled_channels}", "info")
+            self.log_callback(f"CSV export - Rail names: {rail_names}", "info")
+            self.log_callback(f"CSV export - Measurement mode: {measurement_mode}", "info")
+            
+            # Create formatted data
+            formatted_data = {}
+            
+            # First column: Time in ms as INTEGER (0, 1, 2, 3, ...)
+            formatted_data['Time (ms)'] = []
+            for data_point in self.daq_data:
+                time_ms = data_point.get('time_elapsed', 0)
+                formatted_data['Time (ms)'].append(int(time_ms))
+            
+            # Additional columns: Rail data based on measurement mode
+            for channel in enabled_channels:
+                rail_name = rail_names.get(channel, f"Rail_{channel}")
+                
+                if measurement_mode == "current":
+                    column_name = f"{rail_name} (mA)"  # Current in milliAmperes
+                    data_key = f"{channel}_current"
+                else:
+                    column_name = f"{rail_name} (V)"  # Voltage in Volts
+                    data_key = f"{channel}_voltage"
+                
+                formatted_data[column_name] = []
+                
+                for data_point in self.daq_data:
+                    value = data_point.get(data_key, 0.0)
+                    formatted_data[column_name].append(value)
+            
+            # Create DataFrame
+            df = pd.DataFrame(formatted_data)
+            
+            # Export to CSV (fast and lightweight)
+            df.to_csv(filename, index=False, encoding='utf-8-sig')
+            
+            # Log summary info
+            file_size_mb = os.path.getsize(filename) / (1024 * 1024)
+            self.log_callback(f"CSV export completed: {filename}", "info")
+            self.log_callback(f"  - Data points: {len(self.daq_data)}", "info")
+            self.log_callback(f"  - Channels: {len(enabled_channels)}", "info")
+            self.log_callback(f"  - File size: {file_size_mb:.2f} MB", "info")
+            
+            return True
+            
+        except Exception as e:
+            self.log_callback(f"Error exporting to CSV: {e}", "error")
+            import traceback
+            self.log_callback(f"CSV export traceback: {traceback.format_exc()}", "error")
+            return False
     
     def _export_to_excel_basic(self, filename: str) -> bool:
         """Export data to Excel with custom format (A1=Time, B1=Rail_Name, etc.)"""
