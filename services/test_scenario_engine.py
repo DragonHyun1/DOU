@@ -2793,16 +2793,24 @@ class TestScenarioEngine(QObject):
             
             # Use WiFi config from test_scenarios/configs/wifi_config.py
             try:
+                import sys
+                import os
+                # Add project root to path if not already there
+                project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                if project_root not in sys.path:
+                    sys.path.insert(0, project_root)
+                
                 from test_scenarios.configs.wifi_config import WiFiConfig
                 wifi_2g = WiFiConfig.get_2g_primary()
                 ssid = wifi_2g['ssid']
                 password = wifi_2g['password']
-                self.log_callback(f"Using WiFi network: {ssid}", "info")
+                self.log_callback(f"? Using WiFi network from config: {ssid}", "info")
             except Exception as e:
                 # Fallback to hardcoded values
-                self.log_callback(f"WiFi config not available, using default: {e}", "warn")
+                self.log_callback(f"?? WiFi config not available ({str(e)}), using default", "warn")
                 ssid = "0_WIFIFW_RAX40_2nd_2G"
                 password = "cppower12"
+                self.log_callback(f"Using default WiFi: {ssid}", "info")
             
             # Use improved connect_wifi_2g method from ADB service
             success = self.adb_service.connect_wifi_2g(ssid, password)
