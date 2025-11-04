@@ -7,6 +7,7 @@ Handles complex test scenarios with ADB, HVPM, and DAQ integration
 import time
 import logging
 import threading
+import os
 from datetime import datetime
 from typing import Dict, List, Any, Optional, Callable
 from dataclasses import dataclass
