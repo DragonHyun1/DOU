@@ -201,43 +201,37 @@ class NIDAQService(QObject):
                         channel_name = f"{self.device_name}/{channel}"
                         config = self.channel_configs[channel]
                         
-                        # Use CURRENT measurement mode instead of voltage
-                        # This directly measures current through the shunt resistor
-                        try:
-                            temp_task.ai_channels.add_ai_current_chan(
-                                channel_name,
-                                min_val=-0.040,  # ±40mA range (safe for most applications)
-                                max_val=0.040,
-                                units=nidaqmx.constants.CurrentUnits.AMPS
-                            )
-                            
-                            # Read current directly in Amps
-                            current = temp_task.read()
-                            voltage = 0.0  # No voltage reading in current mode
-                            
-                            print(f"Current mode read: {channel} = {current}A ({current*1000:.3f}mA)")
-                            
-                        except Exception as current_err:
-                            # Fallback to voltage mode if current mode fails
-                            print(f"Current mode failed for {channel}, falling back to voltage mode: {current_err}")
-                            
-                            temp_task.ai_channels.add_ai_voltage_chan(
-                                channel_name,
-                                terminal_config=nidaqmx.constants.TerminalConfiguration.RSE,
-                                min_val=-5.0,
-                                max_val=5.0,
-                                units=nidaqmx.constants.VoltageUnits.VOLTS
-                            )
-                            
-                            voltage = temp_task.read()
-                            
-                            # Calculate current using shunt resistor
-                            # IMPORTANT: This assumes 'voltage' is the voltage DROP across shunt resistor
-                            shunt_r = config.get('shunt_r', 0.010)
-                            current = voltage / shunt_r if shunt_r > 0 else 0.0
-                            
-                            if voltage > 0.1:  # Shunt voltage drop should typically be < 100mV
-                                print(f"WARNING: {channel} voltage ({voltage:.3f}V) seems too high for shunt measurement!")
+                        # Use VOLTAGE measurement mode (matching other tool's NI Trace)
+                        # Hardware is connected to shunt resistor terminals, so voltage reading
+                        # represents the voltage DROP across the shunt resistor
+                        temp_task.ai_channels.add_ai_voltage_chan(
+                            channel_name,
+                            terminal_config=nidaqmx.constants.TerminalConfiguration.RSE,
+                            min_val=-5.0,  # ±5V range (matching other tool)
+                            max_val=5.0,
+                            units=nidaqmx.constants.VoltageUnits.VOLTS
+                        )
+                        
+                        # Read voltage across shunt resistor
+                        voltage = temp_task.read()
+                        
+                        # Calculate current using Ohm's law: I = V / R
+                        # voltage = shunt voltage drop (typically 0.001V ~ 0.1V)
+                        # shunt_r = shunt resistance (typically 0.01Ω)
+                        shunt_r = config.get('shunt_r', 0.010)
+                        current = voltage / shunt_r if shunt_r > 0 else 0.0
+                        
+                        # Debug logging
+                        if voltage < 0.001:  # Less than 1mV
+                            print(f"DEBUG {channel}: voltage={voltage*1000:.3f}mV, current={current*1000:.3f}mA")
+                        else:
+                            print(f"Shunt voltage read: {channel} = {voltage*1000:.3f}mV → {current*1000:.3f}mA")
+                        
+                        # Warning if voltage seems too high (should be < 100mV for shunt)
+                        if voltage > 0.1:
+                            print(f"⚠️ WARNING: {channel} voltage ({voltage:.3f}V) seems too high for shunt measurement!")
+                            print(f"   Expected: < 0.1V, Got: {voltage:.3f}V")
+                            print(f"   Check if channel is connected to shunt terminals (not rail voltage)")
                         
                         readings[channel] = {
                             'voltage': voltage,
