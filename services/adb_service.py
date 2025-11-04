@@ -943,29 +943,66 @@ class ADBService:
         USB VBUS (5V) can charge the battery rail to 4.2V, 
         interfering with HVPM's 4V supply.
         
+        Uses multiple methods to ensure charging is disabled:
+        1. dumpsys battery set usb 0
+        2. dumpsys battery set ac 0  
+        3. dumpsys battery unplug (most reliable)
+        
         Returns:
             bool: True if charging was disabled successfully
         """
         try:
-            self.logger.info("Disabling USB charging...")
+            self.logger.info("🔌 Disabling USB/AC charging...")
+            print("🔌 Disabling USB/AC charging...")
             
-            # Disable charging via dumpsys battery
+            # Method 1: Disable USB charging
             result = self._run_adb_command(['shell', 'dumpsys', 'battery', 'set', 'usb', '0'])
             if result is None:
-                self.logger.error("Failed to disable USB charging")
-                return False
+                self.logger.error("Failed to set USB charging to 0")
+            else:
+                print("  ✓ USB charging set to 0")
+            
+            # Method 2: Disable AC charging
+            result = self._run_adb_command(['shell', 'dumpsys', 'battery', 'set', 'ac', '0'])
+            if result is None:
+                self.logger.error("Failed to set AC charging to 0")
+            else:
+                print("  ✓ AC charging set to 0")
+            
+            # Method 3: Unplug (most reliable method)
+            result = self._run_adb_command(['shell', 'dumpsys', 'battery', 'unplug'])
+            if result is None:
+                self.logger.error("Failed to unplug battery")
+            else:
+                print("  ✓ Battery unplugged")
             
             # Verify charging is disabled
             time.sleep(0.5)
             status = self._run_adb_command(['shell', 'dumpsys', 'battery'])
             
-            self.logger.info(f"✅ USB charging disabled successfully")
             if status:
-                self.logger.debug(f"Battery status: {status[:200]}...")
+                # Check if charging is actually disabled
+                is_usb_powered = 'USB powered: true' in status
+                is_ac_powered = 'AC powered: true' in status
+                
+                if is_usb_powered or is_ac_powered:
+                    self.logger.warning(f"⚠️ Charging may still be active (USB: {is_usb_powered}, AC: {is_ac_powered})")
+                    print(f"⚠️ Warning: USB powered: {is_usb_powered}, AC powered: {is_ac_powered}")
+                else:
+                    print("  ✓ Charging disabled successfully")
+                
+                # Show voltage
+                for line in status.split('\n'):
+                    if 'voltage:' in line.lower():
+                        print(f"  📊 {line.strip()}")
+                        break
+            
+            self.logger.info(f"✅ USB/AC charging disabled")
             return True
             
         except Exception as e:
             self.logger.error(f"Error disabling USB charging: {e}")
+            print(f"❌ Error: {e}")
             return False
     
     def enable_usb_charging(self) -> bool:
