@@ -634,11 +634,10 @@ class NIDAQService(QObject):
             self.error_occurred.emit(error_msg)
             return None
     
-    def read_voltage_channels_hardware_timed(self, channels: List[str], sample_rate: float = 1000.0, total_samples: int = 10000, duration_seconds: float = 10.0) -> Optional[dict]:
-        """Read multiple channels using DAQ hardware timing (1kHz for precise 1ms intervals)
+    def read_current_channels_hardware_timed(self, channels: List[str], sample_rate: float = 1000.0, total_samples: int = 10000, duration_seconds: float = 10.0) -> Optional[dict]:
+        """Read current using DAQ hardware timing (1kHz, like Multi-Channel Monitor but with hardware timing)
         
-        IMPORTANT: This measures VOLTAGE directly. No voltage-to-current conversion.
-        The voltage measured should be the voltage drop across shunt resistor (not rail voltage).
+        Uses DAQ's built-in current measurement mode, same as Multi-Channel Monitor.
         
         Args:
             channels: List of channel names (e.g., ['ai0', 'ai1'])
@@ -647,34 +646,39 @@ class NIDAQService(QObject):
             duration_seconds: Duration of data collection (default: 10.0 seconds)
             
         Returns:
-            dict: {channel: {'voltage_data': [V], 'current_data': [mA], 'sample_count': int}}
+            dict: {channel: {'current_data': [mA], 'sample_count': int}}
         """
         if not NI_AVAILABLE or not self.connected:
             print("DAQ not available or not connected")
             return None
             
         try:
-            print(f"=== Hardware-Timed DAQ Collection ===")
+            print(f"=== Hardware-Timed CURRENT Collection ===")
             print(f"Channels: {channels}")
             print(f"Sample rate: {sample_rate} Hz ({1000.0/sample_rate:.3f}ms per sample)")
             print(f"Total samples per channel: {total_samples}")
             print(f"Duration: {duration_seconds} seconds")
-            print(f"NOTE: Reading VOLTAGE directly (should be shunt voltage drop)")
+            print(f"Mode: DAQ CURRENT measurement (same as Multi-Channel Monitor)")
             
             with nidaqmx.Task() as task:
-                # Add voltage input channels
+                # Add CURRENT input channels (like Multi-Channel Monitor)
                 for channel in channels:
                     channel_name = f"{self.device_name}/{channel}"
                     config = self.channel_configs.get(channel, {})
                     
-                    task.ai_channels.add_ai_voltage_chan(
-                        channel_name,
-                        terminal_config=nidaqmx.constants.TerminalConfiguration.RSE,
-                        min_val=-5.0,
-                        max_val=5.0,
-                        units=nidaqmx.constants.VoltageUnits.VOLTS
-                    )
-                    print(f"Added voltage channel: {channel_name} ({config.get('name', channel)})")
+                    print(f"Adding CURRENT channel: {channel_name} ({config.get('name', channel)})")
+                    
+                    # Use current measurement with safe parameters
+                    try:
+                        task.ai_channels.add_ai_current_chan(
+                            channel_name,
+                            min_val=-0.040,  # Safe range within hardware limit
+                            max_val=0.040,
+                            units=nidaqmx.constants.CurrentUnits.AMPS
+                        )
+                    except Exception as e:
+                        print(f"Error adding current channel {channel}: {e}")
+                        raise
                 
                 # Configure hardware timing - FINITE mode for exact sample count
                 task.timing.cfg_samp_clk_timing(
@@ -683,66 +687,54 @@ class NIDAQService(QObject):
                     samps_per_chan=total_samples  # Exactly 10,000 samples
                 )
                 
-                print(f"Starting hardware-timed acquisition...")
+                print(f"Starting hardware-timed CURRENT acquisition...")
                 task.start()
                 
                 # Read all samples at once (hardware handles timing)
                 timeout = duration_seconds + 5.0  # Add buffer
-                print(f"Reading {total_samples} samples per channel (timeout: {timeout}s)...")
+                print(f"Reading {total_samples} CURRENT samples per channel (timeout: {timeout}s)...")
                 data = task.read(number_of_samples_per_channel=total_samples, timeout=timeout)
                 
                 task.stop()
-                print(f"Hardware acquisition completed")
+                print(f"Hardware CURRENT acquisition completed")
                 
-                # Process data
+                # Process current data (already in Amps from DAQ)
                 result = {}
                 
                 if len(channels) == 1:
                     # Single channel
                     if isinstance(data, (list, tuple)) and len(data) > 0:
-                        voltage_data = list(data)
+                        current_data_amps = list(data)
+                        # Convert from Amps to mA
+                        current_data_ma = [i * 1000 for i in current_data_amps]
                         
-                        # Convert shunt voltage to current using I = V / R
                         config = self.channel_configs.get(channels[0], {})
-                        shunt_r = config.get('shunt_r', 0.010)  # Default 10mΩ
-                        
-                        # voltage_data = shunt voltage drop (V)
-                        # current (A) = voltage (V) / resistance (Ω)
-                        # current (mA) = current (A) * 1000
-                        current_data = [v / shunt_r * 1000 if shunt_r > 0 else 0.0 for v in voltage_data]
-                        
                         result[channels[0]] = {
-                            'voltage_data': voltage_data,  # Shunt voltage in V
-                            'current_data': current_data,  # Current in mA
-                            'sample_count': len(voltage_data),
+                            'current_data': current_data_ma,  # Current in mA
+                            'sample_count': len(current_data_ma),
                             'name': config.get('name', channels[0])
                         }
-                        avg_v = sum(voltage_data) / len(voltage_data) if voltage_data else 0
-                        avg_i = sum(current_data) / len(current_data) if current_data else 0
-                        print(f"Channel {channels[0]}: {len(voltage_data)} samples, avg shunt V: {avg_v:.6f}V, avg current: {avg_i:.3f}mA")
+                        avg_i_ma = sum(current_data_ma) / len(current_data_ma) if current_data_ma else 0
+                        print(f"Channel {channels[0]}: {len(current_data_ma)} samples, avg current: {avg_i_ma:.3f}mA")
                 else:
                     # Multiple channels
                     if isinstance(data, (list, tuple)) and len(data) == len(channels):
                         for i, channel in enumerate(channels):
                             channel_data = data[i] if isinstance(data[i], (list, tuple)) else [data[i]]
-                            voltage_data = list(channel_data)
+                            current_data_amps = list(channel_data)
+                            # Convert from Amps to mA
+                            current_data_ma = [curr * 1000 for curr in current_data_amps]
                             
-                            # Convert shunt voltage to current
                             config = self.channel_configs.get(channel, {})
-                            shunt_r = config.get('shunt_r', 0.010)
-                            current_data = [v / shunt_r * 1000 if shunt_r > 0 else 0.0 for v in voltage_data]
-                            
                             result[channel] = {
-                                'voltage_data': voltage_data,  # Shunt voltage in V
-                                'current_data': current_data,  # Current in mA
-                                'sample_count': len(voltage_data),
+                                'current_data': current_data_ma,  # Current in mA
+                                'sample_count': len(current_data_ma),
                                 'name': config.get('name', channel)
                             }
-                            avg_v = sum(voltage_data) / len(voltage_data) if voltage_data else 0
-                            avg_i = sum(current_data) / len(current_data) if current_data else 0
-                            print(f"Channel {channel}: {len(voltage_data)} samples, avg shunt V: {avg_v:.6f}V, avg current: {avg_i:.3f}mA")
+                            avg_i_ma = sum(current_data_ma) / len(current_data_ma) if current_data_ma else 0
+                            print(f"Channel {channel}: {len(current_data_ma)} samples, avg current: {avg_i_ma:.3f}mA")
                 
-                print(f"=== Hardware-timed collection completed: {len(result)} channels ===")
+                print(f"=== Hardware-timed CURRENT collection completed: {len(result)} channels ===")
                 return result
                 
         except Exception as e:
