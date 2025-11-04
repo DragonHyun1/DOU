@@ -634,6 +634,113 @@ class NIDAQService(QObject):
             self.error_occurred.emit(error_msg)
             return None
     
+    def read_voltage_channels_hardware_timed(self, channels: List[str], sample_rate: float = 1000.0, total_samples: int = 10000, duration_seconds: float = 10.0) -> Optional[dict]:
+        """Read multiple channels using DAQ hardware timing (1kHz for precise 1ms intervals)
+        
+        Args:
+            channels: List of channel names (e.g., ['ai0', 'ai1'])
+            sample_rate: Sampling rate in Hz (default: 1000.0 = 1kHz = 1 sample per ms)
+            total_samples: Total samples to collect per channel (default: 10000 for 10 seconds at 1kHz)
+            duration_seconds: Duration of data collection (default: 10.0 seconds)
+            
+        Returns:
+            dict: {channel: {'voltage_data': [samples], 'current_data': [samples in mA], 'sample_count': int}}
+        """
+        if not NI_AVAILABLE or not self.connected:
+            print("DAQ not available or not connected")
+            return None
+            
+        try:
+            print(f"=== Hardware-Timed DAQ Collection ===")
+            print(f"Channels: {channels}")
+            print(f"Sample rate: {sample_rate} Hz ({1000.0/sample_rate:.3f}ms per sample)")
+            print(f"Total samples per channel: {total_samples}")
+            print(f"Duration: {duration_seconds} seconds")
+            
+            with nidaqmx.Task() as task:
+                # Add voltage input channels
+                for channel in channels:
+                    channel_name = f"{self.device_name}/{channel}"
+                    config = self.channel_configs.get(channel, {})
+                    
+                    task.ai_channels.add_ai_voltage_chan(
+                        channel_name,
+                        terminal_config=nidaqmx.constants.TerminalConfiguration.RSE,
+                        min_val=-5.0,
+                        max_val=5.0,
+                        units=nidaqmx.constants.VoltageUnits.VOLTS
+                    )
+                    print(f"Added channel: {channel_name} ({config.get('name', channel)})")
+                
+                # Configure hardware timing - FINITE mode for exact sample count
+                task.timing.cfg_samp_clk_timing(
+                    rate=sample_rate,  # 1kHz = 1 sample per ms
+                    sample_mode=nidaqmx.constants.AcquisitionType.FINITE,  # Collect exact number of samples
+                    samps_per_chan=total_samples  # Exactly 10,000 samples
+                )
+                
+                print(f"Starting hardware-timed acquisition...")
+                task.start()
+                
+                # Read all samples at once (hardware handles timing)
+                timeout = duration_seconds + 5.0  # Add buffer
+                print(f"Reading {total_samples} samples per channel (timeout: {timeout}s)...")
+                data = task.read(number_of_samples_per_channel=total_samples, timeout=timeout)
+                
+                task.stop()
+                print(f"Hardware acquisition completed")
+                
+                # Process data
+                result = {}
+                
+                if len(channels) == 1:
+                    # Single channel
+                    if isinstance(data, (list, tuple)) and len(data) > 0:
+                        voltage_data = list(data)
+                        
+                        # Convert to current (mA)
+                        config = self.channel_configs.get(channels[0], {})
+                        shunt_r = config.get('shunt_r', 0.010)
+                        current_data = [v / shunt_r * 1000 for v in voltage_data]  # Convert to mA
+                        
+                        result[channels[0]] = {
+                            'voltage_data': voltage_data,
+                            'current_data': current_data,
+                            'sample_count': len(voltage_data),
+                            'name': config.get('name', channels[0])
+                        }
+                        print(f"Channel {channels[0]}: {len(voltage_data)} samples collected")
+                else:
+                    # Multiple channels
+                    if isinstance(data, (list, tuple)) and len(data) == len(channels):
+                        for i, channel in enumerate(channels):
+                            channel_data = data[i] if isinstance(data[i], (list, tuple)) else [data[i]]
+                            voltage_data = list(channel_data)
+                            
+                            # Convert to current (mA)
+                            config = self.channel_configs.get(channel, {})
+                            shunt_r = config.get('shunt_r', 0.010)
+                            current_data = [v / shunt_r * 1000 for v in voltage_data]  # Convert to mA
+                            
+                            result[channel] = {
+                                'voltage_data': voltage_data,
+                                'current_data': current_data,
+                                'sample_count': len(voltage_data),
+                                'name': config.get('name', channel)
+                            }
+                            print(f"Channel {channel}: {len(voltage_data)} samples collected")
+                
+                print(f"=== Hardware-timed collection completed: {len(result)} channels ===")
+                return result
+                
+        except Exception as e:
+            error_msg = f"Hardware-timed collection error: {e}"
+            print(error_msg)
+            import traceback
+            traceback.print_exc()
+            self.error_occurred.emit(error_msg)
+            return None
+    
     def read_voltage_channels_trace_based(self, channels: List[str], samples_per_channel: int = 12) -> Optional[dict]:
         """Read multiple voltage channels simultaneously (matching other tool's NI I/O Trace)"""
         if not NI_AVAILABLE or not self.connected:
