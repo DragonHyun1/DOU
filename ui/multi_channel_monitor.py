@@ -508,6 +508,17 @@ class MultiChannelMonitorDialog(QtWidgets.QDialog):
     
     def single_read(self):
         """Perform single read of all enabled channels"""
+        # Disable USB charging first (to prevent voltage interference with HVPM)
+        if hasattr(self.parent(), 'adb_service'):
+            try:
+                adb_service = self.parent().adb_service
+                if adb_service and adb_service.is_connected():
+                    print("🔌 Disabling USB charging before measurement...")
+                    adb_service.disable_usb_charging()
+                    self.status_label.setText("USB charging disabled")
+            except Exception as e:
+                print(f"Warning: Could not disable USB charging: {e}")
+        
         if hasattr(self.parent(), 'ni_service'):
             ni_service = self.parent().ni_service
             if ni_service.is_connected():
