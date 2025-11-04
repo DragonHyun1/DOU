@@ -64,5 +64,5 @@ DAQ monitoring: 617 points collected, 6/6 channels OK
 DAQ monitoring: 627 points collected, 6/6 channels OK
 DAQ monitoring: 637 points collected, 6/6 channels OK
 DAQ monitoring: 647 points collected, 6/6 channels OK
-Data collection completed (655 samples collected over 10.0s), stopping monitoring
+Data collection completed (654 samples collected over 10.0s), stopping monitoring
 DAQ monitoring loop ended
