@@ -1486,14 +1486,15 @@ class TestScenarioEngine(QObject):
                                     data_collection_start_time = current_time
                                     print(f"Data collection started at screen test time: {screen_test_elapsed:.1f}s")
                                 
-                                # Calculate actual elapsed time (for timeout check only)
+                                # Calculate actual elapsed time in ms (real-time based)
                                 actual_elapsed_time = current_time - data_collection_start_time
+                                actual_elapsed_ms = int(actual_elapsed_time * 1000)
                                 
-                                # Collect samples: each sample = 1ms (0, 1, 2, 3, ... 9999)
-                                # Collect up to 10,000 samples over the 10-second test period
-                                if sample_count < 10000 and actual_elapsed_time <= 10.5:
-                                    # Use sample count as time (ms): 0, 1, 2, 3, ...
-                                    sample_time_ms = sample_count
+                                # Collect samples based on ACTUAL TIME: only collect when we reach each new ms
+                                # This ensures we collect over the full 10 seconds (0ms to 9999ms)
+                                if actual_elapsed_ms < 10000 and actual_elapsed_ms == sample_count:
+                                    # Use actual elapsed time as sample time (ms): 0, 1, 2, 3, ...
+                                    sample_time_ms = actual_elapsed_ms
                                     
                                     # Validate channel_data before adding
                                     if not channel_data:
@@ -1531,8 +1532,8 @@ class TestScenarioEngine(QObject):
                                             channel_preview = ', '.join([f"{k}={v:.3f}mA" for k, v in list(channel_data_mA.items())[:2]])
                                             elapsed_sec = actual_elapsed_time
                                             print(f"DAQ: {sample_count} samples at {sample_time_ms}ms (real: {elapsed_sec:.1f}s) [{channel_preview}...]")
-                                elif sample_count >= 10000:
-                                    # Stop collecting data after 10,000 samples
+                                elif actual_elapsed_ms >= 10000:
+                                    # Stop collecting data after 10 seconds (10,000 ms)
                                     print(f"Data collection completed ({sample_count} samples collected over {actual_elapsed_time:.1f}s), stopping monitoring")
                                     self.monitoring_active = False
                                     break
@@ -1618,9 +1619,9 @@ class TestScenarioEngine(QObject):
                     except Exception as e:
                         print(f"Error creating data point: {e}")
                     
-                    # No sleep - collect as fast as possible to get 10,000 samples in 10 seconds
-                    # This means approximately 1000 samples per second = 1ms per sample
-                    pass
+                    # Small sleep to prevent excessive CPU usage while waiting for next ms
+                    # Loop runs fast to check for each ms boundary
+                    time.sleep(0.0001)  # 0.1ms sleep to reduce CPU load
                         
                 except Exception as loop_error:
                     # Log loop error but continue monitoring
