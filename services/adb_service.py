@@ -947,6 +947,7 @@ class ADBService:
         1. dumpsys battery set usb 0
         2. dumpsys battery set ac 0  
         3. dumpsys battery unplug (most reliable)
+        4. (Root) Direct sysfs control if available
         
         Returns:
             bool: True if charging was disabled successfully
@@ -976,6 +977,23 @@ class ADBService:
             else:
                 print("  ✓ Battery unplugged")
             
+            # Method 4: Try root methods if available (Samsung specific)
+            # Try to disable charging at hardware level
+            root_methods = [
+                # Samsung charging control
+                ['shell', 'su', '-c', 'echo', '0', '>', '/sys/class/power_supply/battery/charging_enabled'],
+                ['shell', 'su', '-c', 'echo', '0', '>', '/sys/class/power_supply/usb/online'],
+                ['shell', 'su', '-c', 'echo', 'Disabled', '>', '/sys/class/power_supply/battery/batt_slate_mode'],
+            ]
+            
+            for cmd in root_methods:
+                try:
+                    result = self._run_adb_command(cmd)
+                    if result is not None:
+                        print(f"  ✓ Root method attempted: {' '.join(cmd[-3:])}")
+                except:
+                    pass  # Root methods may fail, continue anyway
+            
             # Verify charging is disabled
             time.sleep(0.5)
             status = self._run_adb_command(['shell', 'dumpsys', 'battery'])
@@ -989,15 +1007,27 @@ class ADBService:
                     self.logger.warning(f"⚠️ Charging may still be active (USB: {is_usb_powered}, AC: {is_ac_powered})")
                     print(f"⚠️ Warning: USB powered: {is_usb_powered}, AC powered: {is_ac_powered}")
                 else:
-                    print("  ✓ Charging disabled successfully")
+                    print("  ✓ Software charging disabled successfully")
                 
                 # Show voltage
                 for line in status.split('\n'):
                     if 'voltage:' in line.lower():
-                        print(f"  📊 {line.strip()}")
+                        voltage_str = line.strip()
+                        print(f"  📊 {voltage_str}")
+                        # Parse voltage
+                        try:
+                            voltage_mv = int(voltage_str.split(':')[1].strip())
+                            voltage_v = voltage_mv / 1000.0
+                            print(f"  📊 Parsed: {voltage_v:.3f}V")
+                        except:
+                            pass
                         break
+                
+                print("\n⚠️  Note: This disables SOFTWARE charging state.")
+                print("    Hardware charging circuit may still be active.")
+                print("    Measure actual battery rail voltage with DAQ to verify.")
             
-            self.logger.info(f"✅ USB/AC charging disabled")
+            self.logger.info(f"✅ USB/AC charging disabled (software)")
             return True
             
         except Exception as e:
