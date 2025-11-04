@@ -3,8 +3,17 @@
 ## File Modification Rules
 
 ### Protected Files
-- **YH.txt**: This is a personal file used by the user. DO NOT modify, edit, or delete this file under any circumstances.
+- **YH.txt**: This is a personal file used by the user. DO NOT modify, edit, or delete this file under any circumstances. DO NOT read this file.
+
+## Git Workflow Rules
+
+### DEV Branch Workflow
+- **Always work on DEV branch**: Never create separate branches or work on other branches
+- **Auto-push after completion**: When task is completed, ALWAYS push changes to origin/DEV
+- **Push command**: `git push origin DEV`
+- **Handle conflicts**: If push is rejected, pull with rebase first: `git pull --rebase origin DEV`
 
 ## General Guidelines
 - Always respect protected files and directories
 - When making changes, avoid touching personal configuration files
+- Complete all work and push to DEV branch before finishing
