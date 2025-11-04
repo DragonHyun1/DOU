@@ -702,18 +702,24 @@ class NIDAQService(QObject):
                     if isinstance(data, (list, tuple)) and len(data) > 0:
                         voltage_data = list(data)
                         
-                        # STORE VOLTAGE AS-IS (in Volts)
-                        # No conversion - voltage is voltage
+                        # Convert shunt voltage to current using I = V / R
                         config = self.channel_configs.get(channels[0], {})
+                        shunt_r = config.get('shunt_r', 0.010)  # Default 10mΩ
+                        
+                        # voltage_data = shunt voltage drop (V)
+                        # current (A) = voltage (V) / resistance (Ω)
+                        # current (mA) = current (A) * 1000
+                        current_data = [v / shunt_r * 1000 if shunt_r > 0 else 0.0 for v in voltage_data]
                         
                         result[channels[0]] = {
-                            'voltage_data': voltage_data,  # Voltage in V
-                            'current_data': voltage_data,  # For now, same as voltage (will fix later)
+                            'voltage_data': voltage_data,  # Shunt voltage in V
+                            'current_data': current_data,  # Current in mA
                             'sample_count': len(voltage_data),
                             'name': config.get('name', channels[0])
                         }
                         avg_v = sum(voltage_data) / len(voltage_data) if voltage_data else 0
-                        print(f"Channel {channels[0]}: {len(voltage_data)} samples, avg: {avg_v:.6f}V")
+                        avg_i = sum(current_data) / len(current_data) if current_data else 0
+                        print(f"Channel {channels[0]}: {len(voltage_data)} samples, avg shunt V: {avg_v:.6f}V, avg current: {avg_i:.3f}mA")
                 else:
                     # Multiple channels
                     if isinstance(data, (list, tuple)) and len(data) == len(channels):
@@ -721,17 +727,20 @@ class NIDAQService(QObject):
                             channel_data = data[i] if isinstance(data[i], (list, tuple)) else [data[i]]
                             voltage_data = list(channel_data)
                             
-                            # STORE VOLTAGE AS-IS (in Volts)
+                            # Convert shunt voltage to current
                             config = self.channel_configs.get(channel, {})
+                            shunt_r = config.get('shunt_r', 0.010)
+                            current_data = [v / shunt_r * 1000 if shunt_r > 0 else 0.0 for v in voltage_data]
                             
                             result[channel] = {
-                                'voltage_data': voltage_data,  # Voltage in V
-                                'current_data': voltage_data,  # For now, same as voltage
+                                'voltage_data': voltage_data,  # Shunt voltage in V
+                                'current_data': current_data,  # Current in mA
                                 'sample_count': len(voltage_data),
                                 'name': config.get('name', channel)
                             }
                             avg_v = sum(voltage_data) / len(voltage_data) if voltage_data else 0
-                            print(f"Channel {channel}: {len(voltage_data)} samples, avg: {avg_v:.6f}V")
+                            avg_i = sum(current_data) / len(current_data) if current_data else 0
+                            print(f"Channel {channel}: {len(voltage_data)} samples, avg shunt V: {avg_v:.6f}V, avg current: {avg_i:.3f}mA")
                 
                 print(f"=== Hardware-timed collection completed: {len(result)} channels ===")
                 return result
