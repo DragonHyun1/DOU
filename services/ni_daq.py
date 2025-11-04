@@ -221,11 +221,9 @@ class NIDAQService(QObject):
                         shunt_r = config.get('shunt_r', 0.010)
                         current = voltage / shunt_r if shunt_r > 0 else 0.0
                         
-                        # Debug logging
-                        if voltage < 0.001:  # Less than 1mV
-                            print(f"DEBUG {channel}: voltage={voltage*1000:.3f}mV, current={current*1000:.3f}mA")
-                        else:
-                            print(f"Shunt voltage read: {channel} = {voltage*1000:.3f}mV → {current*1000:.3f}mA")
+                        # Debug logging - ALWAYS print to see actual voltage values
+                        print(f"🔍 {channel}: RAW_VOLTAGE={voltage:.9f}V ({voltage*1000:.6f}mV) → CURRENT={current:.9f}A ({current*1000:.6f}mA)")
+                        print(f"   Calculation: {voltage:.9f}V / {shunt_r}Ω = {current:.9f}A")
                         
                         # Warning if voltage seems too high (should be < 100mV for shunt)
                         if voltage > 0.1:
