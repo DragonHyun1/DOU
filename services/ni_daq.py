@@ -200,28 +200,44 @@ class NIDAQService(QObject):
                     with nidaqmx.Task() as temp_task:
                         channel_name = f"{self.device_name}/{channel}"
                         config = self.channel_configs[channel]
-                        voltage_range = config.get('voltage_range', 10.0)
                         
-                        temp_task.ai_channels.add_ai_voltage_chan(
-                            channel_name,
-                            terminal_config=nidaqmx.constants.TerminalConfiguration.RSE,
-                            min_val=-5.0,  # Use consistent ±5V range
-                            max_val=5.0,
-                            units=nidaqmx.constants.VoltageUnits.VOLTS
-                        )
-                        
-                        voltage = temp_task.read()
-                        
-                        # Calculate current using shunt resistor
-                        # IMPORTANT: This calculation assumes 'voltage' is the voltage DROP across shunt resistor
-                        # If 'voltage' is the rail voltage, this calculation is INCORRECT
-                        # Proper current measurement requires dedicated shunt voltage measurement
-                        shunt_r = config.get('shunt_r', 0.010)
-                        current = voltage / shunt_r if shunt_r > 0 else 0.0
-                        
-                        # Add warning if voltage seems too high for shunt measurement
-                        if voltage > 0.1:  # Shunt voltage drop should typically be < 100mV
-                            print(f"WARNING: {channel} voltage ({voltage:.3f}V) seems too high for shunt measurement!")
+                        # Use CURRENT measurement mode instead of voltage
+                        # This directly measures current through the shunt resistor
+                        try:
+                            temp_task.ai_channels.add_ai_current_chan(
+                                channel_name,
+                                min_val=-0.040,  # ±40mA range (safe for most applications)
+                                max_val=0.040,
+                                units=nidaqmx.constants.CurrentUnits.AMPS
+                            )
+                            
+                            # Read current directly in Amps
+                            current = temp_task.read()
+                            voltage = 0.0  # No voltage reading in current mode
+                            
+                            print(f"Current mode read: {channel} = {current}A ({current*1000:.3f}mA)")
+                            
+                        except Exception as current_err:
+                            # Fallback to voltage mode if current mode fails
+                            print(f"Current mode failed for {channel}, falling back to voltage mode: {current_err}")
+                            
+                            temp_task.ai_channels.add_ai_voltage_chan(
+                                channel_name,
+                                terminal_config=nidaqmx.constants.TerminalConfiguration.RSE,
+                                min_val=-5.0,
+                                max_val=5.0,
+                                units=nidaqmx.constants.VoltageUnits.VOLTS
+                            )
+                            
+                            voltage = temp_task.read()
+                            
+                            # Calculate current using shunt resistor
+                            # IMPORTANT: This assumes 'voltage' is the voltage DROP across shunt resistor
+                            shunt_r = config.get('shunt_r', 0.010)
+                            current = voltage / shunt_r if shunt_r > 0 else 0.0
+                            
+                            if voltage > 0.1:  # Shunt voltage drop should typically be < 100mV
+                                print(f"WARNING: {channel} voltage ({voltage:.3f}V) seems too high for shunt measurement!")
                         
                         readings[channel] = {
                             'voltage': voltage,

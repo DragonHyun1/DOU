@@ -2104,6 +2104,36 @@ class TestScenarioEngine(QObject):
             
             self._emit_signal_safe(self.progress_updated, progress, step_name)
     
+    def _read_current_from_channel(self, channel: str) -> float:
+        """Read current from a specific DAQ channel
+        
+        Args:
+            channel: Channel name (e.g., 'ai0', 'ai1')
+            
+        Returns:
+            Current value in Amps (will be converted to mA later)
+        """
+        try:
+            if not self.daq_service:
+                raise Exception("DAQ service not available")
+            
+            # Use read_single_shot() to get all channel readings
+            readings = self.daq_service.read_single_shot()
+            
+            if not readings or channel not in readings:
+                raise Exception(f"No reading available for channel {channel}")
+            
+            # Get current value from readings (in Amps)
+            channel_reading = readings[channel]
+            current = channel_reading.get('current', 0.0)
+            
+            return current
+            
+        except Exception as e:
+            # Log error and raise to trigger fallback in calling code
+            print(f"Error reading current from {channel}: {e}")
+            raise
+    
     def _get_enabled_channels_from_monitor(self) -> List[str]:
         """Get enabled channels from multi-channel monitor (ONLY enabled channels, no fallback)"""
         if not self.multi_channel_monitor:
