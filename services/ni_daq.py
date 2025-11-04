@@ -634,31 +634,74 @@ class NIDAQService(QObject):
             self.error_occurred.emit(error_msg)
             return None
     
-    def read_current_channels_hardware_timed(self, channels: List[str], sample_rate: float = 1000.0, total_samples: int = 10000, duration_seconds: float = 10.0) -> Optional[dict]:
-        """Read current using DAQ hardware timing (1kHz, like Multi-Channel Monitor but with hardware timing)
+    def _compress_data(self, data_amps: List[float], compress_ratio: int) -> List[float]:
+        """Compress data by averaging groups (noise reduction)
+        
+        Args:
+            data_amps: Raw data in Amps
+            compress_ratio: How many samples to average (e.g., 30)
+            
+        Returns:
+            Compressed data in mA
+            
+        Example:
+            Input: 300,000 samples in Amps
+            Ratio: 30
+            Output: 10,000 samples in mA (each is average of 30)
+        """
+        compressed_ma = []
+        
+        for i in range(0, len(data_amps), compress_ratio):
+            # Get group of samples (e.g., 30 samples)
+            group = data_amps[i:i+compress_ratio]
+            
+            if len(group) > 0:
+                # Average the group and convert to mA
+                avg_amps = sum(group) / len(group)
+                avg_ma = avg_amps * 1000  # Convert to mA
+                compressed_ma.append(avg_ma)
+        
+        return compressed_ma
+    
+    def read_current_channels_hardware_timed(self, channels: List[str], sample_rate: float = 30000.0, compress_ratio: int = 30, duration_seconds: float = 10.0) -> Optional[dict]:
+        """Read current using DAQ hardware timing with compression (matching other DAQ tool)
         
         Uses DAQ's built-in current measurement mode, same as Multi-Channel Monitor.
+        Samples at high rate (30kHz) then compresses by averaging for noise reduction.
         
         Args:
             channels: List of channel names (e.g., ['ai0', 'ai1'])
-            sample_rate: Sampling rate in Hz (default: 1000.0 = 1kHz = 1 sample per ms)
-            total_samples: Total samples to collect per channel (default: 10000 for 10 seconds at 1kHz)
+            sample_rate: Sampling rate in Hz (default: 30000.0 = 30kHz, like other tool)
+            compress_ratio: Compression ratio (default: 30, meaning 30:1 compression)
             duration_seconds: Duration of data collection (default: 10.0 seconds)
             
         Returns:
             dict: {channel: {'current_data': [mA], 'sample_count': int}}
+            
+        Example:
+            - Sampling: 30kHz = 30,000 samples/sec
+            - Duration: 10 seconds
+            - Raw samples: 300,000
+            - Compress: 30:1
+            - Final samples: 10,000 (one per ms)
         """
         if not NI_AVAILABLE or not self.connected:
             print("DAQ not available or not connected")
             return None
             
         try:
-            print(f"=== Hardware-Timed CURRENT Collection ===")
+            # Calculate total samples to collect
+            total_samples = int(sample_rate * duration_seconds)  # 30,000 * 10 = 300,000
+            compressed_samples = total_samples // compress_ratio  # 300,000 / 30 = 10,000
+            
+            print(f"=== Hardware-Timed CURRENT Collection (with Compression) ===")
             print(f"Channels: {channels}")
-            print(f"Sample rate: {sample_rate} Hz ({1000.0/sample_rate:.3f}ms per sample)")
-            print(f"Total samples per channel: {total_samples}")
+            print(f"Sampling rate: {sample_rate} Hz (30kHz like other tool)")
             print(f"Duration: {duration_seconds} seconds")
-            print(f"Mode: DAQ CURRENT measurement (same as Multi-Channel Monitor)")
+            print(f"Raw samples: {total_samples} ({total_samples/1000:.0f}k)")
+            print(f"Compress ratio: {compress_ratio}:1")
+            print(f"Final samples: {compressed_samples} (after compression)")
+            print(f"Mode: DAQ CURRENT measurement")
             
             with nidaqmx.Task() as task:
                 # Add CURRENT input channels (like Multi-Channel Monitor)
@@ -687,52 +730,56 @@ class NIDAQService(QObject):
                     samps_per_chan=total_samples  # Exactly 10,000 samples
                 )
                 
-                print(f"Starting hardware-timed CURRENT acquisition...")
+                print(f"Starting hardware-timed CURRENT acquisition (30kHz)...")
                 task.start()
                 
                 # Read all samples at once (hardware handles timing)
                 timeout = duration_seconds + 5.0  # Add buffer
-                print(f"Reading {total_samples} CURRENT samples per channel (timeout: {timeout}s)...")
+                print(f"Reading {total_samples} raw samples per channel...")
                 data = task.read(number_of_samples_per_channel=total_samples, timeout=timeout)
                 
                 task.stop()
-                print(f"Hardware CURRENT acquisition completed")
+                print(f"Hardware CURRENT acquisition completed, starting compression...")
                 
-                # Process current data (already in Amps from DAQ)
+                # Process and compress current data
                 result = {}
                 
                 if len(channels) == 1:
                     # Single channel
                     if isinstance(data, (list, tuple)) and len(data) > 0:
                         current_data_amps = list(data)
-                        # Convert from Amps to mA
-                        current_data_ma = [i * 1000 for i in current_data_amps]
+                        print(f"Raw samples collected: {len(current_data_amps)}")
+                        
+                        # Compress by averaging (30:1 ratio)
+                        compressed_ma = self._compress_data(current_data_amps, compress_ratio)
                         
                         config = self.channel_configs.get(channels[0], {})
                         result[channels[0]] = {
-                            'current_data': current_data_ma,  # Current in mA
-                            'sample_count': len(current_data_ma),
+                            'current_data': compressed_ma,  # Current in mA (compressed)
+                            'sample_count': len(compressed_ma),
                             'name': config.get('name', channels[0])
                         }
-                        avg_i_ma = sum(current_data_ma) / len(current_data_ma) if current_data_ma else 0
-                        print(f"Channel {channels[0]}: {len(current_data_ma)} samples, avg current: {avg_i_ma:.3f}mA")
+                        avg_i_ma = sum(compressed_ma) / len(compressed_ma) if compressed_ma else 0
+                        print(f"Channel {channels[0]}: {len(compressed_ma)} compressed samples, avg: {avg_i_ma:.3f}mA")
                 else:
                     # Multiple channels
                     if isinstance(data, (list, tuple)) and len(data) == len(channels):
                         for i, channel in enumerate(channels):
                             channel_data = data[i] if isinstance(data[i], (list, tuple)) else [data[i]]
                             current_data_amps = list(channel_data)
-                            # Convert from Amps to mA
-                            current_data_ma = [curr * 1000 for curr in current_data_amps]
+                            print(f"Channel {channel}: {len(current_data_amps)} raw samples")
+                            
+                            # Compress by averaging (30:1 ratio)
+                            compressed_ma = self._compress_data(current_data_amps, compress_ratio)
                             
                             config = self.channel_configs.get(channel, {})
                             result[channel] = {
-                                'current_data': current_data_ma,  # Current in mA
-                                'sample_count': len(current_data_ma),
+                                'current_data': compressed_ma,  # Current in mA (compressed)
+                                'sample_count': len(compressed_ma),
                                 'name': config.get('name', channel)
                             }
-                            avg_i_ma = sum(current_data_ma) / len(current_data_ma) if current_data_ma else 0
-                            print(f"Channel {channel}: {len(current_data_ma)} samples, avg current: {avg_i_ma:.3f}mA")
+                            avg_i_ma = sum(compressed_ma) / len(compressed_ma) if compressed_ma else 0
+                            print(f"Channel {channel}: {len(compressed_ma)} compressed samples, avg: {avg_i_ma:.3f}mA")
                 
                 print(f"=== Hardware-timed CURRENT collection completed: {len(result)} channels ===")
                 return result

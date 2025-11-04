@@ -1671,9 +1671,9 @@ class TestScenarioEngine(QObject):
                 
                 daq_result = self.daq_service.read_current_channels_hardware_timed(
                     channels=enabled_channels,
-                    sample_rate=1000.0,  # 1kHz = 1 sample per ms
-                    total_samples=10000,  # Exactly 10,000 samples
-                    duration_seconds=10.0
+                    sample_rate=30000.0,  # 30kHz (like other DAQ tool)
+                    compress_ratio=30,  # 30:1 compression
+                    duration_seconds=10.0  # 10 seconds ? 300k raw ? 10k compressed
                 )
                 
                 if daq_result:
