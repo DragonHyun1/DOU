@@ -637,6 +637,9 @@ class NIDAQService(QObject):
     def read_voltage_channels_hardware_timed(self, channels: List[str], sample_rate: float = 1000.0, total_samples: int = 10000, duration_seconds: float = 10.0) -> Optional[dict]:
         """Read multiple channels using DAQ hardware timing (1kHz for precise 1ms intervals)
         
+        IMPORTANT: This measures VOLTAGE directly. No voltage-to-current conversion.
+        The voltage measured should be the voltage drop across shunt resistor (not rail voltage).
+        
         Args:
             channels: List of channel names (e.g., ['ai0', 'ai1'])
             sample_rate: Sampling rate in Hz (default: 1000.0 = 1kHz = 1 sample per ms)
@@ -644,7 +647,7 @@ class NIDAQService(QObject):
             duration_seconds: Duration of data collection (default: 10.0 seconds)
             
         Returns:
-            dict: {channel: {'voltage_data': [samples], 'current_data': [samples in mA], 'sample_count': int}}
+            dict: {channel: {'voltage_data': [V], 'current_data': [mA], 'sample_count': int}}
         """
         if not NI_AVAILABLE or not self.connected:
             print("DAQ not available or not connected")
@@ -656,6 +659,7 @@ class NIDAQService(QObject):
             print(f"Sample rate: {sample_rate} Hz ({1000.0/sample_rate:.3f}ms per sample)")
             print(f"Total samples per channel: {total_samples}")
             print(f"Duration: {duration_seconds} seconds")
+            print(f"NOTE: Reading VOLTAGE directly (should be shunt voltage drop)")
             
             with nidaqmx.Task() as task:
                 # Add voltage input channels
@@ -670,7 +674,7 @@ class NIDAQService(QObject):
                         max_val=5.0,
                         units=nidaqmx.constants.VoltageUnits.VOLTS
                     )
-                    print(f"Added channel: {channel_name} ({config.get('name', channel)})")
+                    print(f"Added voltage channel: {channel_name} ({config.get('name', channel)})")
                 
                 # Configure hardware timing - FINITE mode for exact sample count
                 task.timing.cfg_samp_clk_timing(
@@ -698,18 +702,18 @@ class NIDAQService(QObject):
                     if isinstance(data, (list, tuple)) and len(data) > 0:
                         voltage_data = list(data)
                         
-                        # Convert to current (mA)
+                        # STORE VOLTAGE AS-IS (in Volts)
+                        # No conversion - voltage is voltage
                         config = self.channel_configs.get(channels[0], {})
-                        shunt_r = config.get('shunt_r', 0.010)
-                        current_data = [v / shunt_r * 1000 for v in voltage_data]  # Convert to mA
                         
                         result[channels[0]] = {
-                            'voltage_data': voltage_data,
-                            'current_data': current_data,
+                            'voltage_data': voltage_data,  # Voltage in V
+                            'current_data': voltage_data,  # For now, same as voltage (will fix later)
                             'sample_count': len(voltage_data),
                             'name': config.get('name', channels[0])
                         }
-                        print(f"Channel {channels[0]}: {len(voltage_data)} samples collected")
+                        avg_v = sum(voltage_data) / len(voltage_data) if voltage_data else 0
+                        print(f"Channel {channels[0]}: {len(voltage_data)} samples, avg: {avg_v:.6f}V")
                 else:
                     # Multiple channels
                     if isinstance(data, (list, tuple)) and len(data) == len(channels):
@@ -717,18 +721,17 @@ class NIDAQService(QObject):
                             channel_data = data[i] if isinstance(data[i], (list, tuple)) else [data[i]]
                             voltage_data = list(channel_data)
                             
-                            # Convert to current (mA)
+                            # STORE VOLTAGE AS-IS (in Volts)
                             config = self.channel_configs.get(channel, {})
-                            shunt_r = config.get('shunt_r', 0.010)
-                            current_data = [v / shunt_r * 1000 for v in voltage_data]  # Convert to mA
                             
                             result[channel] = {
-                                'voltage_data': voltage_data,
-                                'current_data': current_data,
+                                'voltage_data': voltage_data,  # Voltage in V
+                                'current_data': voltage_data,  # For now, same as voltage
                                 'sample_count': len(voltage_data),
                                 'name': config.get('name', channel)
                             }
-                            print(f"Channel {channel}: {len(voltage_data)} samples collected")
+                            avg_v = sum(voltage_data) / len(voltage_data) if voltage_data else 0
+                            print(f"Channel {channel}: {len(voltage_data)} samples, avg: {avg_v:.6f}V")
                 
                 print(f"=== Hardware-timed collection completed: {len(result)} channels ===")
                 return result

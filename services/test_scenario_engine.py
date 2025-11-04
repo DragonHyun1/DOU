@@ -1696,11 +1696,11 @@ class TestScenarioEngine(QObject):
                                 'screen_test_time': i
                             }
                             
-                            # Add current data for each channel (already in mA)
+                            # Add voltage data for each channel (in V, stored as "current" key for compatibility)
                             for channel in enabled_channels:
                                 if channel in daq_result:
-                                    current_mA = daq_result[channel]['current_data'][i]
-                                    data_point[f'{channel}_current'] = current_mA
+                                    voltage_v = daq_result[channel]['voltage_data'][i]
+                                    data_point[f'{channel}_current'] = voltage_v  # Store voltage (V) - column name kept for compatibility
                             
                             self.daq_data.append(data_point)
                             
@@ -2399,22 +2399,19 @@ class TestScenarioEngine(QObject):
                 time_ms = data_point.get('time_elapsed', 0)
                 formatted_data['Time (ms)'].append(int(time_ms))  # Store as integer ms
             
-            # Additional columns: Rail data based on measurement mode
+            # Additional columns: Rail data (voltage)
             for channel in enabled_channels:
                 rail_name = rail_names.get(channel, f"Rail_{channel}")
                 
-                if measurement_mode == "current":
-                    column_name = f"{rail_name} (mA)"  # Current in milliAmperes
-                    data_key = f"{channel}_current"
-                else:
-                    column_name = f"{rail_name} (V)"  # Voltage in Volts
-                    data_key = f"{channel}_voltage"
+                # Always output as Voltage (V) - we measure voltage directly
+                column_name = f"{rail_name} (V)"  # Voltage in Volts
+                data_key = f"{channel}_current"  # Key name kept for compatibility
                 
                 formatted_data[column_name] = []
                 
                 for data_point in self.daq_data:
                     value = data_point.get(data_key, 0.0)
-                    # Note: value is already in mA from data collection
+                    # Value is already in Volts - no conversion needed
                     formatted_data[column_name].append(value)
             
             # Create DataFrame with custom format
