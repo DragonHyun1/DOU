@@ -1490,11 +1490,15 @@ class TestScenarioEngine(QObject):
                                 actual_elapsed_time = current_time - data_collection_start_time
                                 actual_elapsed_ms = int(actual_elapsed_time * 1000)
                                 
-                                # Collect samples based on ACTUAL TIME: only collect when we reach each new ms
-                                # This ensures we collect over the full 10 seconds (0ms to 9999ms)
-                                if actual_elapsed_ms < 10000 and actual_elapsed_ms == sample_count:
-                                    # Use actual elapsed time as sample time (ms): 0, 1, 2, 3, ...
-                                    sample_time_ms = actual_elapsed_ms
+                                # Collect samples: only collect when actual time catches up with sample count
+                                # This ensures exactly 1 sample per ms over 10 seconds
+                                # sample_count starts at 0, so:
+                                # - At 0ms: collect sample 0 (sample_count becomes 1)
+                                # - At 1ms: collect sample 1 (sample_count becomes 2)
+                                # - At 9999ms: collect sample 9999 (sample_count becomes 10000)
+                                if sample_count <= actual_elapsed_ms < 10000:
+                                    # Use sample count as time (ms): 0, 1, 2, 3, ..., 9999
+                                    sample_time_ms = sample_count
                                     
                                     # Validate channel_data before adding
                                     if not channel_data:
