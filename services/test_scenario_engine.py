@@ -1665,10 +1665,11 @@ class TestScenarioEngine(QObject):
             print(f"Mode: {measurement_mode}")
             
             # Use DAQ hardware timing: 1kHz for 10 seconds = 10,000 samples
+            # Use CURRENT measurement mode (same as Multi-Channel Monitor)
             if hasattr(self, 'daq_service') and self.daq_service:
-                print("Starting DAQ hardware-timed collection (1kHz, 10,000 samples, 10 seconds)...")
+                print("Starting DAQ hardware-timed CURRENT collection (1kHz, 10,000 samples, 10 seconds)...")
                 
-                daq_result = self.daq_service.read_voltage_channels_hardware_timed(
+                daq_result = self.daq_service.read_current_channels_hardware_timed(
                     channels=enabled_channels,
                     sample_rate=1000.0,  # 1kHz = 1 sample per ms
                     total_samples=10000,  # Exactly 10,000 samples
@@ -1696,11 +1697,11 @@ class TestScenarioEngine(QObject):
                                 'screen_test_time': i
                             }
                             
-                            # Add current data for each channel (in mA)
+                            # Add current data for each channel (already in mA from DAQ)
                             for channel in enabled_channels:
                                 if channel in daq_result:
                                     current_mA = daq_result[channel]['current_data'][i]
-                                    data_point[f'{channel}_current'] = current_mA  # Store current in mA
+                                    data_point[f'{channel}_current'] = current_mA  # Current in mA
                             
                             self.daq_data.append(data_point)
                             
