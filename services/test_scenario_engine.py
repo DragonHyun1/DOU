@@ -831,10 +831,15 @@ class TestScenarioEngine(QObject):
                 self.log_callback("WARNING: No enabled channels found, using default channels", "warn")
                 enabled_channels = ['ai0', 'ai1']  # Default fallback
             
-            # Start monitoring in separate thread
-            self.monitoring_thread = threading.Thread(target=self._daq_monitoring_loop)
+            # Store configuration for monitoring thread
+            self._monitoring_channels = enabled_channels
+            self._monitoring_mode = 'current'  # Default to current mode
+            
+            # Start monitoring in separate thread using hardware timing
+            self.monitoring_thread = threading.Thread(target=self._daq_monitoring_hardware_timed)
             self.monitoring_thread.daemon = True
             self.monitoring_thread.start()
+            self.log_callback("DAQ hardware-timed monitoring thread started (1kHz)", "info")
             
             self.log_callback(f"DAQ monitoring started successfully with {len(enabled_channels)} channels", "info")
             return True
