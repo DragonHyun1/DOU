@@ -42,6 +42,8 @@ class PhoneAppScenario(BaseScenario):
         config.steps = [
             # Default settings (consistent for all scenarios)
             TestStep("default_settings", 5.0, "apply_default_settings"),
+            # Disable USB charging BEFORE setting HVPM voltage (critical!)
+            TestStep("disable_usb_charging", 2.0, "disable_usb_charging"),
             # Early LCD activation for smoother operation
             TestStep("lcd_on_unlock", 3.0, "lcd_on_and_unlock"),
             # Init mode steps (scenario-specific)
@@ -65,6 +67,8 @@ class PhoneAppScenario(BaseScenario):
         try:
             if step.action == "apply_default_settings":
                 return self._step_apply_default_settings()
+            elif step.action == "disable_usb_charging":
+                return self._step_disable_usb_charging()
             elif step.action == "set_hvpm_voltage":
                 return self._step_set_hvpm_voltage(step.parameters.get("voltage", 4.0))
             elif step.action == "enable_flight_mode":
@@ -94,6 +98,46 @@ class PhoneAppScenario(BaseScenario):
         except Exception as e:
             self.log_callback(f"Error executing step {step.name}: {e}", "error")
             return False
+    
+    def _step_disable_usb_charging(self) -> bool:
+        """Disable USB charging to prevent voltage interference with HVPM
+        
+        Critical: USB VBUS (5V) charges battery rail to 4.2V,
+        interfering with HVPM's 4V supply.
+        Must be disabled BEFORE setting HVPM voltage!
+        """
+        try:
+            self.log_callback("=== Disabling USB Charging ===", "info")
+            
+            if not self.adb_service:
+                self.log_callback("ADB service not available", "error")
+                return False
+            
+            # Disable USB charging
+            success = self.adb_service.disable_usb_charging()
+            
+            if success:
+                self.log_callback("✅ USB charging disabled", "info")
+                
+                # Verify battery voltage
+                time.sleep(1.0)
+                voltage = self.adb_service.get_battery_voltage()
+                if voltage:
+                    self.log_callback(f"📊 Battery voltage: {voltage:.3f}V", "info")
+                    if voltage > 4.1:
+                        self.log_callback(f"⚠️ WARNING: Battery voltage still high ({voltage:.3f}V)", "warn")
+                        self.log_callback("   Wait a moment for voltage to stabilize...", "warn")
+                        time.sleep(2.0)
+                
+                return True
+            else:
+                self.log_callback("⚠️ Failed to disable USB charging", "warn")
+                self.log_callback("   Continuing anyway, but battery voltage may be affected", "warn")
+                return True  # Don't fail the entire test
+                
+        except Exception as e:
+            self.log_callback(f"❌ Error disabling USB charging: {e}", "error")
+            return True  # Don't fail the entire test
     
     def _step_apply_default_settings(self) -> bool:
         """Apply default settings for consistent test environment"""

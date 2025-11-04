@@ -935,3 +935,85 @@ class ADBService:
         except Exception as e:
             self.logger.error(f"Error getting device status: {e}")
             return {'error': str(e)}
+    
+    def disable_usb_charging(self) -> bool:
+        """Disable USB charging to prevent voltage interference
+        
+        This is critical when using HVPM to supply battery voltage.
+        USB VBUS (5V) can charge the battery rail to 4.2V, 
+        interfering with HVPM's 4V supply.
+        
+        Returns:
+            bool: True if charging was disabled successfully
+        """
+        try:
+            self.logger.info("Disabling USB charging...")
+            
+            # Disable charging via dumpsys battery
+            result = self._run_adb_command(['shell', 'dumpsys', 'battery', 'set', 'usb', '0'])
+            if result is None:
+                self.logger.error("Failed to disable USB charging")
+                return False
+            
+            # Verify charging is disabled
+            time.sleep(0.5)
+            status = self._run_adb_command(['shell', 'dumpsys', 'battery'])
+            
+            self.logger.info(f"✅ USB charging disabled successfully")
+            if status:
+                self.logger.debug(f"Battery status: {status[:200]}...")
+            return True
+            
+        except Exception as e:
+            self.logger.error(f"Error disabling USB charging: {e}")
+            return False
+    
+    def enable_usb_charging(self) -> bool:
+        """Re-enable USB charging (restore normal behavior)
+        
+        Returns:
+            bool: True if charging was enabled successfully
+        """
+        try:
+            self.logger.info("Re-enabling USB charging...")
+            
+            # Reset battery settings to normal
+            result = self._run_adb_command(['shell', 'dumpsys', 'battery', 'reset'])
+            if result is None:
+                self.logger.error("Failed to enable USB charging")
+                return False
+            
+            time.sleep(0.5)
+            
+            self.logger.info(f"✅ USB charging restored to normal")
+            return True
+            
+        except Exception as e:
+            self.logger.error(f"Error enabling USB charging: {e}")
+            return False
+    
+    def get_battery_voltage(self) -> Optional[float]:
+        """Get current battery voltage in volts
+        
+        Returns:
+            float: Battery voltage in volts, or None if failed
+        """
+        try:
+            result = self._run_adb_command(['shell', 'dumpsys', 'battery'])
+            if not result:
+                return None
+            
+            # Parse voltage from output: "voltage: 4200" (mV)
+            for line in result.split('\n'):
+                if 'voltage:' in line:
+                    parts = line.strip().split(':')
+                    if len(parts) >= 2:
+                        voltage_mv = int(parts[1].strip())
+                        voltage_v = voltage_mv / 1000.0
+                        return voltage_v
+            
+            return None
+            
+        except Exception as e:
+            self.logger.error(f"Error getting battery voltage: {e}")
+            return None
