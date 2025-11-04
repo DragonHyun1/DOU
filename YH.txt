@@ -1,68 +1,74 @@
-Data collection started at screen test time: 0.9s
-DAQ monitoring: 7 points collected, 6/6 channels OK
-DAQ monitoring: 17 points collected, 6/6 channels OK
-DAQ monitoring: 27 points collected, 6/6 channels OK
-DAQ monitoring: 37 points collected, 6/6 channels OK
-DAQ monitoring: 47 points collected, 6/6 channels OK
-DAQ monitoring: 57 points collected, 6/6 channels OK
-DAQ monitoring: 67 points collected, 6/6 channels OK
-DAQ monitoring: 77 points collected, 6/6 channels OK
-DAQ monitoring: 87 points collected, 6/6 channels OK
-DAQ monitoring: 97 points collected, 6/6 channels OK
-DAQ monitoring: 107 points collected, 6/6 channels OK
-DAQ monitoring: 117 points collected, 6/6 channels OK
-DAQ monitoring: 127 points collected, 6/6 channels OK
-DAQ monitoring: 137 points collected, 6/6 channels OK
-DAQ monitoring: 147 points collected, 6/6 channels OK
-DAQ monitoring: 157 points collected, 6/6 channels OK
-DAQ monitoring: 167 points collected, 6/6 channels OK
-DAQ monitoring: 177 points collected, 6/6 channels OK
-DAQ monitoring: 187 points collected, 6/6 channels OK
-DAQ monitoring: 197 points collected, 6/6 channels OK
-DAQ monitoring: 207 points collected, 6/6 channels OK
-DAQ monitoring: 217 points collected, 6/6 channels OK
-DAQ monitoring: 227 points collected, 6/6 channels OK
-DAQ monitoring: 237 points collected, 6/6 channels OK
-DAQ monitoring: 247 points collected, 6/6 channels OK
-DAQ monitoring: 257 points collected, 6/6 channels OK
-DAQ monitoring: 267 points collected, 6/6 channels OK
-DAQ monitoring: 277 points collected, 6/6 channels OK
-DAQ monitoring: 287 points collected, 6/6 channels OK
-DAQ monitoring: 297 points collected, 6/6 channels OK
-DAQ monitoring: 307 points collected, 6/6 channels OK
-DAQ monitoring: 317 points collected, 6/6 channels OK
-DAQ monitoring: 327 points collected, 6/6 channels OK
-DAQ monitoring: 337 points collected, 6/6 channels OK
-DAQ monitoring: 347 points collected, 6/6 channels OK
-DAQ monitoring: 357 points collected, 6/6 channels OK
-DAQ monitoring: 367 points collected, 6/6 channels OK
-DAQ monitoring: 377 points collected, 6/6 channels OK
-DAQ monitoring: 387 points collected, 6/6 channels OK
-DAQ monitoring: 397 points collected, 6/6 channels OK
-DAQ monitoring: 407 points collected, 6/6 channels OK
-DAQ monitoring: 417 points collected, 6/6 channels OK
-DAQ monitoring: 427 points collected, 6/6 channels OK
-DAQ monitoring: 437 points collected, 6/6 channels OK
-DAQ monitoring: 447 points collected, 6/6 channels OK
-DAQ monitoring: 457 points collected, 6/6 channels OK
-DAQ monitoring: 467 points collected, 6/6 channels OK
-DAQ monitoring: 477 points collected, 6/6 channels OK
-DAQ monitoring: 487 points collected, 6/6 channels OK
-DAQ monitoring: 497 points collected, 6/6 channels OK
-DAQ monitoring: 507 points collected, 6/6 channels OK
-DAQ monitoring: 517 points collected, 6/6 channels OK
-DAQ monitoring: 527 points collected, 6/6 channels OK
-DAQ monitoring: 537 points collected, 6/6 channels OK
-DAQ monitoring: 547 points collected, 6/6 channels OK
-DAQ monitoring: 557 points collected, 6/6 channels OK
-DAQ monitoring: 567 points collected, 6/6 channels OK
-DAQ monitoring: 577 points collected, 6/6 channels OK
-DAQ monitoring: 587 points collected, 6/6 channels OK
-DAQ monitoring: 597 points collected, 6/6 channels OK
-DAQ monitoring: 607 points collected, 6/6 channels OK
-DAQ monitoring: 617 points collected, 6/6 channels OK
-DAQ monitoring: 627 points collected, 6/6 channels OK
-DAQ monitoring: 637 points collected, 6/6 channels OK
-DAQ monitoring: 647 points collected, 6/6 channels OK
-Data collection completed (654 samples collected over 10.0s), stopping monitoring
-DAQ monitoring loop ended
+{
+  "ai0": {
+    "name": "VBAT",
+    "target_v": 4.0,
+    "shunt_r": 0.01,
+    "enabled": true
+  },
+  "ai1": {
+    "name": "VDD_1P8_AP",
+    "target_v": 1.8,
+    "shunt_r": 0.1,
+    "enabled": true
+  },
+  "ai2": {
+    "name": "VDD_MLDO_2P0",
+    "target_v": 2.0,
+    "shunt_r": 0.005,
+    "enabled": true
+  },
+  "ai3": {
+    "name": "VDD_WIFI_1P0",
+    "target_v": 1.0,
+    "shunt_r": 0.005,
+    "enabled": true
+  },
+  "ai4": {
+    "name": "VDD_1P2_AP_WIFI",
+    "target_v": 1.2,
+    "shunt_r": 0.1,
+    "enabled": true
+  },
+  "ai5": {
+    "name": "VDD_1P35_WIFIPMU",
+    "target_v": 1.35,
+    "shunt_r": 0.01,
+    "enabled": true
+  },
+  "ai6": {
+    "name": "-",
+    "target_v": 0.0,
+    "shunt_r": 0.001,
+    "enabled": false
+  },
+  "ai7": {
+    "name": "-",
+    "target_v": 0.0,
+    "shunt_r": 0.001,
+    "enabled": false
+  },
+  "ai8": {
+    "name": "-",
+    "target_v": 0.0,
+    "shunt_r": 0.001,
+    "enabled": false
+  },
+  "ai9": {
+    "name": "-",
+    "target_v": 0.0,
+    "shunt_r": 0.001,
+    "enabled": false
+  },
+  "ai10": {
+    "name": "-",
+    "target_v": 0.0,
+    "shunt_r": 0.001,
+    "enabled": false
+  },
+  "ai11": {
+    "name": "-",
+    "target_v": 0.0,
+    "shunt_r": 0.001,
+    "enabled": false
+  }
+}
