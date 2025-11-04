@@ -931,14 +931,14 @@ class TestScenarioEngine(QObject):
                 timeout_buffer = 15.0  # Reduced buffer time from 30s to 15s
                 self._monitoring_timeout = time.time() + test_duration + timeout_buffer  # Dynamic timeout
                 
-                # Create completely isolated thread for DAQ monitoring
+                # Create thread for DAQ hardware-timed monitoring (1kHz, 10 seconds)
                 monitoring_thread = threading.Thread(
-                    target=self._daq_monitoring_loop_isolated,
-                    name="DAQ-Monitor-Thread"
+                    target=self._daq_monitoring_hardware_timed,  # Use hardware timing
+                    name="DAQ-HW-Timed-Thread"
                 )
                 monitoring_thread.daemon = True
                 monitoring_thread.start()
-                self.log_callback("DAQ monitoring thread started successfully", "info")
+                self.log_callback("DAQ hardware-timed monitoring started (1kHz, 10s)", "info")
             except Exception as e:
                 self.log_callback(f"Error starting DAQ monitoring thread: {e}", "error")
                 return False
@@ -1637,6 +1637,111 @@ class TestScenarioEngine(QObject):
         finally:
             self.monitoring_active = False
             print("DAQ monitoring loop ended")
+    
+    def _daq_monitoring_hardware_timed(self):
+        """DAQ monitoring using hardware timing (1kHz, 10,000 samples)"""
+        print("=== DAQ Hardware-Timed Collection Started ===")
+        
+        try:
+            # Wait for screen test to start
+            print("Waiting for screen test to start...")
+            if hasattr(self, '_screen_test_started'):
+                wait_success = self._screen_test_started.wait(timeout=25.0)
+                if not wait_success:
+                    print("ERROR: Screen test start timeout (25s)")
+                    self.monitoring_active = False
+                    return
+            
+            # Get enabled channels
+            enabled_channels = getattr(self, '_monitoring_channels', ['ai0', 'ai1'])
+            measurement_mode = getattr(self, '_monitoring_mode', 'current')
+            
+            print(f"Collecting from {len(enabled_channels)} channels: {enabled_channels}")
+            print(f"Mode: {measurement_mode}")
+            
+            # Use DAQ hardware timing: 1kHz for 10 seconds = 10,000 samples
+            if hasattr(self, 'daq_service') and self.daq_service:
+                print("Starting DAQ hardware-timed collection (1kHz, 10,000 samples, 10 seconds)...")
+                
+                daq_result = self.daq_service.read_voltage_channels_hardware_timed(
+                    channels=enabled_channels,
+                    sample_rate=1000.0,  # 1kHz = 1 sample per ms
+                    total_samples=10000,  # Exactly 10,000 samples
+                    duration_seconds=10.0
+                )
+                
+                if daq_result:
+                    print(f"DAQ collection completed: {len(daq_result)} channels")
+                    
+                    # Convert to daq_data format
+                    if hasattr(self, 'daq_data'):
+                        self.daq_data = []
+                        
+                        # Get sample count (should be 10,000 for all channels)
+                        first_channel = list(daq_result.keys())[0]
+                        sample_count = daq_result[first_channel]['sample_count']
+                        
+                        print(f"Processing {sample_count} samples...")
+                        
+                        # Create data points for each sample
+                        for i in range(sample_count):
+                            data_point = {
+                                'timestamp': datetime.now(),
+                                'time_elapsed': i,  # Time in ms: 0, 1, 2, ..., 9999
+                                'screen_test_time': i
+                            }
+                            
+                            # Add current data for each channel (already in mA)
+                            for channel in enabled_channels:
+                                if channel in daq_result:
+                                    current_mA = daq_result[channel]['current_data'][i]
+                                    data_point[f'{channel}_current'] = current_mA
+                            
+                            self.daq_data.append(data_point)
+                            
+                            # Log progress every 1000 samples
+                            if (i + 1) % 1000 == 0:
+                                print(f"Processed {i + 1}/{sample_count} samples")
+                        
+                        print(f"? Successfully processed {len(self.daq_data)} data points")
+                    else:
+                        print("ERROR: daq_data attribute not found")
+                else:
+                    print("ERROR: DAQ collection returned no data")
+            else:
+                print("ERROR: DAQ service not available, using simulation")
+                # Fallback to simulation
+                self._daq_monitoring_loop_isolated_simulation()
+                
+        except Exception as e:
+            print(f"ERROR in hardware-timed DAQ collection: {e}")
+            import traceback
+            traceback.print_exc()
+        finally:
+            self.monitoring_active = False
+            print("=== DAQ Hardware-Timed Collection Ended ===")
+    
+    def _daq_monitoring_loop_isolated_simulation(self):
+        """Simulation fallback for when DAQ hardware is not available"""
+        print("Using simulation mode for DAQ collection")
+        import random
+        
+        enabled_channels = getattr(self, '_monitoring_channels', ['ai0', 'ai1'])
+        
+        if hasattr(self, 'daq_data'):
+            self.daq_data = []
+            for i in range(10000):
+                data_point = {
+                    'timestamp': datetime.now(),
+                    'time_elapsed': i,
+                    'screen_test_time': i
+                }
+                for channel in enabled_channels:
+                    data_point[f'{channel}_current'] = random.uniform(-50, 50)  # mA
+                self.daq_data.append(data_point)
+                
+                if (i + 1) % 1000 == 0:
+                    print(f"Simulation: {i + 1}/10000 samples")
     
     def _daq_monitoring_loop_isolated(self):
         """Completely isolated DAQ monitoring loop - no Qt dependencies"""
