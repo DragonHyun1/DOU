@@ -1,61 +1,3 @@
-=== FINAL DEVICE LIST ===
-Total devices: 1
-  1. Dev1 (Real - USB-6289)
-[System] Application started successfully
-=== NI DAQ Connection Attempt ===
-Original device string: 'Dev1'
-Clean device name: 'Dev1'
-Channel: 'ai0'
-Available devices in system: ['Dev1']
-Device object created successfully: Device(name=Dev1)
-Device product type: USB-6289
-Creating NI-DAQmx task...
-Creating analog input channel: Dev1/ai0
-Voltage range: ±10.0V
-Channel created successfully, performing test read...
-Test read successful: 4.152380532396259V
-SUCCESS: NI DAQ connected: Dev1/ai0
-Channel ai0 configured: VBAT (0.0V, 0.001Ω, disabled)
-Channel ai0 configured: VBAT (4.0V, 0.001Ω, disabled)
-Channel ai0 configured: VBAT (4.0V, 0.01Ω, disabled)
-Channel ai0 configured: VBAT (4.0V, 0.01Ω, enabled)
-Channel ai0 configured: VBAT (4.0V, 0.01Ω, enabled)
-Channel ai1 configured: VDD_1P8_AP (0.0V, 0.001Ω, disabled)
-Channel ai1 configured: VDD_1P8_AP (1.8V, 0.001Ω, disabled)
-Channel ai1 configured: VDD_1P8_AP (1.8V, 0.1Ω, disabled)
-Channel ai1 configured: VDD_1P8_AP (1.8V, 0.1Ω, enabled)
-Channel ai1 configured: VDD_1P8_AP (1.8V, 0.1Ω, enabled)
-Channel ai2 configured: VDD_MLDO_2P0 (0.0V, 0.001Ω, disabled)
-Channel ai2 configured: VDD_MLDO_2P0 (2.0V, 0.001Ω, disabled)
-Channel ai2 configured: VDD_MLDO_2P0 (2.0V, 0.005Ω, disabled)
-Channel ai2 configured: VDD_MLDO_2P0 (2.0V, 0.005Ω, enabled)
-Channel ai2 configured: VDD_MLDO_2P0 (2.0V, 0.005Ω, enabled)
-Channel ai3 configured: VDD_WIFI_1P0 (0.0V, 0.001Ω, disabled)
-Channel ai3 configured: VDD_WIFI_1P0 (1.0V, 0.001Ω, disabled)
-Channel ai3 configured: VDD_WIFI_1P0 (1.0V, 0.005Ω, disabled)
-Channel ai3 configured: VDD_WIFI_1P0 (1.0V, 0.005Ω, enabled)
-Channel ai3 configured: VDD_WIFI_1P0 (1.0V, 0.005Ω, enabled)
-Channel ai4 configured: VDD_1P2_AP_WIFI (0.0V, 0.001Ω, disabled)
-Channel ai4 configured: VDD_1P2_AP_WIFI (1.2V, 0.001Ω, disabled)
-Channel ai4 configured: VDD_1P2_AP_WIFI (1.2V, 0.1Ω, disabled)
-Channel ai4 configured: VDD_1P2_AP_WIFI (1.2V, 0.1Ω, enabled)
-Channel ai4 configured: VDD_1P2_AP_WIFI (1.2V, 0.1Ω, enabled)
-Channel ai5 configured: VDD_1P35_WIFIPMU (0.0V, 0.001Ω, disabled)
-Channel ai5 configured: VDD_1P35_WIFIPMU (1.35V, 0.001Ω, disabled)
-Channel ai5 configured: VDD_1P35_WIFIPMU (1.35V, 0.01Ω, disabled)
-Channel ai5 configured: VDD_1P35_WIFIPMU (1.35V, 0.01Ω, enabled)
-Channel ai5 configured: VDD_1P35_WIFIPMU (1.35V, 0.01Ω, enabled)
-Channel ai6 configured: - (0.0V, 0.001Ω, disabled)
-Channel ai7 configured: - (0.0V, 0.001Ω, disabled)
-Channel ai8 configured: - (0.0V, 0.001Ω, disabled)
-Channel ai9 configured: - (0.0V, 0.001Ω, disabled)
-Channel ai10 configured: - (0.0V, 0.001Ω, disabled)
-Channel ai11 configured: - (0.0V, 0.001Ω, disabled)
-=== DAQ Hardware-Timed Collection Started ===
-Waiting for screen test to start...
-Collecting from 6 channels: ['ai0', 'ai1', 'ai2', 'ai3', 'ai4', 'ai5']
-Mode: current
-Starting DAQ hardware-timed CURRENT collection (1kHz, 10,000 samples, 10 seconds)...
 === Hardware-Timed VOLTAGE Collection (with Compression) ===
 Channels: ['ai0', 'ai1', 'ai2', 'ai3', 'ai4', 'ai5']
 Sampling rate: 30000.0 Hz (30kHz like other tool)
@@ -65,104 +7,42 @@ Compress ratio: 30:1
 Final samples: 10000 (after compression)
 Mode: VOLTAGE measurement (external shunt)
 Adding VOLTAGE channel: Dev1/ai0 (VBAT)
+  ⚠️ DIFFERENTIAL failed: DIFFERENTIAL, falling back to RSE
+  ⚠️ WARNING: RSE mode will measure Rail voltage, not Shunt drop!
 Adding VOLTAGE channel: Dev1/ai1 (VDD_1P8_AP)
+  ⚠️ DIFFERENTIAL failed: DIFFERENTIAL, falling back to RSE
+  ⚠️ WARNING: RSE mode will measure Rail voltage, not Shunt drop!
 Adding VOLTAGE channel: Dev1/ai2 (VDD_MLDO_2P0)
+  ⚠️ DIFFERENTIAL failed: DIFFERENTIAL, falling back to RSE
+  ⚠️ WARNING: RSE mode will measure Rail voltage, not Shunt drop!
 Adding VOLTAGE channel: Dev1/ai3 (VDD_WIFI_1P0)
+  ⚠️ DIFFERENTIAL failed: DIFFERENTIAL, falling back to RSE
+  ⚠️ WARNING: RSE mode will measure Rail voltage, not Shunt drop!
 Adding VOLTAGE channel: Dev1/ai4 (VDD_1P2_AP_WIFI)
+  ⚠️ DIFFERENTIAL failed: DIFFERENTIAL, falling back to RSE
+  ⚠️ WARNING: RSE mode will measure Rail voltage, not Shunt drop!
 Adding VOLTAGE channel: Dev1/ai5 (VDD_1P35_WIFIPMU)
+  ⚠️ DIFFERENTIAL failed: DIFFERENTIAL, falling back to RSE
+  ⚠️ WARNING: RSE mode will measure Rail voltage, not Shunt drop!
 Starting hardware-timed VOLTAGE acquisition (30kHz)...
 Reading 300000 raw samples per channel...
 Hardware VOLTAGE acquisition completed, starting compression...
 Channel ai0: 300000 raw voltage samples
 Channel ai0: 10000 compressed samples
-  Avg voltage: 4147.016mV, Avg current: 414701.630mA (shunt=0.01Ω)
+  Avg voltage: 4143.222mV, Avg current: 414322.204mA (shunt=0.01Ω)
 Channel ai1: 300000 raw voltage samples
 Channel ai1: 10000 compressed samples
-  Avg voltage: 1783.222mV, Avg current: 17832.215mA (shunt=0.1Ω)
+  Avg voltage: 1784.723mV, Avg current: 17847.234mA (shunt=0.1Ω)
 Channel ai2: 300000 raw voltage samples
 Channel ai2: 10000 compressed samples
-  Avg voltage: 1976.871mV, Avg current: 395374.130mA (shunt=0.005Ω)
+  Avg voltage: 1978.508mV, Avg current: 395701.651mA (shunt=0.005Ω)
 Channel ai3: 300000 raw voltage samples
 Channel ai3: 10000 compressed samples
-  Avg voltage: 1016.039mV, Avg current: 203207.882mA (shunt=0.005Ω)
+  Avg voltage: 1017.546mV, Avg current: 203509.259mA (shunt=0.005Ω)
 Channel ai4: 300000 raw voltage samples
 Channel ai4: 10000 compressed samples
-  Avg voltage: 1180.573mV, Avg current: 11805.731mA (shunt=0.1Ω)
+  Avg voltage: 1182.043mV, Avg current: 11820.429mA (shunt=0.1Ω)
 Channel ai5: 300000 raw voltage samples
 Channel ai5: 10000 compressed samples
-  Avg voltage: 1348.884mV, Avg current: 134888.355mA (shunt=0.01Ω)
+  Avg voltage: 1350.551mV, Avg current: 135055.066mA (shunt=0.01Ω)
 === Hardware-timed VOLTAGE collection completed: 6 channels ===
-DAQ collection completed: 6 channels
-Processing 10000 samples...
-Processed 1000/10000 samples
-Processed 2000/10000 samples
-Processed 3000/10000 samples
-Processed 4000/10000 samples
-Processed 5000/10000 samples
-Processed 6000/10000 samples
-Processed 7000/10000 samples
-Processed 8000/10000 samples
-Processed 9000/10000 samples
-Processed 10000/10000 samples
-? Successfully processed 10000 data points
-=== DAQ Hardware-Timed Collection Ended ===
-Channel ai0 configured: VBAT (4.0V, 0.3Ω, enabled)
-Channel ai0 configured: VBAT (4.0V, 0.01Ω, enabled)
-Channel ai0 configured: VBAT (4.0V, 0.01Ω, enabled)
-=== Starting Self-Calibration for Dev1 ===
-Self-calibration completed in 19.2 seconds
-=== DAQ Hardware-Timed Collection Started ===
-Waiting for screen test to start...
-Collecting from 6 channels: ['ai0', 'ai1', 'ai2', 'ai3', 'ai4', 'ai5']
-Mode: current
-Starting DAQ hardware-timed CURRENT collection (1kHz, 10,000 samples, 10 seconds)...
-=== Hardware-Timed VOLTAGE Collection (with Compression) ===
-Channels: ['ai0', 'ai1', 'ai2', 'ai3', 'ai4', 'ai5']
-Sampling rate: 30000.0 Hz (30kHz like other tool)
-Duration: 10.0 seconds
-Raw samples: 300000 (300k)
-Compress ratio: 30:1
-Final samples: 10000 (after compression)
-Mode: VOLTAGE measurement (external shunt)
-Adding VOLTAGE channel: Dev1/ai0 (VBAT)
-Adding VOLTAGE channel: Dev1/ai1 (VDD_1P8_AP)
-Adding VOLTAGE channel: Dev1/ai2 (VDD_MLDO_2P0)
-Adding VOLTAGE channel: Dev1/ai3 (VDD_WIFI_1P0)
-Adding VOLTAGE channel: Dev1/ai4 (VDD_1P2_AP_WIFI)
-Adding VOLTAGE channel: Dev1/ai5 (VDD_1P35_WIFIPMU)
-Starting hardware-timed VOLTAGE acquisition (30kHz)...
-Reading 300000 raw samples per channel...
-Hardware VOLTAGE acquisition completed, starting compression...
-Channel ai0: 300000 raw voltage samples
-Channel ai0: 10000 compressed samples
-  Avg voltage: 4148.530mV, Avg current: 414853.016mA (shunt=0.01Ω)
-Channel ai1: 300000 raw voltage samples
-Channel ai1: 10000 compressed samples
-  Avg voltage: 1784.445mV, Avg current: 17844.450mA (shunt=0.1Ω)
-Channel ai2: 300000 raw voltage samples
-Channel ai2: 10000 compressed samples
-  Avg voltage: 1978.154mV, Avg current: 395630.821mA (shunt=0.005Ω)
-Channel ai3: 300000 raw voltage samples
-Channel ai3: 10000 compressed samples
-  Avg voltage: 1017.230mV, Avg current: 203445.959mA (shunt=0.005Ω)
-Channel ai4: 300000 raw voltage samples
-Channel ai4: 10000 compressed samples
-  Avg voltage: 1181.704mV, Avg current: 11817.037mA (shunt=0.1Ω)
-Channel ai5: 300000 raw voltage samples
-Channel ai5: 10000 compressed samples
-  Avg voltage: 1349.488mV, Avg current: 134948.795mA (shunt=0.01Ω)
-=== Hardware-timed VOLTAGE collection completed: 6 channels ===
-DAQ collection completed: 6 channels
-Processing 10000 samples...
-Processed 1000/10000 samples
-Processed 2000/10000 samples
-Processed 3000/10000 samples
-Processed 4000/10000 samples
-Processed 5000/10000 samples
-Processed 6000/10000 samples
-Processed 7000/10000 samples
-Processed 8000/10000 samples
-Processed 9000/10000 samples
-Processed 10000/10000 samples
-? Successfully processed 10000 data points
-=== DAQ Hardware-Timed Collection Ended ===
