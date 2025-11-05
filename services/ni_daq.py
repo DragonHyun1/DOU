@@ -123,20 +123,31 @@ class NIDAQService(QObject):
         self._init_default_channels()
     
     def _init_default_channels(self):
-        """Initialize default channel configurations"""
+        """Initialize default channel configurations
+        
+        Channel mapping (based on actual hardware configuration):
+        - ai0: VBAT (4.0V, 0.01Ω shunt)
+        - ai1: VDD_1P8_AP (1.8V, 0.1Ω shunt)
+        - ai2: VDD_MLDO_2P0 (2.0V, 0.005Ω shunt)
+        - ai3: VDD_WIFI_1P0 (1.0V, 0.005Ω shunt)
+        - ai4: VDD_1P2_AP_WIFI (1.2V, 0.1Ω shunt)
+        - ai5: VDD_1P35_WIFIPMU (1.35V, 0.01Ω shunt)
+        """
         default_rails = [
-            {'name': '3V3_MAIN', 'target_v': 3.30, 'shunt_r': 0.010},
-            {'name': '1V8_IO', 'target_v': 1.80, 'shunt_r': 0.020},
-            {'name': '1V2_CORE', 'target_v': 1.20, 'shunt_r': 0.010},
-            {'name': '5V0_USB', 'target_v': 5.00, 'shunt_r': 0.050},
-            {'name': '2V5_ADC', 'target_v': 2.50, 'shunt_r': 0.020},
-            {'name': '3V3_AUX', 'target_v': 3.30, 'shunt_r': 0.010},
-            {'name': '1V0_DDR', 'target_v': 1.00, 'shunt_r': 0.005},
-            {'name': '1V5_PLL', 'target_v': 1.50, 'shunt_r': 0.020},
-            {'name': '2V8_RF', 'target_v': 2.80, 'shunt_r': 0.010},
-            {'name': '3V0_SENSOR', 'target_v': 3.00, 'shunt_r': 0.015},
-            {'name': '1V35_CPU', 'target_v': 1.35, 'shunt_r': 0.005},
-            {'name': '2V1_MEM', 'target_v': 2.10, 'shunt_r': 0.010}
+            # Phone App Test channels (ai0-ai5)
+            {'name': 'VBAT', 'target_v': 4.00, 'shunt_r': 0.010},              # ai0
+            {'name': 'VDD_1P8_AP', 'target_v': 1.80, 'shunt_r': 0.100},        # ai1
+            {'name': 'VDD_MLDO_2P0', 'target_v': 2.00, 'shunt_r': 0.005},      # ai2
+            {'name': 'VDD_WIFI_1P0', 'target_v': 1.00, 'shunt_r': 0.005},      # ai3
+            {'name': 'VDD_1P2_AP_WIFI', 'target_v': 1.20, 'shunt_r': 0.100},   # ai4
+            {'name': 'VDD_1P35_WIFIPMU', 'target_v': 1.35, 'shunt_r': 0.010},  # ai5
+            # Additional channels (ai6-ai11) - placeholder values
+            {'name': 'Reserved_6', 'target_v': 1.00, 'shunt_r': 0.010},        # ai6
+            {'name': 'Reserved_7', 'target_v': 1.50, 'shunt_r': 0.020},        # ai7
+            {'name': 'Reserved_8', 'target_v': 2.80, 'shunt_r': 0.010},        # ai8
+            {'name': 'Reserved_9', 'target_v': 3.00, 'shunt_r': 0.015},        # ai9
+            {'name': 'Reserved_10', 'target_v': 1.35, 'shunt_r': 0.005},       # ai10
+            {'name': 'Reserved_11', 'target_v': 2.10, 'shunt_r': 0.010}        # ai11
         ]
         
         for i, rail in enumerate(default_rails):
