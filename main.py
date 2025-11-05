@@ -693,11 +693,13 @@ class MainWindow(QtWidgets.QMainWindow):
         except Exception as e:
             self._log(f"Error connecting scenario change handler: {e}", "error")
         
-        # Add "Open Results Folder" button
+        # Connect "Open Results Folder" button (defined in UI file)
         try:
-            self._add_open_results_button()
+            if hasattr(self.ui, 'openResultsFolder_PB') and self.ui.openResultsFolder_PB:
+                self.ui.openResultsFolder_PB.clicked.connect(self._open_results_folder)
+                self._log("✅ 'Open Results Folder' button connected", "info")
         except Exception as e:
-            self._log(f"Error adding Open Results button: {e}", "error")
+            self._log(f"Error connecting Open Results button: {e}", "error")
         
         # Debug: Check combo box contents
         combo_count = combo_box.count()
@@ -707,59 +709,6 @@ class MainWindow(QtWidgets.QMainWindow):
             item_data = combo_box.itemData(i)
             self._log(f"  [{i}] Text: '{item_text}', Data: {item_data}", "info")
 
-    def _add_open_results_button(self):
-        """Add 'Open Results Folder' button to Auto Test UI"""
-        try:
-            # Find the test control layout (where Start/Stop buttons are)
-            test_control_layout = None
-            if hasattr(self.ui, 'testProgressFrame'):
-                # Find the layout that contains the buttons
-                for child in self.ui.testProgressFrame.children():
-                    if isinstance(child, QtWidgets.QHBoxLayout):
-                        test_control_layout = child
-                        break
-            
-            if test_control_layout is None:
-                self._log("Could not find test control layout", "warn")
-                return
-            
-            # Create "Open Results Folder" button
-            from PyQt6.QtWidgets import QPushButton
-            from PyQt6.QtCore import QSize
-            
-            self.openResultsFolder_PB = QPushButton("📁 Open Results", self.ui.testProgressFrame)
-            self.openResultsFolder_PB.setMinimumSize(QSize(0, 32))
-            self.openResultsFolder_PB.setStyleSheet("""
-                QPushButton {
-                    background-color: #2196F3;
-                    color: white;
-                    border: none;
-                    border-radius: 4px;
-                    padding: 8px 16px;
-                    font-weight: bold;
-                }
-                QPushButton:hover {
-                    background-color: #1976D2;
-                }
-                QPushButton:pressed {
-                    background-color: #0D47A1;
-                }
-            """)
-            self.openResultsFolder_PB.setToolTip("Open test_results folder in file explorer")
-            
-            # Connect button click
-            self.openResultsFolder_PB.clicked.connect(self._open_results_folder)
-            
-            # Add button to layout
-            test_control_layout.addWidget(self.openResultsFolder_PB)
-            
-            self._log("✅ 'Open Results Folder' button added successfully", "info")
-            
-        except Exception as e:
-            import traceback
-            self._log(f"Error adding Open Results button: {e}", "error")
-            self._log(f"Traceback: {traceback.format_exc()}", "error")
-    
     def _open_results_folder(self):
         """Open test_results folder in file explorer"""
         import os
