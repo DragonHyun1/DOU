@@ -642,39 +642,38 @@ class NIDAQService(QObject):
             self.error_occurred.emit(error_msg)
             return None
     
-    def _compress_data(self, data_amps: List[float], compress_ratio: int) -> List[float]:
+    def _compress_data(self, data: List[float], compress_ratio: int) -> List[float]:
         """Compress data by averaging groups (noise reduction)
         
         Args:
-            data_amps: Raw data in Amps
+            data: Raw data values
             compress_ratio: How many samples to average (e.g., 30)
             
         Returns:
-            Compressed data in mA
+            Compressed data (averaged, same units as input)
             
         Example:
-            Input: 300,000 samples in Amps
+            Input: 300,000 samples
             Ratio: 30
-            Output: 10,000 samples in mA (each is average of 30)
+            Output: 10,000 samples (each is average of 30)
         """
-        compressed_ma = []
+        compressed = []
         
-        for i in range(0, len(data_amps), compress_ratio):
+        for i in range(0, len(data), compress_ratio):
             # Get group of samples (e.g., 30 samples)
-            group = data_amps[i:i+compress_ratio]
+            group = data[i:i+compress_ratio]
             
             if len(group) > 0:
-                # Average the group and convert to mA
-                avg_amps = sum(group) / len(group)
-                avg_ma = avg_amps * 1000  # Convert to mA
-                compressed_ma.append(avg_ma)
+                # Average the group
+                avg_value = sum(group) / len(group)
+                compressed.append(avg_value)
         
-        return compressed_ma
+        return compressed
     
     def read_current_channels_hardware_timed(self, channels: List[str], sample_rate: float = 30000.0, compress_ratio: int = 30, duration_seconds: float = 10.0) -> Optional[dict]:
         """Read current using DAQ hardware timing with compression (matching other DAQ tool)
         
-        Uses DAQ's built-in current measurement mode, same as Multi-Channel Monitor.
+        Uses VOLTAGE measurement mode to read voltage drop across external shunt resistor.
         Samples at high rate (30kHz) then compresses by averaging for noise reduction.
         
         Args:
@@ -702,33 +701,34 @@ class NIDAQService(QObject):
             total_samples = int(sample_rate * duration_seconds)  # 30,000 * 10 = 300,000
             compressed_samples = total_samples // compress_ratio  # 300,000 / 30 = 10,000
             
-            print(f"=== Hardware-Timed CURRENT Collection (with Compression) ===")
+            print(f"=== Hardware-Timed VOLTAGE Collection (with Compression) ===")
             print(f"Channels: {channels}")
             print(f"Sampling rate: {sample_rate} Hz (30kHz like other tool)")
             print(f"Duration: {duration_seconds} seconds")
             print(f"Raw samples: {total_samples} ({total_samples/1000:.0f}k)")
             print(f"Compress ratio: {compress_ratio}:1")
             print(f"Final samples: {compressed_samples} (after compression)")
-            print(f"Mode: DAQ CURRENT measurement")
+            print(f"Mode: VOLTAGE measurement (external shunt)")
             
             with nidaqmx.Task() as task:
-                # Add CURRENT input channels (like Multi-Channel Monitor)
+                # Add VOLTAGE input channels (to measure external shunt voltage drop)
                 for channel in channels:
                     channel_name = f"{self.device_name}/{channel}"
                     config = self.channel_configs.get(channel, {})
                     
-                    print(f"Adding CURRENT channel: {channel_name} ({config.get('name', channel)})")
+                    print(f"Adding VOLTAGE channel: {channel_name} ({config.get('name', channel)})")
                     
-                    # Use current measurement with safe parameters
+                    # Use voltage measurement (matching other tool)
                     try:
-                        task.ai_channels.add_ai_current_chan(
+                        task.ai_channels.add_ai_voltage_chan(
                             channel_name,
-                            min_val=-0.040,  # Safe range within hardware limit
-                            max_val=0.040,
-                            units=nidaqmx.constants.CurrentUnits.AMPS
+                            terminal_config=nidaqmx.constants.TerminalConfiguration.RSE,
+                            min_val=-5.0,  # ±5V range (matching other tool)
+                            max_val=5.0,
+                            units=nidaqmx.constants.VoltageUnits.VOLTS
                         )
                     except Exception as e:
-                        print(f"Error adding current channel {channel}: {e}")
+                        print(f"Error adding voltage channel {channel}: {e}")
                         raise
                 
                 # Configure hardware timing - FINITE mode for exact sample count
@@ -738,7 +738,7 @@ class NIDAQService(QObject):
                     samps_per_chan=total_samples  # Exactly 10,000 samples
                 )
                 
-                print(f"Starting hardware-timed CURRENT acquisition (30kHz)...")
+                print(f"Starting hardware-timed VOLTAGE acquisition (30kHz)...")
                 task.start()
                 
                 # Read all samples at once (hardware handles timing)
@@ -747,49 +747,61 @@ class NIDAQService(QObject):
                 data = task.read(number_of_samples_per_channel=total_samples, timeout=timeout)
                 
                 task.stop()
-                print(f"Hardware CURRENT acquisition completed, starting compression...")
+                print(f"Hardware VOLTAGE acquisition completed, starting compression...")
                 
-                # Process and compress current data
+                # Process and compress voltage data, then convert to current
                 result = {}
                 
                 if len(channels) == 1:
                     # Single channel
                     if isinstance(data, (list, tuple)) and len(data) > 0:
-                        current_data_amps = list(data)
-                        print(f"Raw samples collected: {len(current_data_amps)}")
+                        voltage_data_volts = list(data)
+                        print(f"Raw voltage samples collected: {len(voltage_data_volts)}")
                         
-                        # Compress by averaging (30:1 ratio)
-                        compressed_ma = self._compress_data(current_data_amps, compress_ratio)
+                        # Compress voltage data by averaging (30:1 ratio)
+                        compressed_volts = self._compress_data(voltage_data_volts, compress_ratio)
                         
+                        # Convert voltage to current using Ohm's law: I = V / R
                         config = self.channel_configs.get(channels[0], {})
+                        shunt_r = config.get('shunt_r', 0.01)  # Default 0.01Ω
+                        compressed_ma = [(v / shunt_r) * 1000 for v in compressed_volts]  # V/R=A, *1000=mA
+                        
                         result[channels[0]] = {
                             'current_data': compressed_ma,  # Current in mA (compressed)
                             'sample_count': len(compressed_ma),
                             'name': config.get('name', channels[0])
                         }
+                        avg_v_mv = sum(compressed_volts) * 1000 / len(compressed_volts) if compressed_volts else 0
                         avg_i_ma = sum(compressed_ma) / len(compressed_ma) if compressed_ma else 0
-                        print(f"Channel {channels[0]}: {len(compressed_ma)} compressed samples, avg: {avg_i_ma:.3f}mA")
+                        print(f"Channel {channels[0]}: {len(compressed_ma)} compressed samples")
+                        print(f"  Avg voltage: {avg_v_mv:.3f}mV, Avg current: {avg_i_ma:.3f}mA (shunt={shunt_r}Ω)")
                 else:
                     # Multiple channels
                     if isinstance(data, (list, tuple)) and len(data) == len(channels):
                         for i, channel in enumerate(channels):
                             channel_data = data[i] if isinstance(data[i], (list, tuple)) else [data[i]]
-                            current_data_amps = list(channel_data)
-                            print(f"Channel {channel}: {len(current_data_amps)} raw samples")
+                            voltage_data_volts = list(channel_data)
+                            print(f"Channel {channel}: {len(voltage_data_volts)} raw voltage samples")
                             
-                            # Compress by averaging (30:1 ratio)
-                            compressed_ma = self._compress_data(current_data_amps, compress_ratio)
+                            # Compress voltage data by averaging (30:1 ratio)
+                            compressed_volts = self._compress_data(voltage_data_volts, compress_ratio)
                             
+                            # Convert voltage to current using Ohm's law: I = V / R
                             config = self.channel_configs.get(channel, {})
+                            shunt_r = config.get('shunt_r', 0.01)  # Default 0.01Ω
+                            compressed_ma = [(v / shunt_r) * 1000 for v in compressed_volts]  # V/R=A, *1000=mA
+                            
                             result[channel] = {
                                 'current_data': compressed_ma,  # Current in mA (compressed)
                                 'sample_count': len(compressed_ma),
                                 'name': config.get('name', channel)
                             }
+                            avg_v_mv = sum(compressed_volts) * 1000 / len(compressed_volts) if compressed_volts else 0
                             avg_i_ma = sum(compressed_ma) / len(compressed_ma) if compressed_ma else 0
-                            print(f"Channel {channel}: {len(compressed_ma)} compressed samples, avg: {avg_i_ma:.3f}mA")
+                            print(f"Channel {channel}: {len(compressed_ma)} compressed samples")
+                            print(f"  Avg voltage: {avg_v_mv:.3f}mV, Avg current: {avg_i_ma:.3f}mA (shunt={shunt_r}Ω)")
                 
-                print(f"=== Hardware-timed CURRENT collection completed: {len(result)} channels ===")
+                print(f"=== Hardware-timed VOLTAGE collection completed: {len(result)} channels ===")
                 return result
                 
         except Exception as e:
