@@ -212,16 +212,27 @@ class NIDAQService(QObject):
                         channel_name = f"{self.device_name}/{channel}"
                         config = self.channel_configs[channel]
                         
-                        # Use VOLTAGE measurement mode (matching other tool's NI Trace)
-                        # Hardware is connected to shunt resistor terminals, so voltage reading
-                        # represents the voltage DROP across the shunt resistor
-                        temp_task.ai_channels.add_ai_voltage_chan(
-                            channel_name,
-                            terminal_config=nidaqmx.constants.TerminalConfiguration.RSE,
-                            min_val=-5.0,  # ±5V range (matching other tool)
-                            max_val=5.0,
-                            units=nidaqmx.constants.VoltageUnits.VOLTS
-                        )
+                        # Use VOLTAGE measurement mode to measure shunt voltage drop
+                        # Use DEFAULT terminal config to follow hardware jumper settings (DIFFERENTIAL)
+                        # This should match the hardware-timed collection method
+                        try:
+                            temp_task.ai_channels.add_ai_voltage_chan(
+                                channel_name,
+                                terminal_config=nidaqmx.constants.TerminalConfiguration.DEFAULT,
+                                min_val=-0.2,  # ±200mV range (for shunt voltage drop)
+                                max_val=0.2,
+                                units=nidaqmx.constants.VoltageUnits.VOLTS
+                            )
+                        except:
+                            # Fallback to RSE if DEFAULT fails
+                            print(f"⚠️ DEFAULT mode failed for {channel}, using RSE fallback")
+                            temp_task.ai_channels.add_ai_voltage_chan(
+                                channel_name,
+                                terminal_config=nidaqmx.constants.TerminalConfiguration.RSE,
+                                min_val=-5.0,  # ±5V range
+                                max_val=5.0,
+                                units=nidaqmx.constants.VoltageUnits.VOLTS
+                            )
                         
                         # Read voltage across shunt resistor
                         voltage = temp_task.read()
