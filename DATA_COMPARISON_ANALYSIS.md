@@ -187,28 +187,92 @@ channel_data_mA[key] = value * 1000  # A to mA
 
 ---
 
-## 💡 가설
+## ✅ 문제 해결됨!
 
-### 가설 1: DAQ Range 문제
+### 🔍 근본 원인 발견 (NI I/O Trace 분석)
+
+**DoU (Auto Test - 잘못됨):**
 ```
-현재: ±5V Range
-문제: Shunt 전압(0.001V)이 너무 작아서 Resolution 부족?
-해결: ±0.1V Range로 변경?
+DAQmxCreateAICurrentChan(
+    "Dev1/ai0",
+    min_val=-0.040,  // ±40mA
+    max_val=0.040,
+    units=Amps,
+    shunt_resistor_loc=-1,  // Internal (249Ω)
+    shunt_resistor_val=249.0
+)
+
+결과: 7.92639E-08 A = 0.00008 mA ❌
 ```
 
-### 가설 2: 하드웨어 연결 문제
+**다른 툴 (정상):**
 ```
-문제: Rail 전압과 Shunt 전압 혼동?
-해결: 연결 재확인
+DAQCreateAIVoltageChan(
+    "Dev1/ai0",
+    min_val=-5.0,  // ±5V
+    max_val=5.0,
+    units=Volts
+)
+
+결과: 0.000168257 V = 0.168 mV
+→ Current = 0.168mV / 0.01Ω = 16.8 mA ✓
 ```
 
-### 가설 3: Gain 설정 필요
+### 🎯 문제점
+
+1. **DoU는 Current Mode 사용**
+   - DAQ 내부 Shunt (249Ω) 사용
+   - 외부 Shunt (0.01Ω) 무시
+   - 측정값이 1000배 작음!
+
+2. **다른 툴은 Voltage Mode 사용**
+   - 외부 Shunt 전압 drop 측정
+   - I = V / R 로 정확한 전류 계산
+   - 정상적인 mA 범위 값
+
+### ✅ 해결 완료
+
+**수정사항 (Commit a559110):**
+```python
+# Before (잘못됨)
+task.ai_channels.add_ai_current_chan(
+    channel_name,
+    min_val=-0.040,
+    max_val=0.040,
+    units=CurrentUnits.AMPS  # 내부 249Ω shunt
+)
+
+# After (수정됨)
+task.ai_channels.add_ai_voltage_chan(
+    channel_name,
+    terminal_config=TerminalConfiguration.RSE,
+    min_val=-5.0,
+    max_val=5.0,
+    units=VoltageUnits.VOLTS  # 외부 0.01Ω shunt
+)
+
+# 데이터 처리
+voltage_volts = task.read()
+shunt_r = 0.01  # Ω
+current_ma = (voltage_volts / shunt_r) * 1000  # mA
 ```
-다른 툴: Gain 적용?
-DoU: Gain 없음?
-해결: Gain 추가?
+
+### 📊 예상 결과
+
+**수정 전:**
+```
+Time(ms)  VBAT         VDD_1P8_AP
+0         -0.000135    0.001034    ❌ 1000배 작음
+1          0.000036    0.003274
+```
+
+**수정 후 (예상):**
+```
+Time(ms)  VBAT       VDD_1P8_AP
+0         -6.76      0.15        ✅ 정상 범위!
+1          1.11      0.24
 ```
 
 ---
 
-**지금 Refresh 버튼 눌러서 콘솔 출력 보여주세요!** 🔍
+**이제 Phone App Test를 실행해서 결과를 확인하세요!** 🚀
