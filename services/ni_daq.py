@@ -721,40 +721,53 @@ class NIDAQService(QObject):
                     # Use voltage measurement with DIFFERENTIAL configuration
                     # to measure voltage drop across external shunt resistor
                     try:
-                        # Try DIFFERENTIAL first (proper shunt measurement)
+                        # Try DEFAULT first (follow hardware jumper settings, like Traditional DAQ API)
                         try:
                             task.ai_channels.add_ai_voltage_chan(
                                 channel_name,
-                                terminal_config=nidaqmx.constants.TerminalConfiguration.DIFFERENTIAL,
+                                terminal_config=nidaqmx.constants.TerminalConfiguration.DEFAULT,
                                 min_val=-0.2,  # ±200mV range (for shunt voltage drop)
                                 max_val=0.2,
                                 units=nidaqmx.constants.VoltageUnits.VOLTS
                             )
-                            print(f"  → DIFFERENTIAL mode (proper shunt measurement)")
-                        except Exception as diff_error:
-                            # Try NRSE (Referenced Single-Ended) as fallback
-                            print(f"  ⚠️ DIFFERENTIAL failed: {diff_error}")
+                            print(f"  → DEFAULT mode (following hardware jumper settings)")
+                        except Exception as default_error:
+                            # Try explicit DIFFERENTIAL
+                            print(f"  ⚠️ DEFAULT failed: {type(default_error).__name__}: {str(default_error)}")
                             try:
-                                print(f"  → Trying NRSE (Referenced Single-Ended)...")
+                                print(f"  → Trying explicit DIFFERENTIAL...")
                                 task.ai_channels.add_ai_voltage_chan(
                                     channel_name,
-                                    terminal_config=nidaqmx.constants.TerminalConfiguration.NRSE,
-                                    min_val=-0.2,  # ±200mV range
+                                    terminal_config=nidaqmx.constants.TerminalConfiguration.DIFFERENTIAL,
+                                    min_val=-0.2,  # ±200mV range (for shunt voltage drop)
                                     max_val=0.2,
                                     units=nidaqmx.constants.VoltageUnits.VOLTS
                                 )
-                                print(f"  → NRSE mode enabled")
-                            except:
-                                # Final fallback to RSE with warning
-                                print(f"  ⚠️ NRSE also failed, falling back to RSE")
-                                print(f"  ⚠️ WARNING: RSE mode will measure Rail voltage, not Shunt drop!")
-                                task.ai_channels.add_ai_voltage_chan(
-                                    channel_name,
-                                    terminal_config=nidaqmx.constants.TerminalConfiguration.RSE,
-                                    min_val=-5.0,  # ±5V range (for rail voltage)
-                                    max_val=5.0,
-                                    units=nidaqmx.constants.VoltageUnits.VOLTS
-                                )
+                                print(f"  → DIFFERENTIAL mode enabled")
+                            except Exception as diff_error:
+                                # Try NRSE (Referenced Single-Ended) as fallback
+                                print(f"  ⚠️ DIFFERENTIAL failed: {type(diff_error).__name__}: {str(diff_error)}")
+                                try:
+                                    print(f"  → Trying NRSE (Referenced Single-Ended)...")
+                                    task.ai_channels.add_ai_voltage_chan(
+                                        channel_name,
+                                        terminal_config=nidaqmx.constants.TerminalConfiguration.NRSE,
+                                        min_val=-0.2,  # ±200mV range
+                                        max_val=0.2,
+                                        units=nidaqmx.constants.VoltageUnits.VOLTS
+                                    )
+                                    print(f"  → NRSE mode enabled")
+                                except:
+                                    # Final fallback to RSE with warning
+                                    print(f"  ⚠️ NRSE also failed, falling back to RSE")
+                                    print(f"  ⚠️ WARNING: RSE mode will measure Rail voltage, not Shunt drop!")
+                                    task.ai_channels.add_ai_voltage_chan(
+                                        channel_name,
+                                        terminal_config=nidaqmx.constants.TerminalConfiguration.RSE,
+                                        min_val=-5.0,  # ±5V range (for rail voltage)
+                                        max_val=5.0,
+                                        units=nidaqmx.constants.VoltageUnits.VOLTS
+                                    )
                     except Exception as e:
                         print(f"Error adding voltage channel {channel}: {e}")
                         raise
