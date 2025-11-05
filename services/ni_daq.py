@@ -673,8 +673,10 @@ class NIDAQService(QObject):
     def read_current_channels_hardware_timed(self, channels: List[str], sample_rate: float = 30000.0, compress_ratio: int = 30, duration_seconds: float = 10.0) -> Optional[dict]:
         """Read current using DAQ hardware timing with compression (matching other DAQ tool)
         
-        Uses VOLTAGE measurement mode to read voltage drop across external shunt resistor.
-        Samples at high rate (30kHz) then compresses by averaging for noise reduction.
+        🆕 NOW USES TRADITIONAL DAQ API (same as other tool!)
+        
+        Uses Traditional DAQ API (DAQReadNChanNSamp1D) for accurate measurements.
+        Falls back to DAQmx if Traditional DAQ is not available.
         
         Args:
             channels: List of channel names (e.g., ['ai0', 'ai1'])
@@ -692,23 +694,127 @@ class NIDAQService(QObject):
             - Compress: 30:1
             - Final samples: 10,000 (one per ms)
         """
-        if not NI_AVAILABLE or not self.connected:
-            print("DAQ not available or not connected")
+        if not self.connected:
+            print("DAQ not connected")
+            return None
+        
+        # ============================================================
+        # TRY 1: Traditional DAQ API (SAME AS OTHER TOOL!)
+        # ============================================================
+        print("\n" + "="*70)
+        print("🔄 ATTEMPTING: Traditional DAQ API (same as other tool)")
+        print("="*70)
+        
+        try:
+            from services.traditional_daq import get_traditional_daq_service, DAQ_DEFAULT
+            import numpy as np
+            
+            trad_daq = get_traditional_daq_service()
+            
+            if trad_daq.is_available():
+                print("✓ Traditional DAQ API is available!")
+                
+                # Calculate total samples
+                total_samples = int(sample_rate * duration_seconds)
+                
+                # Prepare shunt resistor list
+                shunt_resistors = []
+                for channel in channels:
+                    config = self.channel_configs.get(channel, {})
+                    shunt_r = config.get('shunt_r', 0.01)
+                    shunt_resistors.append(shunt_r)
+                
+                print(f"Channels: {channels}")
+                print(f"Shunt resistors: {shunt_resistors}")
+                print(f"Samples: {total_samples}")
+                print(f"Compress ratio: {compress_ratio}:1")
+                
+                # Read using Traditional DAQ API (SAME AS OTHER TOOL!)
+                trad_result = trad_daq.read_current_channels(
+                    device_name=self.device_name,
+                    channels=channels,
+                    shunt_resistors=shunt_resistors,
+                    num_samples=total_samples,
+                    terminal_config=DAQ_DEFAULT  # Follow hardware jumper settings!
+                )
+                
+                if trad_result:
+                    print("\n✓ Traditional DAQ read successful!")
+                    
+                    # Convert to DoU format with compression
+                    result = {}
+                    for channel in channels:
+                        if channel in trad_result:
+                            trad_data = trad_result[channel]
+                            current_data_ma = trad_data['current_data']  # Already in mA
+                            
+                            # Compress data by averaging
+                            compressed_ma = []
+                            for i in range(0, len(current_data_ma), compress_ratio):
+                                group = current_data_ma[i:i+compress_ratio]
+                                if len(group) > 0:
+                                    avg_ma = sum(group) / len(group)
+                                    compressed_ma.append(avg_ma)
+                            
+                            config = self.channel_configs.get(channel, {})
+                            result[channel] = {
+                                'current_data': compressed_ma,
+                                'sample_count': len(compressed_ma),
+                                'name': config.get('name', channel)
+                            }
+                            
+                            avg_current_ma = sum(compressed_ma) / len(compressed_ma) if compressed_ma else 0
+                            print(f"  {channel} ({config.get('name', channel)}): "
+                                  f"{avg_current_ma:.3f}mA (compressed to {len(compressed_ma)} samples)")
+                    
+                    print("\n" + "="*70)
+                    print("✅ SUCCESS: Traditional DAQ API (SAME AS OTHER TOOL!)")
+                    print("="*70)
+                    return result
+                else:
+                    print("⚠️ Traditional DAQ read returned None")
+            else:
+                print("⚠️ Traditional DAQ API not available")
+        
+        except ImportError as e:
+            print(f"⚠️ Traditional DAQ module not found: {e}")
+        except Exception as e:
+            print(f"⚠️ Traditional DAQ error: {e}")
+            import traceback
+            traceback.print_exc()
+        
+        # ============================================================
+        # FALLBACK: DAQmx API (if Traditional DAQ fails)
+        # ============================================================
+        print("\n" + "="*70)
+        print("⚠️ FALLBACK: Using DAQmx API (may have measurement differences)")
+        print("="*70)
+        
+        if not NI_AVAILABLE:
+            print("DAQ not available")
             return None
             
+        return self._read_using_daqmx(channels, sample_rate, compress_ratio, duration_seconds)
+    
+    def _read_using_daqmx(self, channels: List[str], sample_rate: float, compress_ratio: int, duration_seconds: float) -> Optional[dict]:
+        """Fallback method using DAQmx API (original implementation)
+        
+        This is kept as fallback when Traditional DAQ is not available.
+        Note: May have different measurement results than Traditional DAQ API.
+        """
         try:
             # Calculate total samples to collect
             total_samples = int(sample_rate * duration_seconds)  # 30,000 * 10 = 300,000
             compressed_samples = total_samples // compress_ratio  # 300,000 / 30 = 10,000
             
-            print(f"=== Hardware-Timed VOLTAGE Collection (with Compression) ===")
+            print(f"=== DAQmx FALLBACK: Hardware-Timed VOLTAGE Collection ===")
             print(f"Channels: {channels}")
-            print(f"Sampling rate: {sample_rate} Hz (30kHz like other tool)")
+            print(f"Sampling rate: {sample_rate} Hz")
             print(f"Duration: {duration_seconds} seconds")
             print(f"Raw samples: {total_samples} ({total_samples/1000:.0f}k)")
             print(f"Compress ratio: {compress_ratio}:1")
             print(f"Final samples: {compressed_samples} (after compression)")
-            print(f"Mode: VOLTAGE measurement (external shunt)")
+            print(f"Mode: DAQmx VOLTAGE measurement (external shunt)")
             
             with nidaqmx.Task() as task:
                 # Add VOLTAGE input channels (to measure external shunt voltage drop)
