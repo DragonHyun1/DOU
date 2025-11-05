@@ -1,193 +1,29 @@
-[Auto Test start 후에 수집된 데이터들]
+아래 처럼 값이 다른데 분석해봐 왜 다른지
 
-1.  DAQmxCreateTask ("", 0x000002098D0570D0)
-Process ID: 0x00005788         Thread ID: 0x00007AC8
-Start Time: 09:33:38.1359      Call Duration 00:00:00.0000
-Status: 0 (0x0)
-2.  DAQmxGetTaskName (0x000002098D0570D0, "", 0 (0x0))
-Process ID: 0x00005788         Thread ID: 0x00007AC8
-Start Time: 09:33:38.1815      Call Duration 00:00:00.0000
-Status: 16 (0x10)
-3.  DAQmxGetTaskName (0x000002098D0570D0, "_unnamedTask<2>", 16 (0x10))
-Process ID: 0x00005788         Thread ID: 0x00007AC8
-Start Time: 09:33:38.2265      Call Duration 00:00:00.0000
-Status: 0 (0x0)
-4.  DAQmxCreateAICurrentChan (0x000002098D0570D0, "Dev1/ai0", "", "DAQmx_Val_Cfg_Default", -0.040000 (-4.000000E-02), 0.040000 (4.000000E-02), DAQmx_Val_Amps, -1, 249.000000 (2.490000E+02), "")
-Process ID: 0x00005788         Thread ID: 0x00007AC8
-Start Time: 09:33:38.2715      Call Duration 00:00:00.0009
-Status: 0 (0x0)
-5.  DAQmxCreateAICurrentChan (0x000002098D0570D0, "Dev1/ai1", "", "DAQmx_Val_Cfg_Default", -0.040000 (-4.000000E-02), 0.040000 (4.000000E-02), DAQmx_Val_Amps, -1, 249.000000 (2.490000E+02), "")
-Process ID: 0x00005788         Thread ID: 0x00007AC8
-Start Time: 09:33:38.3165      Call Duration 00:00:00.0000
-Status: 0 (0x0)
-6.  DAQmxCreateAICurrentChan (0x000002098D0570D0, "Dev1/ai2", "", "DAQmx_Val_Cfg_Default", -0.040000 (-4.000000E-02), 0.040000 (4.000000E-02), DAQmx_Val_Amps, -1, 249.000000 (2.490000E+02), "")
-Process ID: 0x00005788         Thread ID: 0x00007AC8
-Start Time: 09:33:38.3620      Call Duration 00:00:00.0000
-Status: 0 (0x0)
-7.  DAQmxCreateAICurrentChan (0x000002098D0570D0, "Dev1/ai3", "", "DAQmx_Val_Cfg_Default", -0.040000 (-4.000000E-02), 0.040000 (4.000000E-02), DAQmx_Val_Amps, -1, 249.000000 (2.490000E+02), "")
-Process ID: 0x00005788         Thread ID: 0x00007AC8
-Start Time: 09:33:38.4070      Call Duration 00:00:00.0000
-Status: 0 (0x0)
-8.  DAQmxCreateAICurrentChan (0x000002098D0570D0, "Dev1/ai4", "", "DAQmx_Val_Cfg_Default", -0.040000 (-4.000000E-02), 0.040000 (4.000000E-02), DAQmx_Val_Amps, -1, 249.000000 (2.490000E+02), "")
-Process ID: 0x00005788         Thread ID: 0x00007AC8
-Start Time: 09:33:38.4526      Call Duration 00:00:00.0000
-Status: 0 (0x0)
-9.  DAQmxCreateAICurrentChan (0x000002098D0570D0, "Dev1/ai5", "", "DAQmx_Val_Cfg_Default", -0.040000 (-4.000000E-02), 0.040000 (4.000000E-02), DAQmx_Val_Amps, -1, 249.000000 (2.490000E+02), "")
-Process ID: 0x00005788         Thread ID: 0x00007AC8
-Start Time: 09:33:38.4976      Call Duration 00:00:00.0010
-Status: 0 (0x0)
-10.  DAQmxCfgSampClkTiming (0x000002098D0570D0, "", 30000.000000 (3.000000E+04), DAQmx_Val_Rising, DAQmx_Val_FiniteSamps, 300000 (0x00000000000493E0))
-Process ID: 0x00005788         Thread ID: 0x00007AC8
-Start Time: 09:33:38.5427      Call Duration 00:00:00.0000
-Status: 0 (0x0)
-11.  DAQmxStartTask (0x000002098D0570D0)
-Process ID: 0x00005788         Thread ID: 0x00007AC8
-Start Time: 09:33:38.5884      Call Duration 00:00:00.1107
-Status: 0 (0x0)
-12.  DAQmxGetReadChannelsToRead (0x000002098D0570D0, "", 0 (0x0))
-Process ID: 0x00005788         Thread ID: 0x00007AC8
-Start Time: 09:33:38.7416      Call Duration 00:00:00.0000
-Status: 59 (0x3B)
-13.  DAQmxGetReadChannelsToRead (0x000002098D0570D0, "Dev1/ai0, Dev1/ai1, Dev1/ai2, Dev1/ai3, Dev1/ai4, Dev1/ai5", 59 (0x3B))
-Process ID: 0x00005788         Thread ID: 0x00007AC8
-Start Time: 09:33:38.7871      Call Duration 00:00:00.0000
-Status: 0 (0x0)
-14.  DAQmxGetChanType (0x000002098D0570D0, "Dev1/ai0, Dev1/ai1, Dev1/ai2, Dev1/ai3, Dev1/ai4, Dev1/ai5", DAQmx_Val_AI)
-Process ID: 0x00005788         Thread ID: 0x00007AC8
-Start Time: 09:33:38.8326      Call Duration 00:00:00.0000
-Status: 0 (0x0)
-15.  DAQmxGetChanType (0x000002098D0570D0, "Dev1/ai0, Dev1/ai1, Dev1/ai2, Dev1/ai3, Dev1/ai4, Dev1/ai5", DAQmx_Val_AI)
-Process ID: 0x00005788         Thread ID: 0x00007AC8
-Start Time: 09:33:38.8780      Call Duration 00:00:00.0000
-Status: 0 (0x0)
-16.  DAQmxGetChanType (0x000002098D0570D0, "Dev1/ai0", DAQmx_Val_AI)
-Process ID: 0x00005788         Thread ID: 0x00007AC8
-Start Time: 09:33:38.9242      Call Duration 00:00:00.0000
-Status: 0 (0x0)
-17.  DAQmxGetAIMeasType (0x000002098D0570D0, "Dev1/ai0", DAQmx_Val_Current)
-Process ID: 0x00005788         Thread ID: 0x00007AC8
-Start Time: 09:33:38.9698      Call Duration 00:00:00.0000
-Status: 0 (0x0)
-18.  DAQmxGetChanType (0x000002098D0570D0, "Dev1/ai1", DAQmx_Val_AI)
-Process ID: 0x00005788         Thread ID: 0x00007AC8
-Start Time: 09:33:39.0162      Call Duration 00:00:00.0000
-Status: 0 (0x0)
-19.  DAQmxGetAIMeasType (0x000002098D0570D0, "Dev1/ai1", DAQmx_Val_Current)
-Process ID: 0x00005788         Thread ID: 0x00007AC8
-Start Time: 09:33:39.0618      Call Duration 00:00:00.0000
-Status: 0 (0x0)
-20.  DAQmxGetChanType (0x000002098D0570D0, "Dev1/ai2", DAQmx_Val_AI)
-Process ID: 0x00005788         Thread ID: 0x00007AC8
-Start Time: 09:33:39.1087      Call Duration 00:00:00.0000
-Status: 0 (0x0)
-21.  DAQmxGetAIMeasType (0x000002098D0570D0, "Dev1/ai2", DAQmx_Val_Current)
-Process ID: 0x00005788         Thread ID: 0x00007AC8
-Start Time: 09:33:39.1557      Call Duration 00:00:00.0000
-Status: 0 (0x0)
-22.  DAQmxGetChanType (0x000002098D0570D0, "Dev1/ai3", DAQmx_Val_AI)
-Process ID: 0x00005788         Thread ID: 0x00007AC8
-Start Time: 09:33:39.2016      Call Duration 00:00:00.0000
-Status: 0 (0x0)
-23.  DAQmxGetAIMeasType (0x000002098D0570D0, "Dev1/ai3", DAQmx_Val_Current)
-Process ID: 0x00005788         Thread ID: 0x00007AC8
-Start Time: 09:33:39.2468      Call Duration 00:00:00.0000
-Status: 0 (0x0)
-24.  DAQmxGetChanType (0x000002098D0570D0, "Dev1/ai4", DAQmx_Val_AI)
-Process ID: 0x00005788         Thread ID: 0x00007AC8
-Start Time: 09:33:39.2916      Call Duration 00:00:00.0000
-Status: 0 (0x0)
-25.  DAQmxGetAIMeasType (0x000002098D0570D0, "Dev1/ai4", DAQmx_Val_Current)
-Process ID: 0x00005788         Thread ID: 0x00007AC8
-Start Time: 09:33:39.3384      Call Duration 00:00:00.0000
-Status: 0 (0x0)
-26.  DAQmxGetChanType (0x000002098D0570D0, "Dev1/ai5", DAQmx_Val_AI)
-Process ID: 0x00005788         Thread ID: 0x00007AC8
-Start Time: 09:33:39.3858      Call Duration 00:00:00.0000
-Status: 0 (0x0)
-27.  DAQmxGetAIMeasType (0x000002098D0570D0, "Dev1/ai5", DAQmx_Val_Current)
-Process ID: 0x00005788         Thread ID: 0x00007AC8
-Start Time: 09:33:39.4306      Call Duration 00:00:00.0000
-Status: 0 (0x0)
-28.  DAQmxReadAnalogF64 (0x000002098D0570D0, 300000 (0x493E0), 15.000000 (1.500000E+01), "DAQmx_Val_GroupByChannel", {7.92639E-08,-2.42391E-07,...}, 1800000 (0x1B7740), 300000 (0x493E0), NULL)
-Process ID: 0x00005788         Thread ID: 0x00007AC8
-Start Time: 09:33:39.4766      Call Duration 00:00:09.2146
-Status: 0 (0x0)
-29.  DAQmxStopTask (0x000002098D0570D0)
-Process ID: 0x00005788         Thread ID: 0x00007AC8
-Start Time: 09:33:48.7516      Call Duration 00:00:00.0550
-Status: 0 (0x0)
-30.  DAQmxClearTask (0x000002098D0570D0)
-Process ID: 0x00005788         Thread ID: 0x00007AC8
-Start Time: 09:33:48.8884      Call Duration 00:00:00.0000
-Status: 0 (0x0)
+VBAT	VDD_1P8_AP	VDD_MLDO_2P0	VDD_WIFI_1P0	VDD_1P2_AP_WIFI	VDD_1P35_WIFIPMU
+DoU 틀	415916.9613	17793.7675	394868.5788	201917.1755	11782.39477	133963.7217
+다른툴	3.742197	0.018205	0.00405	0.736304	0.172343	0.181599
 
 
+그리고 아래 다른툴 데이터 수집한 거에서 우리가 놓친거 있을가?
 
 [다른 툴에서 데이터 수집할 때]
 1.  DAQCreateAIVoltageChan ("_invalidTask", "", "Dev1/ai0", -1, -5.000000 (-5.000000E+00), 5.000000 (5.000000E+00), Volts, "", "Dev1/ai0", "")
-Process ID: 0x0000084C         Thread ID: 0x00006FB0
-Start Time: 09:40:28.4717      Call Duration 00:00:00.0010
-Status: 0
 2.  DAQCreateAIVoltageChan ("_invalidTask", "", "Dev1/ai1", -1, -5.000000 (-5.000000E+00), 5.000000 (5.000000E+00), Volts, "", "Dev1/ai1", "")
-Process ID: 0x0000084C         Thread ID: 0x00006FB0
-Start Time: 09:40:28.4728      Call Duration 00:00:00.0009
-Status: 0
 3.  DAQCreateAIVoltageChan ("_invalidTask", "", "Dev1/ai2", -1, -5.000000 (-5.000000E+00), 5.000000 (5.000000E+00), Volts, "", "Dev1/ai2", "")
-Process ID: 0x0000084C         Thread ID: 0x00006FB0
-Start Time: 09:40:28.4737      Call Duration 00:00:00.0000
-Status: 0
 4.  DAQCreateAIVoltageChan ("_invalidTask", "", "Dev1/ai3", -1, -5.000000 (-5.000000E+00), 5.000000 (5.000000E+00), Volts, "", "Dev1/ai3", "")
-Process ID: 0x0000084C         Thread ID: 0x00006FB0
-Start Time: 09:40:28.4737      Call Duration 00:00:00.0000
-Status: 0
 5.  DAQCreateAIVoltageChan ("_invalidTask", "", "Dev1/ai4", -1, -5.000000 (-5.000000E+00), 5.000000 (5.000000E+00), Volts, "", "Dev1/ai4", "")
-Process ID: 0x0000084C         Thread ID: 0x00006FB0
-Start Time: 09:40:28.4737      Call Duration 00:00:00.0000
-Status: 0
 6.  DAQCreateAIVoltageChan ("_invalidTask", "", "Dev1/ai5", -1, -5.000000 (-5.000000E+00), 5.000000 (5.000000E+00), Volts, "", "Dev1/ai5", "")
-Process ID: 0x0000084C         Thread ID: 0x00006FB0
-Start Time: 09:40:28.4737      Call Duration 00:00:00.0000
-Status: 0
 7.  setTimingI32EnumAP ("_unnamedTask<3>", "", SampTimingType, Sample Clock, "")
-Process ID: 0x0000084C         Thread ID: 0x00006FB0
-Start Time: 09:40:28.4737      Call Duration 00:00:00.0000
-Status: 0
 8.  setTimingI32EnumAP ("_unnamedTask<3>", "", SampQuant.SampMode, Continuous Samples, "")
-Process ID: 0x0000084C         Thread ID: 0x00006FB0
-Start Time: 09:40:28.4737      Call Duration 00:00:00.0000
-Status: 0
 9.  setTimingF64U64AP ("_unnamedTask<3>", "", SampQuant.SampPerChan, 1000.000000 (1.000000E+03), "")
-Process ID: 0x0000084C         Thread ID: 0x00006FB0
-Start Time: 09:40:28.4737      Call Duration 00:00:00.0000
-Status: 0
 10.  setTimingI32EnumAP ("_unnamedTask<3>", "", SampClk.ActiveEdge, Rising, "")
-Process ID: 0x0000084C         Thread ID: 0x00006FB0
-Start Time: 09:40:28.4737      Call Duration 00:00:00.0000
-Status: 0
 11.  setTimingF64AP ("_unnamedTask<3>", "", SampClk.Rate, 30000.000000 (3.000000E+04), "")
-Process ID: 0x0000084C         Thread ID: 0x00006FB0
-Start Time: 09:40:28.4737      Call Duration 00:00:00.0000
-Status: 0
 12.  setTimingTerminalAP ("_unnamedTask<3>", "", SampClk.Src, "OnboardClock", "")
-Process ID: 0x0000084C         Thread ID: 0x00006FB0
-Start Time: 09:40:28.4737      Call Duration 00:00:00.0000
-Status: 0
 13.  DAQControl ("_unnamedTask<3>", "Start", "")
-Process ID: 0x0000084C         Thread ID: 0x00006FB0
-Start Time: 09:40:28.4737      Call Duration 00:00:00.0337
-Status: 0
 14.  DAQReadNChanNSamp1DWfm ("_unnamedTask<3>", 60 (0x3C), 10.000000 (1.000000E+01), 0.000033 (3.330000E-05), {0.000168257,8.05082E-06,...}, 0.000033 (3.330000E-05), {8.8154E-05,-0.000192207,...}, 0.000033 (3.330000E-05), {-3.20008E-05,4.81024E-05,...}, 0.000033 (3.330000E-05), {4.81024E-05,-7.20523E-05,...}, 0.000033 (3.330000E-05), {0.000128206,4.81024E-05,...}, "")
-Process ID: 0x0000084C         Thread ID: 0x00006FB0
-Start Time: 09:40:28.5075      Call Duration 00:00:00.0020
-Status: 0
 15.  DAQReadNChanNSamp1DWfm ("_unnamedTask<3>", 60 (0x3C), 10.000000 (1.000000E+01), 0.000033 (3.330000E-05), {-7.20523E-05,-0.000152155,...}, 0.000033 (3.330000E-05), {0.000168257,4.81024E-05,...}, 0.000033 (3.330000E-05), {8.05082E-06,4.81024E-05,...}, 0.000033 (3.330000E-05), {-3.20008E-05,8.05082E-06,...}, 0.000033 (3.330000E-05), {4.81024E-05,8.8154E-05,...}, "")
-Process ID: 0x0000084C         Thread ID: 0x00006FB0
-Start Time: 09:40:28.5095      Call Duration 00:00:00.0019
-Status: 0
 419.  DAQControl ("_unnamedTask<3>", "Stop", "")
-Process ID: 0x0000084C         Thread ID: 0x00006FB0
-Start Time: 09:40:29.3191      Call Duration 00:00:00.0090
-Status: 0
 420.  DAQDestroyTask110 ("_unnamedTask<3>", "")
 Process ID: 0x0000084C         Thread ID: 0x00006FB0
 Start Time: 09:40:29.3281      Call Duration 00:00:00.0000
