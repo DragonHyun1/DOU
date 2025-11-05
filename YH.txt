@@ -1,30 +1,168 @@
-아래 처럼 값이 다른데 분석해봐 왜 다른지
-
-VBAT	VDD_1P8_AP	VDD_MLDO_2P0	VDD_WIFI_1P0	VDD_1P2_AP_WIFI	VDD_1P35_WIFIPMU
-DoU 틀	415916.9613	17793.7675	394868.5788	201917.1755	11782.39477	133963.7217
-다른툴	3.742197	0.018205	0.00405	0.736304	0.172343	0.181599
-
-
-그리고 아래 다른툴 데이터 수집한 거에서 우리가 놓친거 있을가?
-
-[다른 툴에서 데이터 수집할 때]
-1.  DAQCreateAIVoltageChan ("_invalidTask", "", "Dev1/ai0", -1, -5.000000 (-5.000000E+00), 5.000000 (5.000000E+00), Volts, "", "Dev1/ai0", "")
-2.  DAQCreateAIVoltageChan ("_invalidTask", "", "Dev1/ai1", -1, -5.000000 (-5.000000E+00), 5.000000 (5.000000E+00), Volts, "", "Dev1/ai1", "")
-3.  DAQCreateAIVoltageChan ("_invalidTask", "", "Dev1/ai2", -1, -5.000000 (-5.000000E+00), 5.000000 (5.000000E+00), Volts, "", "Dev1/ai2", "")
-4.  DAQCreateAIVoltageChan ("_invalidTask", "", "Dev1/ai3", -1, -5.000000 (-5.000000E+00), 5.000000 (5.000000E+00), Volts, "", "Dev1/ai3", "")
-5.  DAQCreateAIVoltageChan ("_invalidTask", "", "Dev1/ai4", -1, -5.000000 (-5.000000E+00), 5.000000 (5.000000E+00), Volts, "", "Dev1/ai4", "")
-6.  DAQCreateAIVoltageChan ("_invalidTask", "", "Dev1/ai5", -1, -5.000000 (-5.000000E+00), 5.000000 (5.000000E+00), Volts, "", "Dev1/ai5", "")
-7.  setTimingI32EnumAP ("_unnamedTask<3>", "", SampTimingType, Sample Clock, "")
-8.  setTimingI32EnumAP ("_unnamedTask<3>", "", SampQuant.SampMode, Continuous Samples, "")
-9.  setTimingF64U64AP ("_unnamedTask<3>", "", SampQuant.SampPerChan, 1000.000000 (1.000000E+03), "")
-10.  setTimingI32EnumAP ("_unnamedTask<3>", "", SampClk.ActiveEdge, Rising, "")
-11.  setTimingF64AP ("_unnamedTask<3>", "", SampClk.Rate, 30000.000000 (3.000000E+04), "")
-12.  setTimingTerminalAP ("_unnamedTask<3>", "", SampClk.Src, "OnboardClock", "")
-13.  DAQControl ("_unnamedTask<3>", "Start", "")
-14.  DAQReadNChanNSamp1DWfm ("_unnamedTask<3>", 60 (0x3C), 10.000000 (1.000000E+01), 0.000033 (3.330000E-05), {0.000168257,8.05082E-06,...}, 0.000033 (3.330000E-05), {8.8154E-05,-0.000192207,...}, 0.000033 (3.330000E-05), {-3.20008E-05,4.81024E-05,...}, 0.000033 (3.330000E-05), {4.81024E-05,-7.20523E-05,...}, 0.000033 (3.330000E-05), {0.000128206,4.81024E-05,...}, "")
-15.  DAQReadNChanNSamp1DWfm ("_unnamedTask<3>", 60 (0x3C), 10.000000 (1.000000E+01), 0.000033 (3.330000E-05), {-7.20523E-05,-0.000152155,...}, 0.000033 (3.330000E-05), {0.000168257,4.81024E-05,...}, 0.000033 (3.330000E-05), {8.05082E-06,4.81024E-05,...}, 0.000033 (3.330000E-05), {-3.20008E-05,8.05082E-06,...}, 0.000033 (3.330000E-05), {4.81024E-05,8.8154E-05,...}, "")
-419.  DAQControl ("_unnamedTask<3>", "Stop", "")
-420.  DAQDestroyTask110 ("_unnamedTask<3>", "")
-Process ID: 0x0000084C         Thread ID: 0x00006FB0
-Start Time: 09:40:29.3281      Call Duration 00:00:00.0000
-Status: 0
+=== FINAL DEVICE LIST ===
+Total devices: 1
+  1. Dev1 (Real - USB-6289)
+[System] Application started successfully
+=== NI DAQ Connection Attempt ===
+Original device string: 'Dev1'
+Clean device name: 'Dev1'
+Channel: 'ai0'
+Available devices in system: ['Dev1']
+Device object created successfully: Device(name=Dev1)
+Device product type: USB-6289
+Creating NI-DAQmx task...
+Creating analog input channel: Dev1/ai0
+Voltage range: ±10.0V
+Channel created successfully, performing test read...
+Test read successful: 4.152380532396259V
+SUCCESS: NI DAQ connected: Dev1/ai0
+Channel ai0 configured: VBAT (0.0V, 0.001Ω, disabled)
+Channel ai0 configured: VBAT (4.0V, 0.001Ω, disabled)
+Channel ai0 configured: VBAT (4.0V, 0.01Ω, disabled)
+Channel ai0 configured: VBAT (4.0V, 0.01Ω, enabled)
+Channel ai0 configured: VBAT (4.0V, 0.01Ω, enabled)
+Channel ai1 configured: VDD_1P8_AP (0.0V, 0.001Ω, disabled)
+Channel ai1 configured: VDD_1P8_AP (1.8V, 0.001Ω, disabled)
+Channel ai1 configured: VDD_1P8_AP (1.8V, 0.1Ω, disabled)
+Channel ai1 configured: VDD_1P8_AP (1.8V, 0.1Ω, enabled)
+Channel ai1 configured: VDD_1P8_AP (1.8V, 0.1Ω, enabled)
+Channel ai2 configured: VDD_MLDO_2P0 (0.0V, 0.001Ω, disabled)
+Channel ai2 configured: VDD_MLDO_2P0 (2.0V, 0.001Ω, disabled)
+Channel ai2 configured: VDD_MLDO_2P0 (2.0V, 0.005Ω, disabled)
+Channel ai2 configured: VDD_MLDO_2P0 (2.0V, 0.005Ω, enabled)
+Channel ai2 configured: VDD_MLDO_2P0 (2.0V, 0.005Ω, enabled)
+Channel ai3 configured: VDD_WIFI_1P0 (0.0V, 0.001Ω, disabled)
+Channel ai3 configured: VDD_WIFI_1P0 (1.0V, 0.001Ω, disabled)
+Channel ai3 configured: VDD_WIFI_1P0 (1.0V, 0.005Ω, disabled)
+Channel ai3 configured: VDD_WIFI_1P0 (1.0V, 0.005Ω, enabled)
+Channel ai3 configured: VDD_WIFI_1P0 (1.0V, 0.005Ω, enabled)
+Channel ai4 configured: VDD_1P2_AP_WIFI (0.0V, 0.001Ω, disabled)
+Channel ai4 configured: VDD_1P2_AP_WIFI (1.2V, 0.001Ω, disabled)
+Channel ai4 configured: VDD_1P2_AP_WIFI (1.2V, 0.1Ω, disabled)
+Channel ai4 configured: VDD_1P2_AP_WIFI (1.2V, 0.1Ω, enabled)
+Channel ai4 configured: VDD_1P2_AP_WIFI (1.2V, 0.1Ω, enabled)
+Channel ai5 configured: VDD_1P35_WIFIPMU (0.0V, 0.001Ω, disabled)
+Channel ai5 configured: VDD_1P35_WIFIPMU (1.35V, 0.001Ω, disabled)
+Channel ai5 configured: VDD_1P35_WIFIPMU (1.35V, 0.01Ω, disabled)
+Channel ai5 configured: VDD_1P35_WIFIPMU (1.35V, 0.01Ω, enabled)
+Channel ai5 configured: VDD_1P35_WIFIPMU (1.35V, 0.01Ω, enabled)
+Channel ai6 configured: - (0.0V, 0.001Ω, disabled)
+Channel ai7 configured: - (0.0V, 0.001Ω, disabled)
+Channel ai8 configured: - (0.0V, 0.001Ω, disabled)
+Channel ai9 configured: - (0.0V, 0.001Ω, disabled)
+Channel ai10 configured: - (0.0V, 0.001Ω, disabled)
+Channel ai11 configured: - (0.0V, 0.001Ω, disabled)
+=== DAQ Hardware-Timed Collection Started ===
+Waiting for screen test to start...
+Collecting from 6 channels: ['ai0', 'ai1', 'ai2', 'ai3', 'ai4', 'ai5']
+Mode: current
+Starting DAQ hardware-timed CURRENT collection (1kHz, 10,000 samples, 10 seconds)...
+=== Hardware-Timed VOLTAGE Collection (with Compression) ===
+Channels: ['ai0', 'ai1', 'ai2', 'ai3', 'ai4', 'ai5']
+Sampling rate: 30000.0 Hz (30kHz like other tool)
+Duration: 10.0 seconds
+Raw samples: 300000 (300k)
+Compress ratio: 30:1
+Final samples: 10000 (after compression)
+Mode: VOLTAGE measurement (external shunt)
+Adding VOLTAGE channel: Dev1/ai0 (VBAT)
+Adding VOLTAGE channel: Dev1/ai1 (VDD_1P8_AP)
+Adding VOLTAGE channel: Dev1/ai2 (VDD_MLDO_2P0)
+Adding VOLTAGE channel: Dev1/ai3 (VDD_WIFI_1P0)
+Adding VOLTAGE channel: Dev1/ai4 (VDD_1P2_AP_WIFI)
+Adding VOLTAGE channel: Dev1/ai5 (VDD_1P35_WIFIPMU)
+Starting hardware-timed VOLTAGE acquisition (30kHz)...
+Reading 300000 raw samples per channel...
+Hardware VOLTAGE acquisition completed, starting compression...
+Channel ai0: 300000 raw voltage samples
+Channel ai0: 10000 compressed samples
+  Avg voltage: 4147.016mV, Avg current: 414701.630mA (shunt=0.01Ω)
+Channel ai1: 300000 raw voltage samples
+Channel ai1: 10000 compressed samples
+  Avg voltage: 1783.222mV, Avg current: 17832.215mA (shunt=0.1Ω)
+Channel ai2: 300000 raw voltage samples
+Channel ai2: 10000 compressed samples
+  Avg voltage: 1976.871mV, Avg current: 395374.130mA (shunt=0.005Ω)
+Channel ai3: 300000 raw voltage samples
+Channel ai3: 10000 compressed samples
+  Avg voltage: 1016.039mV, Avg current: 203207.882mA (shunt=0.005Ω)
+Channel ai4: 300000 raw voltage samples
+Channel ai4: 10000 compressed samples
+  Avg voltage: 1180.573mV, Avg current: 11805.731mA (shunt=0.1Ω)
+Channel ai5: 300000 raw voltage samples
+Channel ai5: 10000 compressed samples
+  Avg voltage: 1348.884mV, Avg current: 134888.355mA (shunt=0.01Ω)
+=== Hardware-timed VOLTAGE collection completed: 6 channels ===
+DAQ collection completed: 6 channels
+Processing 10000 samples...
+Processed 1000/10000 samples
+Processed 2000/10000 samples
+Processed 3000/10000 samples
+Processed 4000/10000 samples
+Processed 5000/10000 samples
+Processed 6000/10000 samples
+Processed 7000/10000 samples
+Processed 8000/10000 samples
+Processed 9000/10000 samples
+Processed 10000/10000 samples
+? Successfully processed 10000 data points
+=== DAQ Hardware-Timed Collection Ended ===
+Channel ai0 configured: VBAT (4.0V, 0.3Ω, enabled)
+Channel ai0 configured: VBAT (4.0V, 0.01Ω, enabled)
+Channel ai0 configured: VBAT (4.0V, 0.01Ω, enabled)
+=== Starting Self-Calibration for Dev1 ===
+Self-calibration completed in 19.2 seconds
+=== DAQ Hardware-Timed Collection Started ===
+Waiting for screen test to start...
+Collecting from 6 channels: ['ai0', 'ai1', 'ai2', 'ai3', 'ai4', 'ai5']
+Mode: current
+Starting DAQ hardware-timed CURRENT collection (1kHz, 10,000 samples, 10 seconds)...
+=== Hardware-Timed VOLTAGE Collection (with Compression) ===
+Channels: ['ai0', 'ai1', 'ai2', 'ai3', 'ai4', 'ai5']
+Sampling rate: 30000.0 Hz (30kHz like other tool)
+Duration: 10.0 seconds
+Raw samples: 300000 (300k)
+Compress ratio: 30:1
+Final samples: 10000 (after compression)
+Mode: VOLTAGE measurement (external shunt)
+Adding VOLTAGE channel: Dev1/ai0 (VBAT)
+Adding VOLTAGE channel: Dev1/ai1 (VDD_1P8_AP)
+Adding VOLTAGE channel: Dev1/ai2 (VDD_MLDO_2P0)
+Adding VOLTAGE channel: Dev1/ai3 (VDD_WIFI_1P0)
+Adding VOLTAGE channel: Dev1/ai4 (VDD_1P2_AP_WIFI)
+Adding VOLTAGE channel: Dev1/ai5 (VDD_1P35_WIFIPMU)
+Starting hardware-timed VOLTAGE acquisition (30kHz)...
+Reading 300000 raw samples per channel...
+Hardware VOLTAGE acquisition completed, starting compression...
+Channel ai0: 300000 raw voltage samples
+Channel ai0: 10000 compressed samples
+  Avg voltage: 4148.530mV, Avg current: 414853.016mA (shunt=0.01Ω)
+Channel ai1: 300000 raw voltage samples
+Channel ai1: 10000 compressed samples
+  Avg voltage: 1784.445mV, Avg current: 17844.450mA (shunt=0.1Ω)
+Channel ai2: 300000 raw voltage samples
+Channel ai2: 10000 compressed samples
+  Avg voltage: 1978.154mV, Avg current: 395630.821mA (shunt=0.005Ω)
+Channel ai3: 300000 raw voltage samples
+Channel ai3: 10000 compressed samples
+  Avg voltage: 1017.230mV, Avg current: 203445.959mA (shunt=0.005Ω)
+Channel ai4: 300000 raw voltage samples
+Channel ai4: 10000 compressed samples
+  Avg voltage: 1181.704mV, Avg current: 11817.037mA (shunt=0.1Ω)
+Channel ai5: 300000 raw voltage samples
+Channel ai5: 10000 compressed samples
+  Avg voltage: 1349.488mV, Avg current: 134948.795mA (shunt=0.01Ω)
+=== Hardware-timed VOLTAGE collection completed: 6 channels ===
+DAQ collection completed: 6 channels
+Processing 10000 samples...
+Processed 1000/10000 samples
+Processed 2000/10000 samples
+Processed 3000/10000 samples
+Processed 4000/10000 samples
+Processed 5000/10000 samples
+Processed 6000/10000 samples
+Processed 7000/10000 samples
+Processed 8000/10000 samples
+Processed 9000/10000 samples
+Processed 10000/10000 samples
+? Successfully processed 10000 data points
+=== DAQ Hardware-Timed Collection Ended ===
