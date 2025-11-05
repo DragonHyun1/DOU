@@ -718,15 +718,30 @@ class NIDAQService(QObject):
                     
                     print(f"Adding VOLTAGE channel: {channel_name} ({config.get('name', channel)})")
                     
-                    # Use voltage measurement (matching other tool)
+                    # Use voltage measurement with DIFFERENTIAL configuration
+                    # to measure voltage drop across external shunt resistor
                     try:
-                        task.ai_channels.add_ai_voltage_chan(
-                            channel_name,
-                            terminal_config=nidaqmx.constants.TerminalConfiguration.RSE,
-                            min_val=-5.0,  # ±5V range (matching other tool)
-                            max_val=5.0,
-                            units=nidaqmx.constants.VoltageUnits.VOLTS
-                        )
+                        # Try DIFFERENTIAL first (proper shunt measurement)
+                        try:
+                            task.ai_channels.add_ai_voltage_chan(
+                                channel_name,
+                                terminal_config=nidaqmx.constants.TerminalConfiguration.DIFFERENTIAL,
+                                min_val=-0.2,  # ±200mV range (for shunt voltage drop)
+                                max_val=0.2,
+                                units=nidaqmx.constants.VoltageUnits.VOLTS
+                            )
+                            print(f"  → DIFFERENTIAL mode (proper shunt measurement)")
+                        except Exception as diff_error:
+                            # Fallback to RSE with warning
+                            print(f"  ⚠️ DIFFERENTIAL failed: {diff_error}, falling back to RSE")
+                            print(f"  ⚠️ WARNING: RSE mode will measure Rail voltage, not Shunt drop!")
+                            task.ai_channels.add_ai_voltage_chan(
+                                channel_name,
+                                terminal_config=nidaqmx.constants.TerminalConfiguration.RSE,
+                                min_val=-5.0,  # ±5V range (for rail voltage)
+                                max_val=5.0,
+                                units=nidaqmx.constants.VoltageUnits.VOLTS
+                            )
                     except Exception as e:
                         print(f"Error adding voltage channel {channel}: {e}")
                         raise
