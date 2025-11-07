@@ -728,18 +728,24 @@ class NIDAQService(QObject):
                             )
                             print(f"  ⚠️ Channel {channel}: Minimal config (no shunt spec)")
                 
-                # Configure timing for oversampling and noise reduction
-                # High sampling rate (1000-10000 Hz) for oversampling, then average for accurate DC
+                # Configure timing for accurate DC measurement:
+                # - FINITE mode: Collect exact number of samples then stop
+                # - Sampling rate: 1kHz ~ 10kHz for oversampling
+                # - Samples per channel: 100~1000 samples (will be averaged)
                 sampling_rate = 10000.0  # 10kHz for oversampling (adjustable: 1000-10000 Hz)
-                print(f"Configuring sample clock for oversampling...")
+                # Ensure samples_per_channel is in recommended range (100-1000)
+                samples_to_collect = max(100, min(samples_per_channel, 1000))
+                
+                print(f"Configuring sample clock for accurate DC measurement...")
+                print(f"  → Mode: FINITE (collect exact {samples_to_collect} samples then stop)")
                 print(f"  → Rate: {sampling_rate} Hz (oversampling for noise reduction)")
-                print(f"  → Samples per channel: {samples_per_channel} (will be averaged)")
-                print(f"  → Strategy: Oversample at {sampling_rate}Hz, then average {samples_per_channel} samples")
+                print(f"  → Samples per channel: {samples_to_collect} (will be averaged)")
+                print(f"  → Strategy: Finite mode, oversample at {sampling_rate}Hz, average {samples_to_collect} samples")
                 
                 task.timing.cfg_samp_clk_timing(
                     rate=sampling_rate,  # 10kHz oversampling
-                    sample_mode=nidaqmx.constants.AcquisitionType.CONTINUOUS,
-                    samps_per_chan=samples_per_channel,
+                    sample_mode=nidaqmx.constants.AcquisitionType.FINITE,  # FINITE mode
+                    samps_per_chan=samples_to_collect,  # Exact number of samples (100-1000)
                     active_edge=nidaqmx.constants.Edge.RISING
                 )
                 
@@ -747,16 +753,17 @@ class NIDAQService(QObject):
                 task.start()
                 
                 # Read multiple samples using ReadMultiSample (NOT ReadSingleSample)
-                # Average all samples for accurate DC value (removes noise statistically)
-                print(f"Reading {samples_per_channel} samples per channel using ReadMultiSample...")
-                print(f"  → Will average all {samples_per_channel} samples for accurate DC measurement")
+                # FINITE mode: Collect exact number of samples, then average for accurate DC value
+                print(f"Reading {samples_to_collect} samples per channel using ReadMultiSample (FINITE mode)...")
+                print(f"  → Will average all {samples_to_collect} samples for accurate DC measurement")
                 
                 # Calculate timeout based on sampling rate
-                estimated_time = (samples_per_channel / sampling_rate) + 1.0  # Add 1s buffer
+                # Timeout: samples/rate + buffer (e.g., 1000 samples at 10kHz = 0.1s + 1s buffer = 1.1s)
+                estimated_time = (samples_to_collect / sampling_rate) + 1.0  # Add 1s buffer
                 timeout = max(2.0, min(estimated_time, 10.0))  # Min 2s, Max 10s
                 
-                # ReadMultiSample: Read all samples at once, then average
-                data = task.read(number_of_samples_per_channel=samples_per_channel, timeout=timeout)
+                # ReadMultiSample: Read exact number of samples (FINITE mode), then average
+                data = task.read(number_of_samples_per_channel=samples_to_collect, timeout=timeout)
                 
                 task.stop()
                 
@@ -939,28 +946,32 @@ class NIDAQService(QObject):
                         )
                         print(f"  ⚠️ Channel {channel} configured (minimal, no shunt spec)")
             
-            # Configure timing for oversampling and noise reduction:
-            # - High sampling rate for oversampling (1000-10000 Hz recommended)
-            # - Read multiple samples and average for accurate DC measurement
-            # - This removes noise (e.g., 60Hz power noise) statistically
+            # Configure timing for accurate DC measurement:
+            # - FINITE mode: Collect exact number of samples then stop
+            # - Sampling rate: 1kHz ~ 10kHz for oversampling
+            # - Samples per channel: 100~1000 samples (will be averaged)
+            # - Strategy: Oversample, then average for accurate DC value
             sampling_rate = 10000.0  # 10kHz for oversampling (adjustable: 1000-10000 Hz)
-            print(f"Configuring sample clock timing for oversampling...")
+            # Ensure samples_per_channel is in recommended range (100-1000)
+            samples_to_collect = max(100, min(samples_per_channel, 1000))
+            
+            print(f"Configuring sample clock timing for accurate DC measurement...")
+            print(f"  → Mode: FINITE (collect exact {samples_to_collect} samples then stop)")
             print(f"  → Rate: {sampling_rate} Hz (oversampling for noise reduction)")
             print(f"  → Active Edge: Rising")
-            print(f"  → Sample Mode: Continuous Samples")
-            print(f"  → Samples per Channel: {samples_per_channel} (will be averaged)")
+            print(f"  → Samples per Channel: {samples_to_collect} (will be averaged)")
             print(f"  → Clock Source: OnboardClock (default)")
-            print(f"  → Strategy: Oversample at {sampling_rate}Hz, then average {samples_per_channel} samples")
+            print(f"  → Strategy: Finite mode, oversample at {sampling_rate}Hz, average {samples_to_collect} samples")
             
             wrapper.cfg_samp_clk_timing(
                 task_handle=task_handle,
                 source="",  # Empty = OnboardClock (default)
                 rate=sampling_rate,  # 10kHz oversampling
                 active_edge=DAQmx_Val_Rising,
-                sample_mode=DAQmx_Val_ContSamps,  # Continuous Samples
-                samps_per_chan=samples_per_channel  # Number of samples to average
+                sample_mode=DAQmx_Val_FiniteSamps,  # FINITE mode (collect exact samples then stop)
+                samps_per_chan=samples_to_collect  # Exact number of samples to collect (100-1000)
             )
-            print(f"✅ Timing configured for oversampling")
+            print(f"✅ Timing configured: FINITE mode, {samples_to_collect} samples at {sampling_rate}Hz")
             
             # Start task
             print(f"Starting task...")
@@ -968,22 +979,26 @@ class NIDAQService(QObject):
             print(f"✅ Task started")
             
             # Read multiple samples using ReadMultiSample (NOT ReadSingleSample)
-            # Strategy: Oversample at high rate, then average all samples for accurate DC value
+            # FINITE mode: Collect exact number of samples, then average for accurate DC value
             # This statistically removes noise (60Hz power noise, EMI, etc.)
-            print(f"Reading {samples_per_channel} samples per channel using ReadMultiSample...")
-            print(f"  → Will average all {samples_per_channel} samples for accurate DC measurement")
+            print(f"Reading {samples_to_collect} samples per channel using ReadMultiSample (FINITE mode)...")
+            print(f"  → Will average all {samples_to_collect} samples for accurate DC measurement")
             print(f"  → This removes noise statistically (oversampling + averaging)")
             
             # Allocate buffer for all samples (interleaved: ch0_s0, ch1_s0, ..., ch0_s1, ch1_s1, ...)
-            total_samples = samples_per_channel * num_channels
+            total_samples = samples_to_collect * num_channels
             data_buffer = [0.0] * total_samples
             
             try:
-                # Read all samples at once (ReadMultiSample)
+                # Read all samples at once (ReadMultiSample) - FINITE mode collects exact count
+                # Timeout: samples/rate + buffer (e.g., 1000 samples at 10kHz = 0.1s + 1s buffer = 1.1s)
+                estimated_time = (samples_to_collect / sampling_rate) + 1.0
+                timeout = max(2.0, min(estimated_time, 10.0))  # Min 2s, Max 10s
+                
                 read_data, samples_read = wrapper.read_analog_f64(
                     task_handle=task_handle,
-                    num_samps_per_chan=samples_per_channel,  # Read all samples at once
-                    timeout=10.0,  # 10 second timeout
+                    num_samps_per_chan=samples_to_collect,  # Read exact number of samples (FINITE mode)
+                    timeout=timeout,
                     fill_mode=DAQmx_Val_GroupByScanNumber,  # Interleaved by scan number
                     data_array=data_buffer,
                     array_size=total_samples
@@ -991,17 +1006,19 @@ class NIDAQService(QObject):
                 
                 all_data = list(read_data[:samples_read * num_channels])
                 print(f"  ✅ Read {samples_read} samples per channel (total: {len(all_data)} samples)")
+                if samples_read != samples_to_collect:
+                    print(f"  ⚠️ Warning: Expected {samples_to_collect} samples, got {samples_read}")
                 
             except Exception as e:
                 print(f"  ⚠️ ReadMultiSample failed: {e}")
                 print(f"  → Falling back to chunked reading...")
                 # Fallback: Read in chunks if single read fails
                 chunk_size = 100  # Smaller chunks for compatibility
-                num_reads = (samples_per_channel + chunk_size - 1) // chunk_size
+                num_reads = (samples_to_collect + chunk_size - 1) // chunk_size
                 all_data = []
                 
                 for read_idx in range(num_reads):
-                    samples_to_read = min(chunk_size, samples_per_channel - len(all_data) // num_channels)
+                    samples_to_read = min(chunk_size, samples_to_collect - len(all_data) // num_channels)
                     if samples_to_read <= 0:
                         break
                     
@@ -1036,6 +1053,10 @@ class NIDAQService(QObject):
                     data_idx = i * num_channels + ch_idx
                     if data_idx < len(all_data):
                         channel_data[ch_idx].append(all_data[data_idx])
+            
+            # Update samples_to_collect to actual collected samples
+            if samples_collected > 0:
+                samples_to_collect = samples_collected
             
             # Process results with averaging (critical for accuracy)
             # Average all samples to get accurate DC value (removes noise statistically)
