@@ -651,117 +651,113 @@ class NIDAQService(QObject):
             print(f"Self-calibration failed: {e}")
             return False
     
-    def read_current_channels_direct(self, channels: List[str], samples_per_channel: int = 12) -> Optional[dict]:
-        """Read current directly using DAQ current measurement capability (like other tool)
+    def read_current_channels_direct(self, channels: List[str], samples_per_channel: int = 1000) -> Optional[dict]:
+        """Read current directly using FINITE + DIFFERENTIAL measurement
         
-        This uses DAQ's built-in current measurement instead of voltage-based calculation.
-        Similar to other tool's current mode measurement.
+        Measurement Method:
+        - FINITE mode: Collect exact number of samples then stop (not continuous)
+        - DIFFERENTIAL: Measure voltage across shunt resistor (highest accuracy, noise rejection)
+        - Oversampling: 10kHz sampling rate with 1000 samples
+        - Averaging: All samples averaged for accurate DC value
         
-        Uses Python nidaqmx package (original method).
+        This is the most accurate method for DC current measurement with external shunt.
         """
         if not self.connected:
             return None
         
-        # Use Python nidaqmx package (original method)
+        # Use Python nidaqmx package
         if not NI_AVAILABLE:
             return None
             
         try:
             with nidaqmx.Task() as task:
-                print(f"=== Creating CURRENT measurement task for channels: {channels} ===")
+                print(f"\n{'='*70}")
+                print(f"FINITE + DIFFERENTIAL Current Measurement")
+                print(f"{'='*70}")
+                print(f"Channels: {channels}")
                 
-                # Add current input channels instead of voltage channels
+                # Add current input channels with DIFFERENTIAL configuration
                 for channel in channels:
                     channel_name = f"{self.device_name}/{channel}"
-                    print(f"Adding CURRENT channel: {channel_name}")
                     
                     # Get shunt resistor value from channel config
                     config = self.channel_configs.get(channel, {})
                     shunt_r = config.get('shunt_r', 0.01)
+                    rail_name = config.get('name', channel)
                     
-                    # Use DIFFERENTIAL measurement for highest accuracy (removes noise and ground loops)
-                    # External precision shunt resistor for accurate current measurement
+                    print(f"\nChannel {channel} ({rail_name}):")
+                    print(f"  → Shunt resistor: {shunt_r}Ω")
+                    
+                    # Try DIFFERENTIAL mode first (most accurate)
                     try:
                         task.ai_channels.add_ai_current_chan(
                             channel_name,
-                            terminal_config=nidaqmx.constants.TerminalConfiguration.DIFFERENTIAL,  # DIFFERENTIAL (most accurate)
+                            terminal_config=nidaqmx.constants.TerminalConfiguration.DIFFERENTIAL,
                             min_val=-0.1,  # ±100mA range
                             max_val=0.1,
                             units=nidaqmx.constants.CurrentUnits.AMPS,
-                            shunt_resistor_loc=nidaqmx.constants.CurrentShuntResistorLocation.EXTERNAL,  # External precision shunt
-                            ext_shunt_resist_val=shunt_r  # Precise shunt resistor value (critical for accuracy)
+                            shunt_resistor_loc=nidaqmx.constants.CurrentShuntResistorLocation.EXTERNAL,
+                            ext_shunt_resist_val=shunt_r
                         )
-                        print(f"  ✅ Channel {channel}: DIFFERENTIAL mode, External shunt {shunt_r}Ω")
+                        print(f"  ✅ DIFFERENTIAL mode + External shunt {shunt_r}Ω")
                     except (TypeError, AttributeError) as e:
-                        print(f"  ⚠️ Differential + External shunt config failed: {e}")
+                        print(f"  ⚠️ DIFFERENTIAL + External shunt failed: {e}")
                         print(f"  → Trying RSE mode as fallback...")
                         try:
-                            # Fallback: RSE mode with external shunt
                             task.ai_channels.add_ai_current_chan(
                                 channel_name,
-                                terminal_config=nidaqmx.constants.TerminalConfiguration.RSE,  # Fallback to RSE
+                                terminal_config=nidaqmx.constants.TerminalConfiguration.RSE,
                                 min_val=-0.1,
                                 max_val=0.1,
                                 units=nidaqmx.constants.CurrentUnits.AMPS,
                                 shunt_resistor_loc=nidaqmx.constants.CurrentShuntResistorLocation.EXTERNAL,
                                 ext_shunt_resist_val=shunt_r
                             )
-                            print(f"  ✅ Channel {channel}: RSE mode (fallback), External shunt {shunt_r}Ω")
+                            print(f"  ✅ RSE mode (fallback) + External shunt {shunt_r}Ω")
                         except (TypeError, AttributeError) as e2:
                             print(f"  ⚠️ RSE + External shunt also failed: {e2}")
                             print(f"  → Using minimal configuration...")
-                            # Last fallback: minimal config
                             task.ai_channels.add_ai_current_chan(
                                 channel_name,
-                                min_val=-0.040,  # Safe range within hardware limit
+                                min_val=-0.040,
                                 max_val=0.040,
                                 units=nidaqmx.constants.CurrentUnits.AMPS
                             )
-                            print(f"  ⚠️ Channel {channel}: Minimal config (no shunt spec)")
+                            print(f"  ⚠️ Minimal config (no terminal/shunt spec)")
                 
-                # Configure timing for accurate DC measurement:
-                # - FINITE mode: Collect exact number of samples then stop
-                # - Sampling rate: 1kHz ~ 10kHz for oversampling
-                # - Samples per channel: 100~1000 samples (will be averaged)
-                sampling_rate = 10000.0  # 10kHz for oversampling (adjustable: 1000-10000 Hz)
-                # Ensure samples_per_channel is in recommended range (100-1000)
+                # Configure FINITE mode timing with oversampling
+                sampling_rate = 10000.0  # 10kHz
                 samples_to_collect = max(100, min(samples_per_channel, 1000))
                 
-                print(f"Configuring sample clock for accurate DC measurement...")
-                print(f"  → Mode: FINITE (collect exact {samples_to_collect} samples then stop)")
-                print(f"  → Rate: {sampling_rate} Hz (oversampling for noise reduction)")
-                print(f"  → Samples per channel: {samples_to_collect} (will be averaged)")
-                print(f"  → Strategy: Finite mode, oversample at {sampling_rate}Hz, average {samples_to_collect} samples")
+                print(f"\nTiming Configuration:")
+                print(f"  → Mode: FINITE (collect exact samples then stop)")
+                print(f"  → Sampling rate: {sampling_rate} Hz (10kHz oversampling)")
+                print(f"  → Samples per channel: {samples_to_collect}")
+                print(f"  → Total collection time: {samples_to_collect/sampling_rate:.3f}s")
+                print(f"  → Strategy: Oversample + Average for accurate DC value")
                 
                 task.timing.cfg_samp_clk_timing(
-                    rate=sampling_rate,  # 10kHz oversampling
-                    sample_mode=nidaqmx.constants.AcquisitionType.FINITE,  # FINITE mode
-                    samps_per_chan=samples_to_collect,  # Exact number of samples (100-1000)
+                    rate=sampling_rate,
+                    sample_mode=nidaqmx.constants.AcquisitionType.FINITE,
+                    samps_per_chan=samples_to_collect,
                     active_edge=nidaqmx.constants.Edge.RISING
                 )
                 
-                print(f"Starting CURRENT measurement task...")
+                print(f"\nStarting measurement...")
                 task.start()
                 
-                # Read multiple samples using ReadMultiSample (NOT ReadSingleSample)
-                # FINITE mode: Collect exact number of samples, then average for accurate DC value
-                print(f"Reading {samples_to_collect} samples per channel using ReadMultiSample (FINITE mode)...")
-                print(f"  → Will average all {samples_to_collect} samples for accurate DC measurement")
+                # Calculate timeout
+                estimated_time = (samples_to_collect / sampling_rate) + 1.0
+                timeout = max(2.0, min(estimated_time, 10.0))
                 
-                # Calculate timeout based on sampling rate
-                # Timeout: samples/rate + buffer (e.g., 1000 samples at 10kHz = 0.1s + 1s buffer = 1.1s)
-                estimated_time = (samples_to_collect / sampling_rate) + 1.0  # Add 1s buffer
-                timeout = max(2.0, min(estimated_time, 10.0))  # Min 2s, Max 10s
-                
-                # ReadMultiSample: Read exact number of samples (FINITE mode), then average
+                print(f"Reading {samples_to_collect} samples per channel (timeout: {timeout}s)...")
                 data = task.read(number_of_samples_per_channel=samples_to_collect, timeout=timeout)
                 
                 task.stop()
+                print(f"✅ Data collection completed")
                 
-                print(f"Raw current data: {type(data)}, length: {len(data) if hasattr(data, '__len__') else 'N/A'}")
-                
-                # Process current measurement data with averaging (critical for accuracy)
-                # Average all samples to get accurate DC value (removes noise statistically)
+                # Process current measurement data with averaging
+                print(f"\nProcessing measurement data...")
                 result = {}
                 
                 if len(channels) == 1:
@@ -770,35 +766,42 @@ class NIDAQService(QObject):
                         samples = list(data)
                         num_samples = len(samples)
                         
-                        # Convert to mA
-                        current_data_ma = [val * 1000.0 for val in samples]
+                        # All samples in Amps
+                        current_data_amps = samples
                         
                         # Calculate average (arithmetic mean) - accurate DC value
-                        avg_current_ma = sum(current_data_ma) / num_samples
+                        avg_current_amps = sum(current_data_amps) / num_samples
+                        avg_current_ma = avg_current_amps * 1000.0
                         
                         # Calculate statistics
                         if num_samples > 1:
-                            variance = sum((x - avg_current_ma) ** 2 for x in current_data_ma) / num_samples
-                            std_dev_ma = variance ** 0.5
+                            variance = sum((x - avg_current_amps) ** 2 for x in current_data_amps) / num_samples
+                            std_dev_amps = variance ** 0.5
+                            std_dev_ma = std_dev_amps * 1000.0
                         else:
+                            std_dev_amps = 0.0
                             std_dev_ma = 0.0
                         
                         config = self.channel_configs.get(channels[0], {})
                         shunt_r = config.get('shunt_r', 0.01)
+                        rail_name = config.get('name', channels[0])
                         
-                        print(f"Channel {channels[0]} ({config.get('name', channels[0])}):")
-                        print(f"  → Samples: {num_samples}")
-                        print(f"  → Average: {avg_current_ma:.3f}mA (DC value)")
-                        print(f"  → Std Dev: {std_dev_ma:.3f}mA (noise level)")
-                        print(f"  → Shunt: {shunt_r}Ω (precision shunt resistor)")
+                        print(f"\n{channels[0]} ({rail_name}):")
+                        print(f"  → Samples collected: {num_samples}")
+                        print(f"  → Average current: {avg_current_ma:.6f}mA ({avg_current_amps:.9f}A)")
+                        print(f"  → Std deviation: {std_dev_ma:.6f}mA (noise level)")
+                        print(f"  → Shunt resistor: {shunt_r}Ω")
+                        
+                        # Convert to mA for storage
+                        current_data_ma = [val * 1000.0 for val in current_data_amps]
                         
                         result[channels[0]] = {
                             'current_data': current_data_ma,  # All samples in mA
-                            'avg_current': avg_current_ma / 1000.0,  # Average in Amps (accurate DC)
-                            'std_dev': std_dev_ma / 1000.0,  # Standard deviation in Amps
+                            'avg_current': avg_current_amps,  # Average in Amps
+                            'std_dev': std_dev_amps,  # Std dev in Amps
                             'voltage': 0.0,
                             'sample_count': num_samples,
-                            'name': config.get('name', channels[0]),
+                            'name': rail_name,
                             'shunt_resistor': shunt_r
                         }
                 else:
@@ -811,39 +814,48 @@ class NIDAQService(QObject):
                                     samples = list(channel_data)
                                     num_samples = len(samples)
                                     
-                                    # Convert to mA
-                                    current_data_ma = [val * 1000.0 for val in samples]
+                                    # All samples in Amps
+                                    current_data_amps = samples
                                     
                                     # Calculate average (arithmetic mean)
-                                    avg_current_ma = sum(current_data_ma) / num_samples
+                                    avg_current_amps = sum(current_data_amps) / num_samples
+                                    avg_current_ma = avg_current_amps * 1000.0
                                     
                                     # Calculate statistics
                                     if num_samples > 1:
-                                        variance = sum((x - avg_current_ma) ** 2 for x in current_data_ma) / num_samples
-                                        std_dev_ma = variance ** 0.5
+                                        variance = sum((x - avg_current_amps) ** 2 for x in current_data_amps) / num_samples
+                                        std_dev_amps = variance ** 0.5
+                                        std_dev_ma = std_dev_amps * 1000.0
                                     else:
+                                        std_dev_amps = 0.0
                                         std_dev_ma = 0.0
                                     
                                     config = self.channel_configs.get(channel, {})
                                     shunt_r = config.get('shunt_r', 0.01)
+                                    rail_name = config.get('name', channel)
                                     
-                                    print(f"Channel {channel} ({config.get('name', channel)}):")
-                                    print(f"  → Samples: {num_samples}")
-                                    print(f"  → Average: {avg_current_ma:.3f}mA (DC value)")
-                                    print(f"  → Std Dev: {std_dev_ma:.3f}mA (noise level)")
-                                    print(f"  → Shunt: {shunt_r}Ω (precision shunt resistor)")
+                                    print(f"\n{channel} ({rail_name}):")
+                                    print(f"  → Samples collected: {num_samples}")
+                                    print(f"  → Average current: {avg_current_ma:.6f}mA ({avg_current_amps:.9f}A)")
+                                    print(f"  → Std deviation: {std_dev_ma:.6f}mA (noise level)")
+                                    print(f"  → Shunt resistor: {shunt_r}Ω")
+                                    
+                                    # Convert to mA for storage
+                                    current_data_ma = [val * 1000.0 for val in current_data_amps]
                                     
                                     result[channel] = {
                                         'current_data': current_data_ma,  # All samples in mA
-                                        'avg_current': avg_current_ma / 1000.0,  # Average in Amps (accurate DC)
-                                        'std_dev': std_dev_ma / 1000.0,  # Standard deviation in Amps
+                                        'avg_current': avg_current_amps,  # Average in Amps
+                                        'std_dev': std_dev_amps,  # Std dev in Amps
                                         'voltage': 0.0,
                                         'sample_count': num_samples,
-                                        'name': config.get('name', channel),
+                                        'name': rail_name,
                                         'shunt_resistor': shunt_r
                                     }
                 
-                print(f"=== Current measurement completed, returning {len(result)} channel results ===")
+                print(f"\n{'='*70}")
+                print(f"✅ Measurement completed: {len(result)} channels")
+                print(f"{'='*70}\n")
                 return result
                 
         except Exception as e:

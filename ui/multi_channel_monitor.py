@@ -417,8 +417,10 @@ class MultiChannelMonitorDialog(QtWidgets.QDialog):
                     
                     try:
                         if is_current_mode:
-                            # Current mode monitoring - Use same settings as auto test:
-                            # FINITE mode, Differential, 10kHz oversampling, 1000 samples averaged
+                            # Current mode monitoring - Use FINITE + DIFFERENTIAL measurement
+                            # - FINITE mode: Collect exact number of samples then stop
+                            # - DIFFERENTIAL: Measure voltage across shunt resistor (noise rejection)
+                            # - 10kHz oversampling, 1000 samples averaged for DC accuracy
                             results = ni_service.read_current_channels_direct(enabled_channels, samples_per_channel=1000)
                         else:
                             # Voltage mode monitoring
@@ -429,27 +431,33 @@ class MultiChannelMonitorDialog(QtWidgets.QDialog):
                             for channel, data in results.items():
                                 if channel in self.channel_widgets:
                                     widget_data = self.channel_widgets[channel]
+                                    config = self.channel_configs.get(channel, {})
                                     
                                     if is_current_mode:
-                                        # Current mode display
-                                        avg_current = data.get('avg_current', 0.0)
-                                        current_ma = avg_current * 1000
-                                        current_ua = avg_current * 1000000
+                                        # Current mode display - Always show in mA
+                                        avg_current_a = data.get('avg_current', 0.0)  # Current in Amps
+                                        current_ma = avg_current_a * 1000.0  # Convert to mA
                                         
                                         if 'voltage_display' in widget_data:
                                             widget_data['voltage_display'].setText("-")
                                         if 'current_display' in widget_data:
-                                            if abs(current_ma) >= 0.001:
+                                            # Always display in mA for consistency
+                                            widget_data['current_display'].setText(f"{current_ma:.3f}mA")
+                                    else:
+                                        # Voltage mode display - Calculate current from voltage
+                                        avg_voltage = data.get('avg_voltage', 0.0)
+                                        shunt_r = config.get('shunt_r', 0.01)
+                                        
+                                        if 'voltage_display' in widget_data:
+                                            widget_data['voltage_display'].setText(f"{avg_voltage:.6f}V")
+                                        if 'current_display' in widget_data:
+                                            # Calculate current: I = V / R
+                                            if shunt_r > 0:
+                                                current_a = avg_voltage / shunt_r
+                                                current_ma = current_a * 1000.0
                                                 widget_data['current_display'].setText(f"{current_ma:.3f}mA")
                                             else:
-                                                widget_data['current_display'].setText(f"{current_ua:.3f}μA")
-                                    else:
-                                        # Voltage mode display
-                                        avg_voltage = data.get('avg_voltage', 0.0)
-                                        if 'voltage_display' in widget_data:
-                                            widget_data['voltage_display'].setText(f"{avg_voltage:.3f}V")
-                                        if 'current_display' in widget_data:
-                                            widget_data['current_display'].setText("-")
+                                                widget_data['current_display'].setText("-")
                         else:
                             print("[Monitoring] No results received")
                             self.status_label.setText("Monitoring: No data received")
@@ -536,14 +544,16 @@ class MultiChannelMonitorDialog(QtWidgets.QDialog):
                         print(f"[Single Read] {mode_name} mode selected for channels: {enabled_channels}")
                         
                         if is_current_mode:
-                            # Current mode: Use same settings as auto test:
-                            # FINITE mode, Differential, 10kHz oversampling, 1000 samples averaged
+                            # Current mode: Use FINITE + DIFFERENTIAL measurement
+                            # - FINITE mode: Collect exact number of samples then stop
+                            # - DIFFERENTIAL: Measure voltage across shunt resistor (noise rejection)
+                            # - 10kHz oversampling, 1000 samples averaged for DC accuracy
+                            print(f"[Single Read] Using FINITE + DIFFERENTIAL mode for current measurement")
                             results = ni_service.read_current_channels_direct(enabled_channels, samples_per_channel=1000)
                         else:
                             # Voltage mode: Use regular voltage measurement
                             results = ni_service.read_voltage_channels_trace_based(enabled_channels, samples_per_channel=12)
                         
-                        print(f"[Single Read] {mode_name} mode results: {results}")
                         if results:
                             # Update channel displays based on measurement mode
                             is_current_mode = self.current_mode_rb.isChecked()
@@ -554,33 +564,42 @@ class MultiChannelMonitorDialog(QtWidgets.QDialog):
                                 # Update the channel widget display
                                 if channel in self.channel_widgets:
                                     widget_data = self.channel_widgets[channel]
+                                    config = self.channel_configs.get(channel, {})
+                                    shunt_r = config.get('shunt_r', 0.01)
                                     
                                     if is_current_mode:
-                                        # Current mode: Display measured current directly
-                                        avg_current = data.get('avg_current', 0.0)  # Current in Amps
+                                        # Current mode: Display measured current in mA
+                                        avg_current_a = data.get('avg_current', 0.0)  # Current in Amps
+                                        current_ma = avg_current_a * 1000.0  # Convert to mA
+                                        
+                                        # Always display in mA
                                         if 'voltage_display' in widget_data:
                                             widget_data['voltage_display'].setText("-")
                                         if 'current_display' in widget_data:
-                                            # Enhanced precision display for very small currents
-                                            current_ma = avg_current * 1000  # Convert to mA
-                                            current_ua = avg_current * 1000000  # Convert to μA
-                                            
-                                            if abs(current_ma) >= 0.001:
-                                                # Display in mA if >= 1μA
-                                                widget_data['current_display'].setText(f"{current_ma:.3f}mA")
-                                                print(f"Channel {channel}: Direct current = {current_ma:.3f}mA")
-                                            else:
-                                                # Display in μA for very small currents
-                                                widget_data['current_display'].setText(f"{current_ua:.3f}μA")
-                                                print(f"Channel {channel}: Direct current = {current_ua:.3f}μA ({avg_current:.2e}A)")
+                                            widget_data['current_display'].setText(f"{current_ma:.3f}mA")
+                                        
+                                        # Detailed logging
+                                        print(f"[Single Read] {channel} ({config.get('name', channel)}) - Shunt: {shunt_r}Ω")
+                                        print(f"  → Measured current: {avg_current_a:.9f}A = {current_ma:.6f}mA")
+                                        print(f"  → Samples averaged: {sample_count}")
+                                        if 'std_dev' in data:
+                                            std_dev_ma = data['std_dev'] * 1000.0
+                                            print(f"  → Std deviation: {std_dev_ma:.6f}mA (noise level)")
                                     else:
-                                        # Voltage mode: Display voltage, calculate current if possible
+                                        # Voltage mode: Display voltage and calculate current from shunt
                                         avg_voltage = data.get('avg_voltage', 0.0)
                                         if 'voltage_display' in widget_data:
-                                            widget_data['voltage_display'].setText(f"{avg_voltage:.3f}V")
+                                            widget_data['voltage_display'].setText(f"{avg_voltage:.6f}V")
                                         if 'current_display' in widget_data:
-                                            widget_data['current_display'].setText("-")
-                                            print(f"Channel {channel}: Voltage = {avg_voltage:.3f}V")
+                                            # Calculate current from voltage and shunt resistor: I = V / R
+                                            if shunt_r > 0:
+                                                current_a = avg_voltage / shunt_r
+                                                current_ma = current_a * 1000.0
+                                                widget_data['current_display'].setText(f"{current_ma:.3f}mA")
+                                                print(f"[Single Read] {channel}: Voltage = {avg_voltage:.6f}V, Current = {current_ma:.3f}mA (I=V/R)")
+                                            else:
+                                                widget_data['current_display'].setText("-")
+                                                print(f"[Single Read] {channel}: Voltage = {avg_voltage:.6f}V (No shunt resistor)")
                                 
                             mode_name = "Current" if is_current_mode else "Voltage"
                             self.status_label.setText(f"✅ {mode_name} mode read completed - {len(results)} channels")
