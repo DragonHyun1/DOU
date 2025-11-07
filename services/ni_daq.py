@@ -657,21 +657,12 @@ class NIDAQService(QObject):
         This uses DAQ's built-in current measurement instead of voltage-based calculation.
         Similar to other tool's current mode measurement.
         
-        If nicaiu.dll is available, uses C API directly to match manual measurement behavior.
-        Otherwise falls back to Python nidaqmx package.
+        Uses Python nidaqmx package (original method).
         """
         if not self.connected:
             return None
         
-        # Try to use nicaiu.dll C API first if available (matches manual measurement)
-        if NICAIU_AVAILABLE:
-            try:
-                return self._read_current_channels_nicaiu(channels, samples_per_channel)
-            except Exception as e:
-                print(f"⚠️ nicaiu.dll C API failed: {e}")
-                print(f"  → Falling back to Python nidaqmx package...")
-        
-        # Fallback to Python nidaqmx package
+        # Use Python nidaqmx package (original method)
         if not NI_AVAILABLE:
             return None
             
