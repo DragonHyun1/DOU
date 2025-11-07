@@ -1431,12 +1431,24 @@ class TestScenarioEngine(QObject):
                             # Use 100 samples per channel for averaging to reduce noise
                             if self.daq_service and hasattr(self.daq_service, 'read_current_channels_direct'):
                                 try:
-                                    # Read all channels at once with 1000 samples each for averaging
-                                    # Note: With 30kHz sampling rate, 1000 samples take ~33ms
-                                    # Maximum practical: ~2000-3000 samples (timeout limit: 1.0s)
+                                    # Read all channels at once with samples for averaging
+                                    # IMPORTANT: Physical limit calculation
+                                    # - Sampling rate: 30kHz = 30,000 samples/second
+                                    # - 1ms = 0.001 second
+                                    # - Maximum samples in 1ms: 30,000 * 0.001 = 30 samples
+                                    # 
+                                    # Therefore, 1ms마다 30,000개 샘플은 물리적으로 불가능합니다.
+                                    # 
+                                    # Options:
+                                    # 1. 샘플링 레이트를 높이기 (예: 100kHz → 1ms에 100개 가능)
+                                    # 2. 데이터 포인트 간격을 늘리기 (예: 10ms마다 → 300개 가능)
+                                    # 3. 현재 설정 유지: 1000 samples (~33ms 소요, 1ms 간격보다 느림)
+                                    #
+                                    # Current: 1000 samples (~33ms) - 약간 느리지만 정확도 향상
+                                    # Maximum in 1ms: 30 samples (30kHz 레이트 기준)
                                     result = self.daq_service.read_current_channels_direct(
                                         channels=enabled_channels,
-                                        samples_per_channel=1000  # 1000 samples per channel for averaging
+                                        samples_per_channel=1000  # 1000 samples per channel for averaging (~33ms)
                                     )
                                     
                                     if result:
@@ -2265,11 +2277,24 @@ class TestScenarioEngine(QObject):
         Args:
             channel: Channel name (e.g., 'ai0', 'ai1')
             samples: Number of samples to average (default: 1000 for noise reduction)
-                     With 30kHz sampling rate:
-                     - 100 samples: ~3.3ms
-                     - 1000 samples: ~33ms
+                     
+                     IMPORTANT: Physical limits with 30kHz sampling rate:
+                     - 30kHz = 30,000 samples/second
+                     - 1ms = 0.001 second
+                     - Maximum samples in 1ms: 30 samples (물리적 한계)
+                     
+                     Current settings (1ms마다 데이터 포인트 저장):
+                     - 30 samples: ~1ms (최대, 1ms 간격 유지 가능)
+                     - 100 samples: ~3.3ms (1ms 간격보다 느림)
+                     - 1000 samples: ~33ms (현재 설정, 정확도 우선)
                      - 2000 samples: ~67ms
-                     - 3000 samples: ~100ms (max practical, timeout: 1.0s)
+                     - 3000 samples: ~100ms (max practical, timeout: 2.0s)
+                     
+                     Note: 30,000 samples in 1ms는 불가능 (1초가 필요)
+                     
+                     To get more samples per data point:
+                     1. Increase sampling rate (e.g., 100kHz → 100 samples/ms, 1MHz → 1000 samples/ms)
+                     2. Increase data point interval (e.g., 10ms → 300 samples possible)
             
         Returns:
             Averaged current value in Amps (will be converted to mA later)
