@@ -507,7 +507,12 @@ class NIDAQService(QObject):
                 task.start()
                 
                 print(f"Reading {samples_per_channel} current samples per channel...")
-                data = task.read(number_of_samples_per_channel=samples_per_channel, timeout=1.0)
+                # Calculate timeout based on sample count (30kHz rate: samples/30000 + buffer)
+                # For 1000 samples: ~33ms + 100ms buffer = ~133ms
+                # For 3000 samples: ~100ms + 200ms buffer = ~300ms
+                estimated_time = (samples_per_channel / 30000.0) + 0.2  # Add 200ms buffer
+                timeout = max(0.5, min(estimated_time, 2.0))  # Min 0.5s, Max 2.0s
+                data = task.read(number_of_samples_per_channel=samples_per_channel, timeout=timeout)
                 
                 task.stop()
                 

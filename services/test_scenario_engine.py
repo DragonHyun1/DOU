@@ -1431,10 +1431,12 @@ class TestScenarioEngine(QObject):
                             # Use 100 samples per channel for averaging to reduce noise
                             if self.daq_service and hasattr(self.daq_service, 'read_current_channels_direct'):
                                 try:
-                                    # Read all channels at once with 100 samples each for averaging
+                                    # Read all channels at once with 1000 samples each for averaging
+                                    # Note: With 30kHz sampling rate, 1000 samples take ~33ms
+                                    # Maximum practical: ~2000-3000 samples (timeout limit: 1.0s)
                                     result = self.daq_service.read_current_channels_direct(
                                         channels=enabled_channels,
-                                        samples_per_channel=100  # 100 samples per channel for averaging
+                                        samples_per_channel=1000  # 1000 samples per channel for averaging
                                     )
                                     
                                     if result:
@@ -1450,7 +1452,7 @@ class TestScenarioEngine(QObject):
                                                         channel_data[f"{channel}_current"] = avg_current
                                                         successful_reads += 1
                                                         if loop_count == 1:
-                                                            print(f"Real DAQ current from {channel} (100-sample avg): {avg_current}A")
+                                                            print(f"Real DAQ current from {channel} (1000-sample avg): {avg_current}A")
                                                 elif 'current' in channel_data_result:
                                                     channel_data[f"{channel}_current"] = channel_data_result['current']
                                                     successful_reads += 1
@@ -1462,12 +1464,12 @@ class TestScenarioEngine(QObject):
                                     if self.daq_service and hasattr(self.daq_service, 'read_current'):
                                         for channel in enabled_channels:
                                             try:
-                                                # Read 100 samples quickly and average for each 1ms data point
-                                                current = self._read_current_from_channel(channel, samples=100)
+                                                # Read 1000 samples quickly and average for each 1ms data point
+                                                current = self._read_current_from_channel(channel, samples=1000)
                                                 channel_data[f"{channel}_current"] = current
                                                 successful_reads += 1
                                                 if loop_count == 1:
-                                                    print(f"Real DAQ current from {channel} (100-sample avg): {current}A")
+                                                    print(f"Real DAQ current from {channel} (1000-sample avg): {current}A")
                                             except Exception as read_err:
                                                 print(f"DAQ read error for {channel}: {read_err}, using fallback")
                                                 # Fallback to simulation for this channel
@@ -2257,12 +2259,17 @@ class TestScenarioEngine(QObject):
             
             self._emit_signal_safe(self.progress_updated, progress, step_name)
     
-    def _read_current_from_channel(self, channel: str, samples: int = 100) -> float:
+    def _read_current_from_channel(self, channel: str, samples: int = 1000) -> float:
         """Read current from a specific DAQ channel with averaging
         
         Args:
             channel: Channel name (e.g., 'ai0', 'ai1')
-            samples: Number of samples to average (default: 100 for noise reduction)
+            samples: Number of samples to average (default: 1000 for noise reduction)
+                     With 30kHz sampling rate:
+                     - 100 samples: ~3.3ms
+                     - 1000 samples: ~33ms
+                     - 2000 samples: ~67ms
+                     - 3000 samples: ~100ms (max practical, timeout: 1.0s)
             
         Returns:
             Averaged current value in Amps (will be converted to mA later)
