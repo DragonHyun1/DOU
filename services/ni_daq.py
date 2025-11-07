@@ -5,6 +5,8 @@ from PyQt6.QtCore import QObject, pyqtSignal, QTimer
 
 import os
 import sys
+import ctypes
+from ctypes import c_int32, c_double, c_void_p, POINTER, byref, c_uint64
 
 # NI-DAQmx 런타임 경로 추가 시도
 possible_paths = [
@@ -81,6 +83,202 @@ except Exception as e:
     NI_AVAILABLE = False
     print(f"NI-DAQmx import error: {e}")
     print("This may indicate NI-DAQmx runtime is not properly installed")
+
+# Legacy DAQ API (Traditional DAQ) support using ctypes
+LEGACY_DAQ_AVAILABLE = False
+nidaq_dll = None
+
+try:
+    # Try to load nidaq.dll (Legacy DAQ API)
+    nidaq_dll_paths = [
+        r"C:\Program Files (x86)\National Instruments\Shared\CVI\Bin\nidaq.dll",
+        r"C:\Program Files\National Instruments\Shared\CVI\Bin\nidaq.dll",
+        r"C:\Windows\System32\nidaq.dll",
+        "nidaq.dll"
+    ]
+    
+    for dll_path in nidaq_dll_paths:
+        try:
+            if os.path.exists(dll_path):
+                nidaq_dll = ctypes.CDLL(dll_path)
+                LEGACY_DAQ_AVAILABLE = True
+                print(f"Legacy DAQ API (nidaq.dll) loaded from: {dll_path}")
+                break
+        except Exception as e:
+            continue
+    
+    if not LEGACY_DAQ_AVAILABLE:
+        # Try loading from PATH
+        try:
+            nidaq_dll = ctypes.CDLL("nidaq.dll")
+            LEGACY_DAQ_AVAILABLE = True
+            print("Legacy DAQ API (nidaq.dll) loaded from system PATH")
+        except Exception as e:
+            print(f"Legacy DAQ API (nidaq.dll) not available: {e}")
+            print("Will use DAQmx API instead")
+            
+except Exception as e:
+    print(f"Failed to load Legacy DAQ API: {e}")
+    LEGACY_DAQ_AVAILABLE = False
+
+class LegacyDAQWrapper:
+    """Wrapper for Legacy DAQ API (Traditional DAQ) using ctypes"""
+    
+    def __init__(self, device_name: str = "Dev1"):
+        self.device_name = device_name
+        self.task_handle = None
+        self.dll = nidaq_dll if LEGACY_DAQ_AVAILABLE else None
+        
+        if self.dll:
+            # Define function signatures for Legacy DAQ API
+            # DAQCreateTask
+            self.dll.DAQCreateTask.argtypes = [ctypes.POINTER(c_int32), ctypes.POINTER(c_int32)]
+            self.dll.DAQCreateTask.restype = c_int32
+            
+            # DAQCreateAIVoltageChan
+            self.dll.DAQCreateAIVoltageChan.argtypes = [
+                c_int32,  # taskHandle
+                ctypes.c_char_p,  # physicalChannel
+                ctypes.c_char_p,  # nameToAssignToChannel
+                c_int32,  # terminalConfig
+                c_double,  # minVal
+                c_double,  # maxVal
+                c_int32,  # units
+                ctypes.c_char_p  # customScaleName
+            ]
+            self.dll.DAQCreateAIVoltageChan.restype = c_int32
+            
+            # DAQStartTask
+            self.dll.DAQStartTask.argtypes = [c_int32]
+            self.dll.DAQStartTask.restype = c_int32
+            
+            # DAQReadNChanNSamp1DWfm
+            self.dll.DAQReadNChanNSamp1DWfm.argtypes = [
+                c_int32,  # taskHandle
+                c_int32,  # numSampsPerChan
+                c_double,  # timeout
+                c_int32,  # fillMode
+                POINTER(c_double),  # readArray
+                c_int32,  # arraySizeInSamps
+                POINTER(c_int32),  # sampsPerChanRead
+                POINTER(c_int32)  # reserved
+            ]
+            self.dll.DAQReadNChanNSamp1DWfm.restype = c_int32
+            
+            # DAQStopTask
+            self.dll.DAQStopTask.argtypes = [c_int32]
+            self.dll.DAQStopTask.restype = c_int32
+            
+            # DAQClearTask
+            self.dll.DAQClearTask.argtypes = [c_int32]
+            self.dll.DAQClearTask.restype = c_int32
+            
+            # DAQCfgSampClkTiming
+            self.dll.DAQCfgSampClkTiming.argtypes = [
+                c_int32,  # taskHandle
+                ctypes.c_char_p,  # source
+                c_double,  # rate
+                c_int32,  # activeEdge
+                c_int32,  # sampleMode
+                ctypes.POINTER(c_uint64)  # sampsPerChan
+            ]
+            self.dll.DAQCfgSampClkTiming.restype = c_int32
+    
+    def create_task(self):
+        """Create a DAQ task"""
+        if not self.dll:
+            return False
+        task_handle = c_int32()
+        error_code = self.dll.DAQCreateTask(ctypes.byref(task_handle), None)
+        if error_code == 0:
+            self.task_handle = task_handle.value
+            return True
+        return False
+    
+    def add_voltage_channel(self, physical_channel: str, min_val: float = -5.0, max_val: float = 5.0):
+        """Add voltage channel (matching manual: -5V ~ 5V range)"""
+        if not self.dll or not self.task_handle:
+            return False
+        
+        # Terminal config: 10083 = DAQmx_Val_Diff (Differential)
+        # Units: 10348 = DAQmx_Val_Volts
+        error_code = self.dll.DAQCreateAIVoltageChan(
+            c_int32(self.task_handle),
+            physical_channel.encode('utf-8'),
+            b"",  # nameToAssignToChannel
+            c_int32(10083),  # DAQmx_Val_Diff
+            c_double(min_val),
+            c_double(max_val),
+            c_int32(10348),  # DAQmx_Val_Volts
+            None  # customScaleName
+        )
+        return error_code == 0
+    
+    def configure_timing(self, rate: float = 30000.0, active_edge: int = 10280, sample_mode: int = 10123, samples_per_chan: int = 1000):
+        """Configure sampling clock timing
+        active_edge: 10280 = DAQmx_Val_Rising
+        sample_mode: 10123 = DAQmx_Val_ContSamps (Continuous Samples)
+        """
+        if not self.dll or not self.task_handle:
+            return False
+        
+        import ctypes
+        samps_per_chan = ctypes.c_uint64(samples_per_chan)
+        error_code = self.dll.DAQCfgSampClkTiming(
+            c_int32(self.task_handle),
+            b"",  # source (OnboardClock)
+            c_double(rate),
+            c_int32(active_edge),  # Rising
+            c_int32(sample_mode),  # Continuous Samples
+            ctypes.byref(samps_per_chan)
+        )
+        return error_code == 0
+    
+    def start_task(self):
+        """Start the DAQ task"""
+        if not self.dll or not self.task_handle:
+            return False
+        error_code = self.dll.DAQStartTask(c_int32(self.task_handle))
+        return error_code == 0
+    
+    def read_samples(self, num_samples: int, timeout: float = 10.0):
+        """Read samples (matching DAQReadNChanNSamp1DWfm)"""
+        if not self.dll or not self.task_handle:
+            return None
+        
+        # Allocate buffer for reading
+        read_array = (c_double * num_samples)()
+        samps_per_chan_read = c_int32()
+        reserved = c_int32()
+        
+        # Fill mode: 10178 = DAQmx_Val_GroupByChannel
+        error_code = self.dll.DAQReadNChanNSamp1DWfm(
+            c_int32(self.task_handle),
+            c_int32(num_samples),
+            c_double(timeout),
+            c_int32(10178),  # GroupByChannel
+            read_array,
+            c_int32(num_samples),
+            ctypes.byref(samps_per_chan_read),
+            ctypes.byref(reserved)
+        )
+        
+        if error_code == 0:
+            return [read_array[i] for i in range(samps_per_chan_read.value)]
+        return None
+    
+    def stop_task(self):
+        """Stop the DAQ task"""
+        if not self.dll or not self.task_handle:
+            return
+        self.dll.DAQStopTask(c_int32(self.task_handle))
+    
+    def clear_task(self):
+        """Clear the DAQ task"""
+        if not self.dll or not self.task_handle:
+            return
+        self.dll.DAQClearTask(c_int32(self.task_handle))
+        self.task_handle = None
 
 class NIDAQService(QObject):
     """Service for NI DAQ multi-channel voltage/current monitoring"""
@@ -718,7 +916,7 @@ class NIDAQService(QObject):
         return compressed
     
     def read_current_channels_hardware_timed(self, channels: List[str], sample_rate: float = 30000.0, compress_ratio: int = 30, duration_seconds: float = 10.0) -> Optional[dict]:
-        """Read current using Legacy DAQ-style approach (matching manual measurement)
+        """Read current using Legacy DAQ API (matching manual measurement)
         
         Matches manual measurement using:
         - DAQCreateAIVoltageChan: -5V ~ 5V range
@@ -727,7 +925,7 @@ class NIDAQService(QObject):
         - SampClk.ActiveEdge: Rising
         - DAQReadNChanNSamp1DWfm: 60 samples repeatedly
         
-        Uses DAQmx API but configured to match Legacy DAQ behavior exactly.
+        Uses Legacy DAQ API (Traditional DAQ) if available, otherwise falls back to DAQmx.
         
         Args:
             channels: List of channel names (e.g., ['ai0', 'ai1'])
@@ -738,10 +936,23 @@ class NIDAQService(QObject):
         Returns:
             dict: {channel: {'current_data': [mA], 'sample_count': int}}
         """
-        if not NI_AVAILABLE or not self.connected:
-            print("DAQ not available or not connected")
+        if not self.connected:
+            print("DAQ not connected")
             return None
-            
+        
+        # Try Legacy DAQ API first (matching manual measurement)
+        if LEGACY_DAQ_AVAILABLE:
+            return self._read_current_channels_legacy_daq(channels, sample_rate, compress_ratio, duration_seconds)
+        
+        # Fallback to DAQmx API
+        if not NI_AVAILABLE:
+            print("Neither Legacy DAQ nor DAQmx available")
+            return None
+        
+        return self._read_current_channels_daqmx(channels, sample_rate, compress_ratio, duration_seconds)
+    
+    def _read_current_channels_legacy_daq(self, channels: List[str], sample_rate: float = 30000.0, compress_ratio: int = 30, duration_seconds: float = 10.0) -> Optional[dict]:
+        """Read current using Legacy DAQ API (Traditional DAQ)"""
         try:
             # Match manual exactly: 
             # - SampQuant.SampPerChan = 1000
@@ -751,7 +962,139 @@ class NIDAQService(QObject):
             samples_per_channel_total = 1000  # Match manual: SampQuant.SampPerChan = 1000
             num_reads_needed = (samples_per_channel_total + samples_per_read - 1) // samples_per_read  # Ceiling division
             
-            print(f"=== Legacy DAQ-Style Collection (matching manual exactly) ===")
+            print(f"=== Using Legacy DAQ API (Traditional DAQ) ===")
+            print(f"Channels: {channels}")
+            print(f"Sampling rate: {sample_rate} Hz (30kHz)")
+            print(f"Samples per channel: {samples_per_channel_total} (match manual: SampQuant.SampPerChan = 1000)")
+            print(f"Read size: {samples_per_read} samples per read (match manual: DAQReadNChanNSamp1DWfm)")
+            print(f"Number of reads: {num_reads_needed}")
+            print(f"Mode: VOLTAGE measurement (-5V~5V range, match manual)")
+            
+            # Create Legacy DAQ wrapper
+            legacy_daq = LegacyDAQWrapper(self.device_name)
+            
+            if not legacy_daq.create_task():
+                print("Failed to create Legacy DAQ task")
+                return None
+            
+            # Add voltage channels (matching manual: -5V ~ 5V range)
+            for channel in channels:
+                physical_channel = f"{self.device_name}/{channel}"
+                if not legacy_daq.add_voltage_channel(physical_channel, min_val=-5.0, max_val=5.0):
+                    print(f"Failed to add voltage channel: {physical_channel}")
+                    legacy_daq.clear_task()
+                    return None
+                print(f"Added Legacy DAQ voltage channel: {physical_channel} (-5V~5V range)")
+            
+            # Configure timing (matching manual: Continuous Samples, Rising edge, 30kHz)
+            # active_edge: 10280 = DAQmx_Val_Rising
+            # sample_mode: 10123 = DAQmx_Val_ContSamps (Continuous Samples)
+            if not legacy_daq.configure_timing(
+                rate=sample_rate,
+                active_edge=10280,  # Rising
+                sample_mode=10123,  # Continuous Samples
+                samples_per_chan=samples_per_channel_total
+            ):
+                print("Failed to configure Legacy DAQ timing")
+                legacy_daq.clear_task()
+                return None
+            
+            # Start task
+            if not legacy_daq.start_task():
+                print("Failed to start Legacy DAQ task")
+                legacy_daq.clear_task()
+                return None
+            
+            print(f"Legacy DAQ task started (Continuous Samples, 30kHz, Rising edge)")
+            
+            # Collect all data from repeated reads (like manual)
+            all_channel_data = {ch: [] for ch in channels}
+            num_channels = len(channels)
+            read_timeout = 10.0  # Match manual: 10.0 seconds timeout
+            
+            print(f"Reading {samples_per_channel_total} samples per channel in {samples_per_read}-sample chunks...")
+            
+            # Read repeatedly like manual
+            for read_idx in range(num_reads_needed):
+                remaining_samples = samples_per_channel_total - len(all_channel_data.get(channels[0], []))
+                read_size = min(samples_per_read, remaining_samples)
+                
+                if read_size <= 0:
+                    break
+                
+                # Read chunk using Legacy DAQ API (matches DAQReadNChanNSamp1DWfm)
+                # Note: Legacy DAQ reads all channels at once, returns interleaved data
+                total_samples_to_read = read_size * num_channels
+                chunk_data = legacy_daq.read_samples(total_samples_to_read, timeout=read_timeout)
+                
+                if chunk_data is None or len(chunk_data) == 0:
+                    print(f"Warning: Failed to read chunk {read_idx + 1}")
+                    break
+                
+                # De-interleave data for multiple channels
+                if num_channels > 1:
+                    for i, channel in enumerate(channels):
+                        channel_chunk = [chunk_data[j] for j in range(i, len(chunk_data), num_channels)]
+                        all_channel_data[channel].extend(channel_chunk[:read_size])
+                else:
+                    all_channel_data[channels[0]].extend(chunk_data[:read_size])
+                
+                print(f"Read chunk {read_idx + 1}/{num_reads_needed}: {read_size} samples (total: {len(all_channel_data.get(channels[0], []))}/{samples_per_channel_total})")
+            
+            # Stop and clear task
+            legacy_daq.stop_task()
+            legacy_daq.clear_task()
+            
+            print(f"Legacy DAQ acquisition completed")
+            
+            # Process collected data
+            result = {}
+            for channel in channels:
+                voltage_data_volts = all_channel_data[channel][:samples_per_channel_total]  # Limit to 1000
+                print(f"Channel {channel}: {len(voltage_data_volts)} raw voltage samples")
+                
+                if len(voltage_data_volts) == 0:
+                    print(f"Warning: No data collected for channel {channel}")
+                    continue
+                
+                # Convert voltage to current using Ohm's law: I = V / R
+                config = self.channel_configs.get(channel, {})
+                shunt_r = config.get('shunt_r', 0.01)  # Default 0.01Ω
+                current_ma = [(v / shunt_r) * 1000 for v in voltage_data_volts]  # V/R=A, *1000=mA
+                
+                result[channel] = {
+                    'current_data': current_ma,  # Current in mA (1000 samples, match manual)
+                    'sample_count': len(current_ma),
+                    'name': config.get('name', channel)
+                }
+                avg_v_mv = sum(voltage_data_volts) * 1000 / len(voltage_data_volts) if voltage_data_volts else 0
+                avg_i_ma = sum(current_ma) / len(current_ma) if current_ma else 0
+                print(f"Channel {channel}: {len(current_ma)} samples (match manual: 1000 samples)")
+                print(f"  Avg voltage: {avg_v_mv:.3f}mV, Avg current: {avg_i_ma:.3f}mA (shunt={shunt_r}Ω)")
+            
+            print(f"=== Legacy DAQ collection completed: {len(result)} channels ===")
+            return result
+            
+        except Exception as e:
+            error_msg = f"Legacy DAQ collection error: {e}"
+            print(error_msg)
+            import traceback
+            traceback.print_exc()
+            self.error_occurred.emit(error_msg)
+            return None
+    
+    def _read_current_channels_daqmx(self, channels: List[str], sample_rate: float = 30000.0, compress_ratio: int = 30, duration_seconds: float = 10.0) -> Optional[dict]:
+        """Read current using DAQmx API (fallback)"""
+        try:
+            # Match manual exactly: 
+            # - SampQuant.SampPerChan = 1000
+            # - DAQReadNChanNSamp1DWfm: 60 samples repeatedly
+            # - Continuous Samples mode
+            samples_per_read = 60  # Match manual: 60 samples per read
+            samples_per_channel_total = 1000  # Match manual: SampQuant.SampPerChan = 1000
+            num_reads_needed = (samples_per_channel_total + samples_per_read - 1) // samples_per_read  # Ceiling division
+            
+            print(f"=== Using DAQmx API (fallback) ===")
             print(f"Channels: {channels}")
             print(f"Sampling rate: {sample_rate} Hz (30kHz)")
             print(f"Samples per channel: {samples_per_channel_total} (match manual: SampQuant.SampPerChan = 1000)")
