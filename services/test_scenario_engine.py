@@ -1428,10 +1428,58 @@ class TestScenarioEngine(QObject):
                         # Current mode - try real DAQ first, then simulation
                         try:
                             # Try reading from real DAQ service
-                            if self.daq_service and hasattr(self.daq_service, 'read_current'):
+                            # Use 100 samples per channel for averaging to reduce noise
+                            if self.daq_service and hasattr(self.daq_service, 'read_current_channels_direct'):
+                                try:
+                                    # Read all channels at once with 100 samples each for averaging
+                                    result = self.daq_service.read_current_channels_direct(
+                                        channels=enabled_channels,
+                                        samples_per_channel=100  # 100 samples per channel for averaging
+                                    )
+                                    
+                                    if result:
+                                        for channel in enabled_channels:
+                                            if channel in result:
+                                                channel_data_result = result[channel]
+                                                # Get averaged current from multiple samples
+                                                if 'current_data' in channel_data_result:
+                                                    # Calculate average of all samples
+                                                    current_samples = channel_data_result['current_data']
+                                                    if current_samples:
+                                                        avg_current = sum(current_samples) / len(current_samples)
+                                                        channel_data[f"{channel}_current"] = avg_current
+                                                        successful_reads += 1
+                                                        if loop_count == 1:
+                                                            print(f"Real DAQ current from {channel} (100-sample avg): {avg_current}A")
+                                                elif 'current' in channel_data_result:
+                                                    channel_data[f"{channel}_current"] = channel_data_result['current']
+                                                    successful_reads += 1
+                                                    if loop_count == 1:
+                                                        print(f"Real DAQ current from {channel}: {channel_data_result['current']}A")
+                                except Exception as multi_read_err:
+                                    print(f"Multi-channel read failed, trying individual reads: {multi_read_err}")
+                                    # Fallback: Read each channel individually
+                                    if self.daq_service and hasattr(self.daq_service, 'read_current'):
+                                        for channel in enabled_channels:
+                                            try:
+                                                # Read 100 samples quickly and average for each 1ms data point
+                                                current = self._read_current_from_channel(channel, samples=100)
+                                                channel_data[f"{channel}_current"] = current
+                                                successful_reads += 1
+                                                if loop_count == 1:
+                                                    print(f"Real DAQ current from {channel} (100-sample avg): {current}A")
+                                            except Exception as read_err:
+                                                print(f"DAQ read error for {channel}: {read_err}, using fallback")
+                                                # Fallback to simulation for this channel
+                                                import random
+                                                current = round(random.uniform(-0.05, 0.05), 6)
+                                                channel_data[f"{channel}_current"] = current
+                                                successful_reads += 1
+                            elif self.daq_service and hasattr(self.daq_service, 'read_current'):
+                                # Fallback: Single sample read if multi-sample not available
                                 for channel in enabled_channels:
                                     try:
-                                        current = self._read_current_from_channel(channel)
+                                        current = self._read_current_from_channel(channel, samples=1)
                                         channel_data[f"{channel}_current"] = current
                                         successful_reads += 1
                                         if loop_count == 1:
@@ -2209,20 +2257,45 @@ class TestScenarioEngine(QObject):
             
             self._emit_signal_safe(self.progress_updated, progress, step_name)
     
-    def _read_current_from_channel(self, channel: str) -> float:
-        """Read current from a specific DAQ channel
+    def _read_current_from_channel(self, channel: str, samples: int = 100) -> float:
+        """Read current from a specific DAQ channel with averaging
         
         Args:
             channel: Channel name (e.g., 'ai0', 'ai1')
+            samples: Number of samples to average (default: 100 for noise reduction)
             
         Returns:
-            Current value in Amps (will be converted to mA later)
+            Averaged current value in Amps (will be converted to mA later)
         """
         try:
             if not self.daq_service:
                 raise Exception("DAQ service not available")
             
-            # Use read_single_shot() to get all channel readings
+            # If samples > 1, use multi-sample averaging for better accuracy
+            if samples > 1 and hasattr(self.daq_service, 'read_current_channels_direct'):
+                try:
+                    # Read multiple samples quickly and average
+                    result = self.daq_service.read_current_channels_direct(
+                        channels=[channel],
+                        samples_per_channel=samples
+                    )
+                    
+                    if result and channel in result:
+                        channel_data = result[channel]
+                        # Get all samples and calculate average
+                        if 'current_data' in channel_data:
+                            current_samples = channel_data['current_data']
+                            if current_samples:
+                                # Calculate average of all samples
+                                avg_current = sum(current_samples) / len(current_samples)
+                                return avg_current
+                        elif 'current' in channel_data:
+                            return channel_data['current']
+                except Exception as e:
+                    # Fallback to single sample if multi-sample fails
+                    print(f"Multi-sample read failed for {channel}, using single sample: {e}")
+            
+            # Fallback: Use single sample read
             readings = self.daq_service.read_single_shot()
             
             if not readings or channel not in readings:
