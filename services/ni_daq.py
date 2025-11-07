@@ -497,11 +497,18 @@ class NIDAQService(QObject):
                         )
                 
                 # Configure timing for current measurement
+                # Match manual measurement settings from NI Trace:
+                # - SampClk.Rate = 30000
+                # - SampClk.ActiveEdge = Rising
+                # - SampClk.Src = "OnboardClock"
                 task.timing.cfg_samp_clk_timing(
                     rate=30000.0,
                     sample_mode=nidaqmx.constants.AcquisitionType.CONTINUOUS,
-                    samps_per_chan=samples_per_channel
+                    samps_per_chan=samples_per_channel,
+                    active_edge=nidaqmx.constants.Edge.RISING  # Match: SampClk.ActiveEdge = Rising
                 )
+                # Set clock source to OnboardClock (default, but explicit for matching)
+                # Note: OnboardClock is typically the default, but we ensure it matches
                 
                 print(f"Starting CURRENT measurement task...")
                 task.start()

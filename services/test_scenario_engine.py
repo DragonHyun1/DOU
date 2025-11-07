@@ -1435,12 +1435,14 @@ class TestScenarioEngine(QObject):
                             # - Result: 1,000 data points/second (each = 30 samples average)
                             if self.daq_service and hasattr(self.daq_service, 'read_current_channels_direct'):
                                 try:
-                                    # Read 30 samples per channel (exactly 1ms worth at 30kHz)
-                                    # 30kHz = 30,000 samples/second
-                                    # 30 samples = 30 / 30,000 = 0.001 second = 1ms
+                                    # Match manual measurement settings from NI Trace:
+                                    # - SampQuant.SampPerChan = 1000
+                                    # - SampClk.Rate = 30000
+                                    # - SampClk.ActiveEdge = Rising
+                                    # - SampClk.Src = "OnboardClock"
                                     result = self.daq_service.read_current_channels_direct(
                                         channels=enabled_channels,
-                                        samples_per_channel=30  # 30 samples = 1ms at 30kHz rate
+                                        samples_per_channel=1000  # Match manual: 1000 samples per channel
                                     )
                                     
                                     if result:
@@ -1456,7 +1458,7 @@ class TestScenarioEngine(QObject):
                                                         channel_data[f"{channel}_current"] = avg_current
                                                         successful_reads += 1
                                                         if loop_count == 1:
-                                                            print(f"Real DAQ current from {channel} (30-sample avg, 30kHz): {avg_current}A")
+                                                            print(f"Real DAQ current from {channel} (1000-sample avg, 30kHz): {avg_current}A")
                                                 elif 'current' in channel_data_result:
                                                     channel_data[f"{channel}_current"] = channel_data_result['current']
                                                     successful_reads += 1
@@ -1468,13 +1470,12 @@ class TestScenarioEngine(QObject):
                                     if self.daq_service and hasattr(self.daq_service, 'read_current'):
                                         for channel in enabled_channels:
                                             try:
-                                                # Read 30 samples quickly and average for each 1ms data point
-                                                # 30 samples = 1ms at 30kHz sampling rate
-                                                current = self._read_current_from_channel(channel, samples=30)
+                                                # Read 1000 samples to match manual measurement settings
+                                                current = self._read_current_from_channel(channel, samples=1000)
                                                 channel_data[f"{channel}_current"] = current
                                                 successful_reads += 1
                                                 if loop_count == 1:
-                                                    print(f"Real DAQ current from {channel} (30-sample avg, 30kHz): {current}A")
+                                                    print(f"Real DAQ current from {channel} (1000-sample avg, 30kHz): {current}A")
                                             except Exception as read_err:
                                                 print(f"DAQ read error for {channel}: {read_err}, using fallback")
                                                 # Fallback to simulation for this channel
@@ -2264,24 +2265,23 @@ class TestScenarioEngine(QObject):
             
             self._emit_signal_safe(self.progress_updated, progress, step_name)
     
-    def _read_current_from_channel(self, channel: str, samples: int = 30) -> float:
+    def _read_current_from_channel(self, channel: str, samples: int = 1000) -> float:
         """Read current from a specific DAQ channel with averaging
         
         Args:
             channel: Channel name (e.g., 'ai0', 'ai1')
-            samples: Number of samples to average (default: 30 for 30kHz sampling)
+            samples: Number of samples to average (default: 1000 to match manual measurement)
                      
-                     Current implementation: 30kHz sampling with 30:1 compression
+                     Matches manual measurement settings from NI Trace:
+                     - SampQuant.SampPerChan = 1000
+                     - SampClk.Rate = 30000
+                     - SampClk.ActiveEdge = Rising
+                     - SampClk.Src = "OnboardClock"
+                     
                      - Sampling rate: 30kHz = 30,000 samples/second
-                     - 1ms = 0.001 second
-                     - 30 samples = 30 / 30,000 = 0.001 second = 1ms
-                     - Each data point = average of 30 samples
-                     - Result: 1,000 data points/second (each = 30 samples average)
-                     
-                     This provides optimal balance:
-                     - High sampling rate (30kHz) for noise reduction
-                     - Real-time data points (1ms interval)
-                     - Each point represents 30 samples average
+                     - 1000 samples = 1000 / 30,000 = ~33ms
+                     - Each data point = average of 1000 samples
+                     - Provides excellent noise reduction and accuracy
             
         Returns:
             Averaged current value in Amps (will be converted to mA later)
