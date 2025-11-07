@@ -417,8 +417,9 @@ class MultiChannelMonitorDialog(QtWidgets.QDialog):
                     
                     try:
                         if is_current_mode:
-                            # Current mode monitoring
-                            results = ni_service.read_current_channels_direct(enabled_channels, samples_per_channel=12)
+                            # Current mode monitoring - Use same settings as auto test:
+                            # FINITE mode, Differential, 10kHz oversampling, 1000 samples averaged
+                            results = ni_service.read_current_channels_direct(enabled_channels, samples_per_channel=1000)
                         else:
                             # Voltage mode monitoring
                             results = ni_service.read_voltage_channels_trace_based(enabled_channels, samples_per_channel=12)
@@ -535,8 +536,9 @@ class MultiChannelMonitorDialog(QtWidgets.QDialog):
                         print(f"[Single Read] {mode_name} mode selected for channels: {enabled_channels}")
                         
                         if is_current_mode:
-                            # Current mode: Use DAQ's direct current measurement (like other tool)
-                            results = ni_service.read_current_channels_direct(enabled_channels, samples_per_channel=12)
+                            # Current mode: Use same settings as auto test:
+                            # FINITE mode, Differential, 10kHz oversampling, 1000 samples averaged
+                            results = ni_service.read_current_channels_direct(enabled_channels, samples_per_channel=1000)
                         else:
                             # Voltage mode: Use regular voltage measurement
                             results = ni_service.read_voltage_channels_trace_based(enabled_channels, samples_per_channel=12)
