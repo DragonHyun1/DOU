@@ -916,43 +916,40 @@ class NIDAQService(QObject):
         return compressed
     
     def read_current_channels_hardware_timed(self, channels: List[str], sample_rate: float = 30000.0, compress_ratio: int = 30, duration_seconds: float = 10.0) -> Optional[dict]:
-        """Read current using Legacy DAQ API (matching manual measurement)
+        """Read current using DAQmx API matching Manual measurement exactly
         
-        Matches manual measurement using:
-        - DAQCreateAIVoltageChan: -5V ~ 5V range
-        - SampQuant.SampPerChan: 1000
-        - SampClk.Rate: 30000
-        - SampClk.ActiveEdge: Rising
-        - DAQReadNChanNSamp1DWfm: 60 samples repeatedly
+        Matches Manual Trace settings:
+        - Continuous Samples mode
+        - SampQuant.SampPerChan = 1000 (read exactly 1000 samples)
+        - SampClk.Rate = 30000 (30kHz)
+        - SampClk.ActiveEdge = Rising
+        - Read 60 samples at a time repeatedly (DAQReadNChanNSamp1DWfm style)
         
-        Uses Legacy DAQ API (Traditional DAQ) if available, otherwise falls back to DAQmx.
+        Uses NI-DAQmx API to read voltage drop across external shunt resistor.
+        Reads exactly 1000 samples per channel (matching manual), then maps to duration.
         
         Args:
             channels: List of channel names (e.g., ['ai0', 'ai1'])
             sample_rate: Sampling rate in Hz (default: 30000.0 = 30kHz)
-            compress_ratio: Compression ratio (default: 30, meaning 30:1 compression)
+            compress_ratio: Compression ratio (not used, kept for compatibility)
             duration_seconds: Duration of data collection (default: 10.0 seconds)
             
         Returns:
             dict: {channel: {'current_data': [mA], 'sample_count': int}}
+            
+        Note:
+            Manual Trace shows reading exactly 1000 samples per channel,
+            then using those samples for the entire test duration.
         """
-        if not self.connected:
-            print("DAQ not connected")
+        if not NI_AVAILABLE or not self.connected:
+            print("DAQ not available or not connected")
             return None
         
-        # Try Legacy DAQ API first (matching manual measurement)
-        if LEGACY_DAQ_AVAILABLE:
-            return self._read_current_channels_legacy_daq(channels, sample_rate, compress_ratio, duration_seconds)
-        
-        # Fallback to DAQmx API
-        if not NI_AVAILABLE:
-            print("Neither Legacy DAQ nor DAQmx available")
-            return None
-        
+        # Use DAQmx API only (Legacy DAQ not available for NI-6289)
         return self._read_current_channels_daqmx(channels, sample_rate, compress_ratio, duration_seconds)
     
     def _read_current_channels_legacy_daq(self, channels: List[str], sample_rate: float = 30000.0, compress_ratio: int = 30, duration_seconds: float = 10.0) -> Optional[dict]:
-        """Read current using Legacy DAQ API (Traditional DAQ)"""
+        """Read current using Legacy DAQ API (Traditional DAQ) - Not used for NI-6289"""
         try:
             # Match manual exactly: 
             # - SampQuant.SampPerChan = 1000
@@ -1084,7 +1081,7 @@ class NIDAQService(QObject):
             return None
     
     def _read_current_channels_daqmx(self, channels: List[str], sample_rate: float = 30000.0, compress_ratio: int = 30, duration_seconds: float = 10.0) -> Optional[dict]:
-        """Read current using DAQmx API (fallback)"""
+        """Read current using DAQmx API matching Manual Trace exactly"""
         try:
             # Match manual exactly: 
             # - SampQuant.SampPerChan = 1000
@@ -1094,7 +1091,7 @@ class NIDAQService(QObject):
             samples_per_channel_total = 1000  # Match manual: SampQuant.SampPerChan = 1000
             num_reads_needed = (samples_per_channel_total + samples_per_read - 1) // samples_per_read  # Ceiling division
             
-            print(f"=== Using DAQmx API (fallback) ===")
+            print(f"=== Using DAQmx API (Matching Manual Trace) ===")
             print(f"Channels: {channels}")
             print(f"Sampling rate: {sample_rate} Hz (30kHz)")
             print(f"Samples per channel: {samples_per_channel_total} (match manual: SampQuant.SampPerChan = 1000)")
