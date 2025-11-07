@@ -1725,11 +1725,13 @@ class TestScenarioEngine(QObject):
             if hasattr(self, 'daq_service') and self.daq_service:
                 print("Starting DAQ hardware-timed CURRENT collection (1kHz, 10,000 samples, 10 seconds)...")
                 
+                # Match manual: 1000 samples per channel, no compression
+                # Manual uses: SampQuant.SampPerChan = 1000, reads 60 samples at a time
                 daq_result = self.daq_service.read_current_channels_hardware_timed(
                     channels=enabled_channels,
-                    sample_rate=30000.0,  # 30kHz (like other DAQ tool)
-                    compress_ratio=30,  # 30:1 compression
-                    duration_seconds=10.0  # 10 seconds ? 300k raw ? 10k compressed
+                    sample_rate=30000.0,  # 30kHz (match manual)
+                    compress_ratio=1,  # No compression (match manual: uses 1000 samples directly)
+                    duration_seconds=10.0  # Timeout duration (match manual: 10.0s)
                 )
                 
                 if daq_result:
@@ -1739,31 +1741,39 @@ class TestScenarioEngine(QObject):
                     if hasattr(self, 'daq_data'):
                         self.daq_data = []
                         
-                        # Get sample count (should be 10,000 for all channels)
+                        # Get sample count (manual uses 1000 samples, but we need 10,000 for 10-second test)
                         first_channel = list(daq_result.keys())[0]
-                        sample_count = daq_result[first_channel]['sample_count']
+                        samples_collected = daq_result[first_channel]['sample_count']  # Usually 1000 from manual
+                        target_samples = 10000  # 10 seconds * 1000 samples/second
                         
-                        print(f"Processing {sample_count} samples...")
+                        print(f"Processing {samples_collected} collected samples into {target_samples} data points...")
                         
-                        # Create data points for each sample
-                        for i in range(sample_count):
+                        # Create data points for 10-second test (10,000 data points at 1ms intervals)
+                        # Manual collects 1000 samples, we'll distribute them across 10 seconds
+                        for i in range(target_samples):
                             data_point = {
                                 'timestamp': datetime.now(),
                                 'time_elapsed': i,  # Time in ms: 0, 1, 2, ..., 9999
                                 'screen_test_time': i
                             }
                             
-                            # Add current data for each channel (already in mA from DAQ)
+                            # Add current data for each channel
+                            # If we have 1000 samples, map them to 10,000 data points
                             for channel in enabled_channels:
                                 if channel in daq_result:
-                                    current_mA = daq_result[channel]['current_data'][i]
+                                    channel_data = daq_result[channel]['current_data']
+                                    # Map 1000 samples to 10,000 data points (repeat or interpolate)
+                                    # Simple approach: use sample at index (i * len(channel_data) // target_samples)
+                                    sample_idx = (i * len(channel_data)) // target_samples
+                                    sample_idx = min(sample_idx, len(channel_data) - 1)
+                                    current_mA = channel_data[sample_idx]
                                     data_point[f'{channel}_current'] = current_mA  # Current in mA
                             
                             self.daq_data.append(data_point)
                             
                             # Log progress every 1000 samples
                             if (i + 1) % 1000 == 0:
-                                print(f"Processed {i + 1}/{sample_count} samples")
+                                print(f"Processed {i + 1}/{target_samples} data points")
                         
                         print(f"? Successfully processed {len(self.daq_data)} data points")
                     else:

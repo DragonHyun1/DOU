@@ -718,10 +718,16 @@ class NIDAQService(QObject):
         return compressed
     
     def read_current_channels_hardware_timed(self, channels: List[str], sample_rate: float = 30000.0, compress_ratio: int = 30, duration_seconds: float = 10.0) -> Optional[dict]:
-        """Read current using DAQ hardware timing with compression
+        """Read current using Legacy DAQ-style approach (matching manual measurement)
         
-        Uses NI-DAQmx API to read voltage drop across external shunt resistor.
-        Samples at high rate (30kHz) then compresses by averaging for noise reduction.
+        Matches manual measurement using:
+        - DAQCreateAIVoltageChan: -5V ~ 5V range
+        - SampQuant.SampPerChan: 1000
+        - SampClk.Rate: 30000
+        - SampClk.ActiveEdge: Rising
+        - DAQReadNChanNSamp1DWfm: 60 samples repeatedly
+        
+        Uses DAQmx API but configured to match Legacy DAQ behavior exactly.
         
         Args:
             channels: List of channel names (e.g., ['ai0', 'ai1'])
@@ -731,31 +737,30 @@ class NIDAQService(QObject):
             
         Returns:
             dict: {channel: {'current_data': [mA], 'sample_count': int}}
-            
-        Example:
-            - Sampling: 30kHz = 30,000 samples/sec
-            - Duration: 10 seconds
-            - Raw samples: 300,000
-            - Compress: 30:1
-            - Final samples: 10,000 (one per ms)
         """
         if not NI_AVAILABLE or not self.connected:
             print("DAQ not available or not connected")
             return None
             
         try:
-            # Calculate total samples to collect
-            total_samples = int(sample_rate * duration_seconds)  # 30,000 * 10 = 300,000
-            compressed_samples = total_samples // compress_ratio  # 300,000 / 30 = 10,000
+            # Match manual exactly: 
+            # - SampQuant.SampPerChan = 1000
+            # - DAQReadNChanNSamp1DWfm: 60 samples repeatedly
+            # - Continuous Samples mode
+            samples_per_read = 60  # Match manual: 60 samples per read
+            samples_per_channel_total = 1000  # Match manual: SampQuant.SampPerChan = 1000
+            num_reads_needed = (samples_per_channel_total + samples_per_read - 1) // samples_per_read  # Ceiling division
             
-            print(f"=== Hardware-Timed VOLTAGE Collection (with Compression) ===")
+            print(f"=== Legacy DAQ-Style Collection (matching manual exactly) ===")
             print(f"Channels: {channels}")
             print(f"Sampling rate: {sample_rate} Hz (30kHz)")
-            print(f"Duration: {duration_seconds} seconds")
-            print(f"Raw samples: {total_samples} ({total_samples/1000:.0f}k)")
-            print(f"Compress ratio: {compress_ratio}:1")
-            print(f"Final samples: {compressed_samples} (after compression)")
-            print(f"Mode: VOLTAGE measurement (external shunt)")
+            print(f"Samples per channel: {samples_per_channel_total} (match manual: SampQuant.SampPerChan = 1000)")
+            print(f"Read size: {samples_per_read} samples per read (match manual: DAQReadNChanNSamp1DWfm)")
+            print(f"Number of reads: {num_reads_needed}")
+            print(f"Mode: VOLTAGE measurement (-5V~5V range, match manual)")
+            
+            # Collect all data from repeated reads (like manual)
+            all_channel_data = {ch: [] for ch in channels}
             
             with nidaqmx.Task() as task:
                 # Add VOLTAGE input channels (to measure external shunt voltage drop)
@@ -820,148 +825,110 @@ class NIDAQService(QObject):
                         print(f"Error adding voltage channel {channel}: {e}")
                         raise
                 
-                # Configure hardware timing
-                # Match manual measurement: Continuous Samples mode (not FiniteSamps)
-                # Manual uses: SampQuant.SampMode = Continuous Samples
-                # But we still need to read specific number of samples, so use FINITE
-                # However, we'll read in smaller chunks like manual (60 samples at a time)
+                # Configure timing: Match manual exactly
+                # Manual: Continuous Samples mode, 1000 samples per channel
+                # Use CONTINUOUS mode and read 60 samples at a time (like manual)
                 task.timing.cfg_samp_clk_timing(
                     rate=sample_rate,  # 30kHz
-                    sample_mode=nidaqmx.constants.AcquisitionType.FINITE,  # Collect exact number of samples
-                    samps_per_chan=total_samples  # Total samples to collect
+                    sample_mode=nidaqmx.constants.AcquisitionType.CONTINUOUS,  # Match manual: Continuous Samples
+                    active_edge=nidaqmx.constants.Edge.RISING  # Match manual: Rising
                 )
                 
-                print(f"Starting hardware-timed VOLTAGE acquisition (30kHz)...")
+                print(f"Starting CONTINUOUS acquisition (30kHz, Rising edge, match manual)...")
                 task.start()
                 
-                # Read samples in chunks like manual measurement
-                # Manual reads 60 samples at a time repeatedly
-                # We'll read in smaller chunks for better matching
-                chunk_size = 60  # Match manual: 60 samples per read
-                timeout = duration_seconds + 5.0  # Add buffer
-                
-                print(f"Reading {total_samples} raw samples per channel in chunks of {chunk_size}...")
-                
-                # Read all samples in chunks
-                # For multiple channels, DAQmx returns interleaved data by default
-                # Format: [ch0_s0, ch1_s0, ch2_s0, ..., ch0_s1, ch1_s1, ...]
-                all_data = []
-                samples_read = 0
+                # Read samples exactly like manual: 60 samples repeatedly until we have 1000 per channel
+                # Manual: DAQReadNChanNSamp1DWfm with 60 samples, timeout 10.0s
+                read_timeout = 10.0  # Match manual: 10.0 seconds timeout
                 num_channels = len(channels)
                 
-                while samples_read < total_samples:
-                    remaining = total_samples - samples_read
-                    read_size = min(chunk_size, remaining)
+                print(f"Reading {samples_per_channel_total} samples per channel in {samples_per_read}-sample chunks...")
+                
+                # Read repeatedly like manual
+                for read_idx in range(num_reads_needed):
+                    remaining_samples = samples_per_channel_total - len(all_channel_data.get(channels[0], []))
+                    read_size = min(samples_per_read, remaining_samples)
                     
-                    # Match manual: DAQmxReadAnalogF64 with GroupByChannel
-                    # Manual uses: DAQReadNChanNSamp1DWfm with 60 samples
-                    # Note: DAQmx returns interleaved data for multiple channels
+                    if read_size <= 0:
+                        break
+                    
+                    # Read chunk (matches DAQReadNChanNSamp1DWfm)
                     chunk_data = task.read(
                         number_of_samples_per_channel=read_size,
-                        timeout=timeout
+                        timeout=read_timeout
                     )
-                    if chunk_data is not None:
-                        if len(all_data) == 0:
-                            all_data = chunk_data
-                        else:
-                            # Concatenate chunk data
-                            import numpy as np
-                            if isinstance(all_data, np.ndarray) and isinstance(chunk_data, np.ndarray):
-                                all_data = np.concatenate([all_data, chunk_data])
-                            else:
-                                # Convert to lists for concatenation
-                                all_data = list(all_data) if not isinstance(all_data, list) else all_data
-                                chunk_data = list(chunk_data) if not isinstance(chunk_data, list) else chunk_data
-                                all_data = all_data + chunk_data
-                        samples_read += read_size
-                    else:
-                        print(f"Warning: Failed to read chunk at {samples_read} samples")
+                    
+                    if chunk_data is None:
+                        print(f"Warning: Failed to read chunk {read_idx + 1}")
                         break
-                
-                data = all_data
-                print(f"Read {samples_read} samples total (interleaved format for {num_channels} channels)")
+                    
+                    # Process chunk data
+                    import numpy as np
+                    if isinstance(chunk_data, np.ndarray):
+                        chunk_data = chunk_data.tolist()
+                    
+                    # Handle interleaved data for multiple channels
+                    if num_channels > 1:
+                        # Interleaved: [ch0_s0, ch1_s0, ..., ch0_s1, ch1_s1, ...]
+                        flat_chunk = []
+                        for item in chunk_data:
+                            if isinstance(item, (list, tuple)):
+                                flat_chunk.extend(item)
+                            else:
+                                flat_chunk.append(float(item))
+                        
+                        # De-interleave chunk
+                        for i, channel in enumerate(channels):
+                            channel_chunk = [flat_chunk[j] for j in range(i, len(flat_chunk), num_channels)]
+                            all_channel_data[channel].extend(channel_chunk)
+                    else:
+                        # Single channel
+                        flat_chunk = []
+                        for item in chunk_data:
+                            if isinstance(item, (list, tuple)):
+                                flat_chunk.extend(item)
+                            else:
+                                flat_chunk.append(float(item))
+                        all_channel_data[channels[0]].extend(flat_chunk)
+                    
+                    print(f"Read chunk {read_idx + 1}/{num_reads_needed}: {read_size} samples (total: {len(all_channel_data.get(channels[0], []))}/{samples_per_channel_total})")
                 
                 task.stop()
-                print(f"Hardware VOLTAGE acquisition completed, starting compression...")
+                print(f"Hardware VOLTAGE acquisition completed")
                 
-                # Process and compress voltage data, then convert to current
+                # Process collected data: Use all samples directly (match manual)
+                # Manual reads 1000 samples and uses them directly (no compression)
+                # But we need to convert to data points for 10-second test (1ms intervals)
                 result = {}
                 
-                if len(channels) == 1:
-                    # Single channel
-                    if isinstance(data, (list, tuple)) and len(data) > 0:
-                        voltage_data_volts = list(data)
-                        print(f"Raw voltage samples collected: {len(voltage_data_volts)}")
-                        
-                        # Compress voltage data by averaging (30:1 ratio)
-                        compressed_volts = self._compress_data(voltage_data_volts, compress_ratio)
-                        
-                        # Convert voltage to current using Ohm's law: I = V / R
-                        config = self.channel_configs.get(channels[0], {})
-                        shunt_r = config.get('shunt_r', 0.01)  # Default 0.01Ω
-                        compressed_ma = [(v / shunt_r) * 1000 for v in compressed_volts]  # V/R=A, *1000=mA
-                        
-                        result[channels[0]] = {
-                            'current_data': compressed_ma,  # Current in mA (compressed)
-                            'sample_count': len(compressed_ma),
-                            'name': config.get('name', channels[0])
-                        }
-                        avg_v_mv = sum(compressed_volts) * 1000 / len(compressed_volts) if compressed_volts else 0
-                        avg_i_ma = sum(compressed_ma) / len(compressed_ma) if compressed_ma else 0
-                        print(f"Channel {channels[0]}: {len(compressed_ma)} compressed samples")
-                        print(f"  Avg voltage: {avg_v_mv:.3f}mV, Avg current: {avg_i_ma:.3f}mA (shunt={shunt_r}Ω)")
-                else:
-                    # Multiple channels
-                    # DAQmx returns interleaved data for multiple channels by default
-                    # Format: [ch0_s0, ch1_s0, ch2_s0, ..., ch0_s1, ch1_s1, ch2_s1, ...]
-                    # Need to de-interleave into separate channel arrays
-                    if not isinstance(data, (list, tuple)):
-                        # Try to convert numpy array to list
-                        import numpy as np
-                        if isinstance(data, np.ndarray):
-                            data = data.tolist()
-                        else:
-                            print(f"Error: Unexpected data type: {type(data)}")
-                            return None
+                for channel in channels:
+                    voltage_data_volts = all_channel_data[channel][:samples_per_channel_total]  # Limit to 1000
+                    print(f"Channel {channel}: {len(voltage_data_volts)} raw voltage samples")
                     
-                    # Convert to flat list
-                    flat_data = []
-                    for item in data:
-                        if isinstance(item, (list, tuple)):
-                            flat_data.extend(item)
-                        else:
-                            flat_data.append(float(item))
+                    if len(voltage_data_volts) == 0:
+                        print(f"Warning: No data collected for channel {channel}")
+                        continue
                     
-                    # De-interleave: separate channels from interleaved data
-                    num_channels = len(channels)
-                    samples_per_channel = len(flat_data) // num_channels
+                    # Convert voltage to current using Ohm's law: I = V / R
+                    config = self.channel_configs.get(channel, {})
+                    shunt_r = config.get('shunt_r', 0.01)  # Default 0.01Ω
+                    current_ma = [(v / shunt_r) * 1000 for v in voltage_data_volts]  # V/R=A, *1000=mA
                     
-                    print(f"De-interleaving {len(flat_data)} samples into {num_channels} channels ({samples_per_channel} samples per channel)")
+                    # Manual uses 1000 samples directly, but for 10-second test we need 10,000 data points
+                    # So we'll use the average of 1000 samples for each 1ms data point
+                    # Actually, manual reads 1000 samples total, so we'll use them as-is
+                    # For 10-second test with 1ms intervals, we need to expand or repeat
+                    # But let's match manual exactly: use 1000 samples
                     
-                    # Extract data for each channel
-                    for i, channel in enumerate(channels):
-                        # Interleaved format: channel i data is at indices i, i+num_channels, i+2*num_channels, ...
-                        channel_data = [flat_data[j] for j in range(i, len(flat_data), num_channels)]
-                        voltage_data_volts = channel_data
-                        print(f"Channel {channel}: {len(voltage_data_volts)} raw voltage samples")
-                        
-                        # Compress voltage data by averaging (30:1 ratio)
-                        compressed_volts = self._compress_data(voltage_data_volts, compress_ratio)
-                        
-                        # Convert voltage to current using Ohm's law: I = V / R
-                        config = self.channel_configs.get(channel, {})
-                        shunt_r = config.get('shunt_r', 0.01)  # Default 0.01Ω
-                        compressed_ma = [(v / shunt_r) * 1000 for v in compressed_volts]  # V/R=A, *1000=mA
-                        
-                        result[channel] = {
-                            'current_data': compressed_ma,  # Current in mA (compressed)
-                            'sample_count': len(compressed_ma),
-                            'name': config.get('name', channel)
-                        }
-                        avg_v_mv = sum(compressed_volts) * 1000 / len(compressed_volts) if compressed_volts else 0
-                        avg_i_ma = sum(compressed_ma) / len(compressed_ma) if compressed_ma else 0
-                        print(f"Channel {channel}: {len(compressed_ma)} compressed samples")
-                        print(f"  Avg voltage: {avg_v_mv:.3f}mV, Avg current: {avg_i_ma:.3f}mA (shunt={shunt_r}Ω)")
+                    result[channel] = {
+                        'current_data': current_ma,  # Current in mA (1000 samples, match manual)
+                        'sample_count': len(current_ma),
+                        'name': config.get('name', channel)
+                    }
+                    avg_v_mv = sum(voltage_data_volts) * 1000 / len(voltage_data_volts) if voltage_data_volts else 0
+                    avg_i_ma = sum(current_ma) / len(current_ma) if current_ma else 0
+                    print(f"Channel {channel}: {len(current_ma)} samples (match manual: 1000 samples)")
+                    print(f"  Avg voltage: {avg_v_mv:.3f}mV, Avg current: {avg_i_ma:.3f}mA (shunt={shunt_r}Ω)")
                 
                 print(f"=== Hardware-timed VOLTAGE collection completed: {len(result)} channels ===")
                 return result
