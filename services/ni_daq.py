@@ -652,13 +652,14 @@ class NIDAQService(QObject):
             return False
     
     def read_current_channels_direct(self, channels: List[str], samples_per_channel: int = 1000) -> Optional[dict]:
-        """Read current directly using FINITE + DIFFERENTIAL measurement
+        """Read current using FINITE + DIFFERENTIAL voltage measurement
         
         Measurement Method:
-        - FINITE mode: Collect exact number of samples then stop (not continuous)
-        - DIFFERENTIAL: Measure voltage across shunt resistor (highest accuracy, noise rejection)
+        - VOLTAGE measurement (NOT current API - doesn't work properly)
+        - DIFFERENTIAL: Measure voltage DROP across shunt resistor (mV level)
+        - FINITE mode: Collect exact number of samples then stop
         - Oversampling: 10kHz sampling rate with 1000 samples
-        - Averaging: All samples averaged for accurate DC value
+        - Calculate current: I = V / R (where V is shunt voltage drop)
         
         This is the most accurate method for DC current measurement with external shunt.
         """
@@ -672,11 +673,13 @@ class NIDAQService(QObject):
         try:
             with nidaqmx.Task() as task:
                 print(f"\n{'='*70}")
-                print(f"FINITE + DIFFERENTIAL Current Measurement")
+                print(f"FINITE + DIFFERENTIAL Voltage Measurement (for Current)")
                 print(f"{'='*70}")
                 print(f"Channels: {channels}")
+                print(f"Method: Measure voltage DROP across shunt, then I = V / R")
                 
-                # Add current input channels with DIFFERENTIAL configuration
+                # Add VOLTAGE input channels with DIFFERENTIAL configuration
+                # This measures the voltage DIFFERENCE across shunt resistor
                 for channel in channels:
                     channel_name = f"{self.device_name}/{channel}"
                     
@@ -688,42 +691,39 @@ class NIDAQService(QObject):
                     print(f"\nChannel {channel} ({rail_name}):")
                     print(f"  → Shunt resistor: {shunt_r}Ω")
                     
-                    # Try DIFFERENTIAL mode first (most accurate)
+                    # Use VOLTAGE measurement with DIFFERENTIAL to measure shunt voltage drop
                     try:
-                        task.ai_channels.add_ai_current_chan(
+                        task.ai_channels.add_ai_voltage_chan(
                             channel_name,
                             terminal_config=nidaqmx.constants.TerminalConfiguration.DIFFERENTIAL,
-                            min_val=-0.1,  # ±100mA range
-                            max_val=0.1,
-                            units=nidaqmx.constants.CurrentUnits.AMPS,
-                            shunt_resistor_loc=nidaqmx.constants.CurrentShuntResistorLocation.EXTERNAL,
-                            ext_shunt_resist_val=shunt_r
+                            min_val=-0.2,  # ±200mV range (for shunt voltage drop)
+                            max_val=0.2,
+                            units=nidaqmx.constants.VoltageUnits.VOLTS
                         )
-                        print(f"  ✅ DIFFERENTIAL mode + External shunt {shunt_r}Ω")
-                    except (TypeError, AttributeError) as e:
-                        print(f"  ⚠️ DIFFERENTIAL + External shunt failed: {e}")
-                        print(f"  → Trying RSE mode as fallback...")
+                        print(f"  ✅ DIFFERENTIAL voltage mode (±200mV range for shunt)")
+                    except Exception as e:
+                        print(f"  ⚠️ DIFFERENTIAL voltage mode failed: {e}")
+                        print(f"  → Trying NRSE mode as fallback...")
                         try:
-                            task.ai_channels.add_ai_current_chan(
+                            task.ai_channels.add_ai_voltage_chan(
+                                channel_name,
+                                terminal_config=nidaqmx.constants.TerminalConfiguration.NRSE,
+                                min_val=-0.2,
+                                max_val=0.2,
+                                units=nidaqmx.constants.VoltageUnits.VOLTS
+                            )
+                            print(f"  ✅ NRSE voltage mode (±200mV range)")
+                        except Exception as e2:
+                            print(f"  ⚠️ NRSE also failed: {e2}")
+                            print(f"  → Using RSE as last resort (may measure rail voltage!)...")
+                            task.ai_channels.add_ai_voltage_chan(
                                 channel_name,
                                 terminal_config=nidaqmx.constants.TerminalConfiguration.RSE,
-                                min_val=-0.1,
-                                max_val=0.1,
-                                units=nidaqmx.constants.CurrentUnits.AMPS,
-                                shunt_resistor_loc=nidaqmx.constants.CurrentShuntResistorLocation.EXTERNAL,
-                                ext_shunt_resist_val=shunt_r
+                                min_val=-5.0,
+                                max_val=5.0,
+                                units=nidaqmx.constants.VoltageUnits.VOLTS
                             )
-                            print(f"  ✅ RSE mode (fallback) + External shunt {shunt_r}Ω")
-                        except (TypeError, AttributeError) as e2:
-                            print(f"  ⚠️ RSE + External shunt also failed: {e2}")
-                            print(f"  → Using minimal configuration...")
-                            task.ai_channels.add_ai_current_chan(
-                                channel_name,
-                                min_val=-0.040,
-                                max_val=0.040,
-                                units=nidaqmx.constants.CurrentUnits.AMPS
-                            )
-                            print(f"  ⚠️ Minimal config (no terminal/shunt spec)")
+                            print(f"  ⚠️ RSE mode - WARNING: This measures rail voltage, not shunt drop!")
                 
                 # Configure FINITE mode timing with oversampling
                 sampling_rate = 10000.0  # 10kHz
@@ -756,21 +756,26 @@ class NIDAQService(QObject):
                 task.stop()
                 print(f"✅ Data collection completed")
                 
-                # Process current measurement data with averaging
-                print(f"\nProcessing measurement data...")
+                # Process voltage data and convert to current
+                print(f"\nProcessing voltage data and calculating current...")
                 result = {}
                 
                 if len(channels) == 1:
-                    # Single channel current measurement
+                    # Single channel measurement
                     if isinstance(data, (list, tuple)) and len(data) > 0:
-                        samples = list(data)
-                        num_samples = len(samples)
+                        voltage_samples = list(data)  # Voltage across shunt in Volts
+                        num_samples = len(voltage_samples)
                         
-                        # All samples in Amps
-                        current_data_amps = samples
+                        config = self.channel_configs.get(channels[0], {})
+                        shunt_r = config.get('shunt_r', 0.01)
+                        rail_name = config.get('name', channels[0])
+                        
+                        # Convert voltage to current: I = V / R
+                        current_data_amps = [v / shunt_r for v in voltage_samples]
                         
                         # Calculate average (arithmetic mean) - accurate DC value
-                        avg_current_amps = sum(current_data_amps) / num_samples
+                        avg_voltage = sum(voltage_samples) / num_samples
+                        avg_current_amps = avg_voltage / shunt_r
                         avg_current_ma = avg_current_amps * 1000.0
                         
                         # Calculate statistics
@@ -782,15 +787,19 @@ class NIDAQService(QObject):
                             std_dev_amps = 0.0
                             std_dev_ma = 0.0
                         
-                        config = self.channel_configs.get(channels[0], {})
-                        shunt_r = config.get('shunt_r', 0.01)
-                        rail_name = config.get('name', channels[0])
-                        
                         print(f"\n{channels[0]} ({rail_name}):")
                         print(f"  → Samples collected: {num_samples}")
-                        print(f"  → Average current: {avg_current_ma:.6f}mA ({avg_current_amps:.9f}A)")
-                        print(f"  → Std deviation: {std_dev_ma:.6f}mA (noise level)")
                         print(f"  → Shunt resistor: {shunt_r}Ω")
+                        print(f"  → Average shunt voltage: {avg_voltage*1000:.6f}mV ({avg_voltage:.9f}V)")
+                        print(f"  → Average current (I=V/R): {avg_current_ma:.6f}mA ({avg_current_amps:.9f}A)")
+                        print(f"  → Std deviation: {std_dev_ma:.6f}mA (noise level)")
+                        
+                        # Check if voltage is suspiciously high (might be measuring rail voltage instead of shunt drop)
+                        if abs(avg_voltage) > 0.5:
+                            print(f"  ⚠️ WARNING: Voltage ({avg_voltage:.3f}V) is very high!")
+                            print(f"  ⚠️ This looks like RAIL voltage, not SHUNT voltage drop!")
+                            print(f"  ⚠️ Expected: < 100mV, Got: {avg_voltage*1000:.1f}mV")
+                            print(f"  ⚠️ Check hardware connection - use DIFFERENTIAL mode!")
                         
                         # Convert to mA for storage
                         current_data_ma = [val * 1000.0 for val in current_data_amps]
@@ -798,27 +807,32 @@ class NIDAQService(QObject):
                         result[channels[0]] = {
                             'current_data': current_data_ma,  # All samples in mA
                             'avg_current': avg_current_amps,  # Average in Amps
+                            'avg_voltage': avg_voltage,  # Shunt voltage drop in Volts
                             'std_dev': std_dev_amps,  # Std dev in Amps
-                            'voltage': 0.0,
                             'sample_count': num_samples,
                             'name': rail_name,
                             'shunt_resistor': shunt_r
                         }
                 else:
-                    # Multiple channel current measurement
+                    # Multiple channel measurement
                     if isinstance(data, (list, tuple)) and len(data) > 0:
                         for i, channel in enumerate(channels):
                             if i < len(data):
                                 channel_data = data[i] if isinstance(data[i], (list, tuple)) else [data[i]]
                                 if len(channel_data) > 0:
-                                    samples = list(channel_data)
-                                    num_samples = len(samples)
+                                    voltage_samples = list(channel_data)  # Voltage across shunt in Volts
+                                    num_samples = len(voltage_samples)
                                     
-                                    # All samples in Amps
-                                    current_data_amps = samples
+                                    config = self.channel_configs.get(channel, {})
+                                    shunt_r = config.get('shunt_r', 0.01)
+                                    rail_name = config.get('name', channel)
+                                    
+                                    # Convert voltage to current: I = V / R
+                                    current_data_amps = [v / shunt_r for v in voltage_samples]
                                     
                                     # Calculate average (arithmetic mean)
-                                    avg_current_amps = sum(current_data_amps) / num_samples
+                                    avg_voltage = sum(voltage_samples) / num_samples
+                                    avg_current_amps = avg_voltage / shunt_r
                                     avg_current_ma = avg_current_amps * 1000.0
                                     
                                     # Calculate statistics
@@ -830,15 +844,19 @@ class NIDAQService(QObject):
                                         std_dev_amps = 0.0
                                         std_dev_ma = 0.0
                                     
-                                    config = self.channel_configs.get(channel, {})
-                                    shunt_r = config.get('shunt_r', 0.01)
-                                    rail_name = config.get('name', channel)
-                                    
                                     print(f"\n{channel} ({rail_name}):")
                                     print(f"  → Samples collected: {num_samples}")
-                                    print(f"  → Average current: {avg_current_ma:.6f}mA ({avg_current_amps:.9f}A)")
-                                    print(f"  → Std deviation: {std_dev_ma:.6f}mA (noise level)")
                                     print(f"  → Shunt resistor: {shunt_r}Ω")
+                                    print(f"  → Average shunt voltage: {avg_voltage*1000:.6f}mV ({avg_voltage:.9f}V)")
+                                    print(f"  → Average current (I=V/R): {avg_current_ma:.6f}mA ({avg_current_amps:.9f}A)")
+                                    print(f"  → Std deviation: {std_dev_ma:.6f}mA (noise level)")
+                                    
+                                    # Check if voltage is suspiciously high
+                                    if abs(avg_voltage) > 0.5:
+                                        print(f"  ⚠️ WARNING: Voltage ({avg_voltage:.3f}V) is very high!")
+                                        print(f"  ⚠️ This looks like RAIL voltage, not SHUNT voltage drop!")
+                                        print(f"  ⚠️ Expected: < 100mV, Got: {avg_voltage*1000:.1f}mV")
+                                        print(f"  ⚠️ Check hardware connection - use DIFFERENTIAL mode!")
                                     
                                     # Convert to mA for storage
                                     current_data_ma = [val * 1000.0 for val in current_data_amps]
@@ -846,8 +864,8 @@ class NIDAQService(QObject):
                                     result[channel] = {
                                         'current_data': current_data_ma,  # All samples in mA
                                         'avg_current': avg_current_amps,  # Average in Amps
+                                        'avg_voltage': avg_voltage,  # Shunt voltage drop in Volts
                                         'std_dev': std_dev_amps,  # Std dev in Amps
-                                        'voltage': 0.0,
                                         'sample_count': num_samples,
                                         'name': rail_name,
                                         'shunt_resistor': shunt_r
@@ -1450,59 +1468,116 @@ class NIDAQService(QObject):
             return None
     
     def read_voltage_channels_trace_based(self, channels: List[str], samples_per_channel: int = 12) -> Optional[dict]:
-        """Read multiple voltage channels simultaneously (matching other tool's NI I/O Trace)"""
+        """Read voltage DROP across shunt resistors using DIFFERENTIAL mode
+        
+        IMPORTANT: This measures shunt voltage drop (mV level), NOT rail voltage!
+        Use DIFFERENTIAL mode to measure voltage difference across shunt resistor.
+        """
         if not NI_AVAILABLE or not self.connected:
             return None
             
         try:
             with nidaqmx.Task() as task:
-                print(f"=== Creating task for channels: {channels} ===")
+                print(f"\n{'='*70}")
+                print(f"DIFFERENTIAL Voltage Measurement (Shunt Drop)")
+                print(f"{'='*70}")
+                print(f"Channels: {channels}")
                 
-                # Add multiple channels as shown in other tool's trace
+                # Add voltage channels with DIFFERENTIAL mode to measure shunt drop
                 for channel in channels:
                     channel_name = f"{self.device_name}/{channel}"
-                    print(f"Adding channel: {channel_name}")
-                    task.ai_channels.add_ai_voltage_chan(
-                        channel_name,
-                        terminal_config=nidaqmx.constants.TerminalConfiguration.RSE,
-                        min_val=-5.0,
-                        max_val=5.0,
-                        units=nidaqmx.constants.VoltageUnits.VOLTS
-                    )
+                    config = self.channel_configs.get(channel, {})
+                    rail_name = config.get('name', channel)
+                    
+                    print(f"\n{channel} ({rail_name}):")
+                    
+                    # Try DIFFERENTIAL first (measures shunt voltage drop)
+                    try:
+                        task.ai_channels.add_ai_voltage_chan(
+                            channel_name,
+                            terminal_config=nidaqmx.constants.TerminalConfiguration.DIFFERENTIAL,
+                            min_val=-0.2,  # ±200mV for shunt drop
+                            max_val=0.2,
+                            units=nidaqmx.constants.VoltageUnits.VOLTS
+                        )
+                        print(f"  ✅ DIFFERENTIAL mode (±200mV for shunt drop)")
+                    except Exception as e:
+                        print(f"  ⚠️ DIFFERENTIAL failed: {e}")
+                        print(f"  → Trying NRSE as fallback...")
+                        try:
+                            task.ai_channels.add_ai_voltage_chan(
+                                channel_name,
+                                terminal_config=nidaqmx.constants.TerminalConfiguration.NRSE,
+                                min_val=-0.2,
+                                max_val=0.2,
+                                units=nidaqmx.constants.VoltageUnits.VOLTS
+                            )
+                            print(f"  ✅ NRSE mode (±200mV)")
+                        except Exception as e2:
+                            print(f"  ⚠️ NRSE also failed: {e2}")
+                            print(f"  → Using RSE (WARNING: measures rail voltage!)")
+                            task.ai_channels.add_ai_voltage_chan(
+                                channel_name,
+                                terminal_config=nidaqmx.constants.TerminalConfiguration.RSE,
+                                min_val=-5.0,
+                                max_val=5.0,
+                                units=nidaqmx.constants.VoltageUnits.VOLTS
+                            )
+                            print(f"  ⚠️ RSE mode - measures rail voltage, not shunt!")
                 
-                # Configure timing like other tool (continuous sampling)
+                # Configure timing - use FINITE mode for accurate sampling
+                print(f"\nTiming Configuration:")
+                print(f"  → Mode: FINITE (exact sample count)")
+                print(f"  → Rate: 10000 Hz (10kHz for oversampling)")
+                print(f"  → Samples: {samples_per_channel}")
+                
                 task.timing.cfg_samp_clk_timing(
-                    rate=30000.0,  # Higher rate like other tool (30kHz vs 500Hz)
-                    sample_mode=nidaqmx.constants.AcquisitionType.CONTINUOUS,  # Continuous instead of Finite
+                    rate=10000.0,  # 10kHz sampling
+                    sample_mode=nidaqmx.constants.AcquisitionType.FINITE,
                     samps_per_chan=samples_per_channel
                 )
                 
-                print(f"Starting task with {len(channels)} channels...")
+                print(f"\nStarting measurement...")
                 task.start()
                 
-                # Read data like DAQReadNChanNSamp1DWfm (small chunks continuously)
                 print(f"Reading {samples_per_channel} samples per channel...")
-                data = task.read(number_of_samples_per_channel=samples_per_channel, timeout=1.0)
+                data = task.read(number_of_samples_per_channel=samples_per_channel, timeout=2.0)
                 
-                print(f"Stopping task...")
                 task.stop()
-                
-                print(f"Raw data received: {type(data)}, length: {len(data) if hasattr(data, '__len__') else 'N/A'}")
+                print(f"✅ Data collection completed")
                 
                 # Process data for each channel
+                print(f"\nProcessing voltage data...")
                 result = {}
+                
                 if len(channels) == 1:
                     # Single channel
                     if isinstance(data, (list, tuple)) and len(data) > 0:
-                        avg_voltage = sum(data) / len(data)
-                        print(f"Single channel {channels[0]}: {len(data)} samples, avg: {avg_voltage:.6f}V")
+                        voltage_samples = list(data)
+                        num_samples = len(voltage_samples)
+                        avg_voltage = sum(voltage_samples) / num_samples
+                        
+                        config = self.channel_configs.get(channels[0], {})
+                        rail_name = config.get('name', channels[0])
+                        
+                        print(f"\n{channels[0]} ({rail_name}):")
+                        print(f"  → Samples: {num_samples}")
+                        print(f"  → Average voltage: {avg_voltage*1000:.6f}mV ({avg_voltage:.9f}V)")
+                        
+                        # Warning if voltage is too high (likely measuring rail voltage)
+                        if abs(avg_voltage) > 0.5:
+                            print(f"  ⚠️ WARNING: Voltage ({avg_voltage:.3f}V) is very high!")
+                            print(f"  ⚠️ This looks like RAIL voltage, not SHUNT voltage drop!")
+                            print(f"  ⚠️ Expected: < 100mV, Got: {avg_voltage*1000:.1f}mV")
+                            print(f"  ⚠️ Check hardware wiring - use DIFFERENTIAL mode!")
+                        
                         result[channels[0]] = {
-                            'voltage_data': data,
+                            'voltage_data': voltage_samples,
                             'avg_voltage': avg_voltage,
-                            'sample_count': len(data)
+                            'sample_count': num_samples
                         }
                     else:
-                        print(f"No valid data for single channel {channels[0]}")
+                        print(f"No valid data for channel {channels[0]}")
                         result[channels[0]] = {'voltage_data': [], 'avg_voltage': 0.0, 'sample_count': 0}
                 else:
                     # Multiple channels
@@ -1511,12 +1586,27 @@ class NIDAQService(QObject):
                             if i < len(data):
                                 channel_data = data[i] if isinstance(data[i], (list, tuple)) else [data[i]]
                                 if len(channel_data) > 0:
-                                    avg_voltage = sum(channel_data) / len(channel_data)
-                                    print(f"Channel {channel}: {len(channel_data)} samples, avg: {avg_voltage:.6f}V")
+                                    voltage_samples = list(channel_data)
+                                    num_samples = len(voltage_samples)
+                                    avg_voltage = sum(voltage_samples) / num_samples
+                                    
+                                    config = self.channel_configs.get(channel, {})
+                                    rail_name = config.get('name', channel)
+                                    
+                                    print(f"\n{channel} ({rail_name}):")
+                                    print(f"  → Samples: {num_samples}")
+                                    print(f"  → Average voltage: {avg_voltage*1000:.6f}mV ({avg_voltage:.9f}V)")
+                                    
+                                    # Warning if voltage is too high
+                                    if abs(avg_voltage) > 0.5:
+                                        print(f"  ⚠️ WARNING: Voltage ({avg_voltage:.3f}V) is very high!")
+                                        print(f"  ⚠️ This looks like RAIL voltage, not SHUNT voltage drop!")
+                                        print(f"  ⚠️ Expected: < 100mV, Got: {avg_voltage*1000:.1f}mV")
+                                    
                                     result[channel] = {
-                                        'voltage_data': channel_data,
+                                        'voltage_data': voltage_samples,
                                         'avg_voltage': avg_voltage,
-                                        'sample_count': len(channel_data)
+                                        'sample_count': num_samples
                                     }
                                 else:
                                     print(f"No data for channel {channel}")
@@ -1526,7 +1616,9 @@ class NIDAQService(QObject):
                         for channel in channels:
                             result[channel] = {'voltage_data': [], 'avg_voltage': 0.0, 'sample_count': 0}
                 
-                print(f"=== Read completed, returning {len(result)} channel results ===")
+                print(f"\n{'='*70}")
+                print(f"✅ Voltage measurement completed: {len(result)} channels")
+                print(f"{'='*70}\n")
                 return result
                 
         except Exception as e:
