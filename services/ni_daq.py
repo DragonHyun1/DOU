@@ -6,7 +6,7 @@ from PyQt6.QtCore import QObject, pyqtSignal, QTimer
 import os
 import sys
 import ctypes
-from ctypes import c_int32, c_uint32, c_double, c_char_p, POINTER, byref, Structure, c_void_p
+from ctypes import c_int32, c_uint32, c_uint64, c_double, c_char_p, POINTER, byref, Structure, c_void_p
 
 # NI-DAQmx 런타임 경로 추가 시도
 possible_paths = [
