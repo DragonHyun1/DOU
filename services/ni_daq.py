@@ -680,7 +680,7 @@ class NIDAQService(QObject):
         """Compress data by averaging groups (noise reduction)
         
         Args:
-            data: Raw data values
+            data: Raw data values (list of numbers)
             compress_ratio: How many samples to average (e.g., 30)
             
         Returns:
@@ -693,9 +693,22 @@ class NIDAQService(QObject):
         """
         compressed = []
         
-        for i in range(0, len(data), compress_ratio):
+        # Ensure data is a flat list of numbers
+        flat_data = []
+        for item in data:
+            if isinstance(item, (list, tuple)):
+                flat_data.extend(item)
+            elif isinstance(item, (int, float)):
+                flat_data.append(float(item))
+            else:
+                try:
+                    flat_data.append(float(item))
+                except (ValueError, TypeError):
+                    print(f"Warning: Skipping non-numeric value: {item}")
+        
+        for i in range(0, len(flat_data), compress_ratio):
             # Get group of samples (e.g., 30 samples)
-            group = data[i:i+compress_ratio]
+            group = flat_data[i:i+compress_ratio]
             
             if len(group) > 0:
                 # Average the group
@@ -830,14 +843,19 @@ class NIDAQService(QObject):
                 print(f"Reading {total_samples} raw samples per channel in chunks of {chunk_size}...")
                 
                 # Read all samples in chunks
+                # For multiple channels, DAQmx returns interleaved data by default
+                # Format: [ch0_s0, ch1_s0, ch2_s0, ..., ch0_s1, ch1_s1, ...]
                 all_data = []
                 samples_read = 0
+                num_channels = len(channels)
+                
                 while samples_read < total_samples:
                     remaining = total_samples - samples_read
                     read_size = min(chunk_size, remaining)
                     
                     # Match manual: DAQmxReadAnalogF64 with GroupByChannel
                     # Manual uses: DAQReadNChanNSamp1DWfm with 60 samples
+                    # Note: DAQmx returns interleaved data for multiple channels
                     chunk_data = task.read(
                         number_of_samples_per_channel=read_size,
                         timeout=timeout
@@ -851,14 +869,17 @@ class NIDAQService(QObject):
                             if isinstance(all_data, np.ndarray) and isinstance(chunk_data, np.ndarray):
                                 all_data = np.concatenate([all_data, chunk_data])
                             else:
-                                all_data = list(all_data) + list(chunk_data)
+                                # Convert to lists for concatenation
+                                all_data = list(all_data) if not isinstance(all_data, list) else all_data
+                                chunk_data = list(chunk_data) if not isinstance(chunk_data, list) else chunk_data
+                                all_data = all_data + chunk_data
                         samples_read += read_size
                     else:
                         print(f"Warning: Failed to read chunk at {samples_read} samples")
                         break
                 
                 data = all_data
-                print(f"Read {samples_read} samples total")
+                print(f"Read {samples_read} samples total (interleaved format for {num_channels} channels)")
                 
                 task.stop()
                 print(f"Hardware VOLTAGE acquisition completed, starting compression...")
@@ -891,66 +912,56 @@ class NIDAQService(QObject):
                         print(f"  Avg voltage: {avg_v_mv:.3f}mV, Avg current: {avg_i_ma:.3f}mA (shunt={shunt_r}Ω)")
                 else:
                     # Multiple channels
-                    # Manual uses GroupByChannel format: data is list of arrays, one per channel
-                    # Auto Test Trace shows: DAQmxReadAnalogF64 with GroupByChannel
+                    # DAQmx returns interleaved data for multiple channels by default
+                    # Format: [ch0_s0, ch1_s0, ch2_s0, ..., ch0_s1, ch1_s1, ch2_s1, ...]
+                    # Need to de-interleave into separate channel arrays
                     if not isinstance(data, (list, tuple)):
-                        print(f"Error: Unexpected data type: {type(data)}")
-                        return None
+                        # Try to convert numpy array to list
+                        import numpy as np
+                        if isinstance(data, np.ndarray):
+                            data = data.tolist()
+                        else:
+                            print(f"Error: Unexpected data type: {type(data)}")
+                            return None
                     
-                    # Check if data is in GroupByChannel format (list of arrays)
-                    if len(data) == len(channels):
-                        # GroupByChannel format: [channel0_data, channel1_data, ...]
-                        for i, channel in enumerate(channels):
-                            channel_data = data[i] if isinstance(data[i], (list, tuple)) else [data[i]]
-                            voltage_data_volts = list(channel_data)
-                            print(f"Channel {channel}: {len(voltage_data_volts)} raw voltage samples")
-                            
-                            # Compress voltage data by averaging (30:1 ratio)
-                            compressed_volts = self._compress_data(voltage_data_volts, compress_ratio)
-                            
-                            # Convert voltage to current using Ohm's law: I = V / R
-                            config = self.channel_configs.get(channel, {})
-                            shunt_r = config.get('shunt_r', 0.01)  # Default 0.01Ω
-                            compressed_ma = [(v / shunt_r) * 1000 for v in compressed_volts]  # V/R=A, *1000=mA
-                            
-                            result[channel] = {
-                                'current_data': compressed_ma,  # Current in mA (compressed)
-                                'sample_count': len(compressed_ma),
-                                'name': config.get('name', channel)
-                            }
-                            avg_v_mv = sum(compressed_volts) * 1000 / len(compressed_volts) if compressed_volts else 0
-                            avg_i_ma = sum(compressed_ma) / len(compressed_ma) if compressed_ma else 0
-                            print(f"Channel {channel}: {len(compressed_ma)} compressed samples")
-                            print(f"  Avg voltage: {avg_v_mv:.3f}mV, Avg current: {avg_i_ma:.3f}mA (shunt={shunt_r}Ω)")
-                    else:
-                        # Flat array format: need to reshape
-                        print(f"Warning: Data format unexpected. Expected {len(channels)} channels, got {len(data) if hasattr(data, '__len__') else 'unknown'}")
-                        # Try to handle flat array
-                        samples_per_channel = len(data) // len(channels) if len(data) > 0 else 0
-                        for i, channel in enumerate(channels):
-                            start_idx = i * samples_per_channel
-                            end_idx = start_idx + samples_per_channel
-                            channel_data = data[start_idx:end_idx] if hasattr(data, '__getitem__') else []
-                            voltage_data_volts = list(channel_data)
-                            print(f"Channel {channel}: {len(voltage_data_volts)} raw voltage samples (reshaped)")
-                            
-                            # Compress voltage data by averaging (30:1 ratio)
-                            compressed_volts = self._compress_data(voltage_data_volts, compress_ratio)
-                            
-                            # Convert voltage to current using Ohm's law: I = V / R
-                            config = self.channel_configs.get(channel, {})
-                            shunt_r = config.get('shunt_r', 0.01)  # Default 0.01Ω
-                            compressed_ma = [(v / shunt_r) * 1000 for v in compressed_volts]  # V/R=A, *1000=mA
-                            
-                            result[channel] = {
-                                'current_data': compressed_ma,  # Current in mA (compressed)
-                                'sample_count': len(compressed_ma),
-                                'name': config.get('name', channel)
-                            }
-                            avg_v_mv = sum(compressed_volts) * 1000 / len(compressed_volts) if compressed_volts else 0
-                            avg_i_ma = sum(compressed_ma) / len(compressed_ma) if compressed_ma else 0
-                            print(f"Channel {channel}: {len(compressed_ma)} compressed samples")
-                            print(f"  Avg voltage: {avg_v_mv:.3f}mV, Avg current: {avg_i_ma:.3f}mA (shunt={shunt_r}Ω)")
+                    # Convert to flat list
+                    flat_data = []
+                    for item in data:
+                        if isinstance(item, (list, tuple)):
+                            flat_data.extend(item)
+                        else:
+                            flat_data.append(float(item))
+                    
+                    # De-interleave: separate channels from interleaved data
+                    num_channels = len(channels)
+                    samples_per_channel = len(flat_data) // num_channels
+                    
+                    print(f"De-interleaving {len(flat_data)} samples into {num_channels} channels ({samples_per_channel} samples per channel)")
+                    
+                    # Extract data for each channel
+                    for i, channel in enumerate(channels):
+                        # Interleaved format: channel i data is at indices i, i+num_channels, i+2*num_channels, ...
+                        channel_data = [flat_data[j] for j in range(i, len(flat_data), num_channels)]
+                        voltage_data_volts = channel_data
+                        print(f"Channel {channel}: {len(voltage_data_volts)} raw voltage samples")
+                        
+                        # Compress voltage data by averaging (30:1 ratio)
+                        compressed_volts = self._compress_data(voltage_data_volts, compress_ratio)
+                        
+                        # Convert voltage to current using Ohm's law: I = V / R
+                        config = self.channel_configs.get(channel, {})
+                        shunt_r = config.get('shunt_r', 0.01)  # Default 0.01Ω
+                        compressed_ma = [(v / shunt_r) * 1000 for v in compressed_volts]  # V/R=A, *1000=mA
+                        
+                        result[channel] = {
+                            'current_data': compressed_ma,  # Current in mA (compressed)
+                            'sample_count': len(compressed_ma),
+                            'name': config.get('name', channel)
+                        }
+                        avg_v_mv = sum(compressed_volts) * 1000 / len(compressed_volts) if compressed_volts else 0
+                        avg_i_ma = sum(compressed_ma) / len(compressed_ma) if compressed_ma else 0
+                        print(f"Channel {channel}: {len(compressed_ma)} compressed samples")
+                        print(f"  Avg voltage: {avg_v_mv:.3f}mV, Avg current: {avg_i_ma:.3f}mA (shunt={shunt_r}Ω)")
                 
                 print(f"=== Hardware-timed VOLTAGE collection completed: {len(result)} channels ===")
                 return result
