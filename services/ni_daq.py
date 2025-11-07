@@ -652,21 +652,31 @@ class NIDAQService(QObject):
             return False
     
     def read_current_channels_direct(self, channels: List[str], samples_per_channel: int = 1000) -> Optional[dict]:
-        """Read current using FINITE + DIFFERENTIAL voltage measurement
+        """Read current using C API (nicaiu.dll) - Same as other tools
         
-        Measurement Method:
-        - VOLTAGE measurement (NOT current API - doesn't work properly)
-        - DIFFERENTIAL: Measure voltage DROP across shunt resistor (mV level)
+        This uses the SAME low-level C API as other measurement tools:
+        - Direct nicaiu.dll calls (Traditional NI-DAQmx)
+        - VOLTAGE measurement with DIFFERENTIAL mode
+        - Measure voltage DROP across shunt resistor (mV level)
         - FINITE mode: Collect exact number of samples then stop
-        - Oversampling: 10kHz sampling rate with 1000 samples
-        - Calculate current: I = V / R (where V is shunt voltage drop)
+        - Calculate current: I = V / R
         
-        This is the most accurate method for DC current measurement with external shunt.
+        If C API is not available, falls back to Python nidaqmx package.
         """
         if not self.connected:
             return None
         
-        # Use Python nidaqmx package
+        # Try C API first (same as other tools)
+        if NICAIU_AVAILABLE:
+            print("📌 Using C API (nicaiu.dll) - Same as other measurement tools")
+            try:
+                return self._read_current_channels_nicaiu_voltage(channels, samples_per_channel)
+            except Exception as e:
+                print(f"⚠️ C API failed: {e}")
+                print("→ Falling back to Python nidaqmx package...")
+        
+        # Fallback: Use Python nidaqmx package
+        print("📌 Using Python nidaqmx package (fallback)")
         if not NI_AVAILABLE:
             return None
             
@@ -881,6 +891,317 @@ class NIDAQService(QObject):
             print(error_msg)
             self.error_occurred.emit(error_msg)
             return None
+    
+    def _read_current_channels_nicaiu_voltage(self, channels: List[str], samples_per_channel: int = 1000) -> Optional[dict]:
+        """Read current using C API VOLTAGE measurement (SAME as other tools)
+        
+        This matches exactly what other measurement tools do:
+        - DAQmxCreateTask
+        - DAQmxCreateAIVoltageChan with DIFFERENTIAL
+        - DAQmxCfgSampClkTiming with FINITE mode
+        - DAQmxStartTask
+        - DAQmxReadAnalogF64
+        - Calculate I = V / R
+        """
+        if not NICAIU_AVAILABLE:
+            raise RuntimeError("nicaiu.dll not available")
+        
+        wrapper = NICAIUWrapper()
+        task_handle = None
+        
+        try:
+            print(f"\n{'='*70}")
+            print(f"C API: DIFFERENTIAL Voltage Measurement (for Current)")
+            print(f"{'='*70}")
+            print(f"Method: Same as other measurement tools")
+            print(f"Channels: {channels}")
+            
+            # Create task
+            task_handle = wrapper.create_task()
+            print(f"✅ Task created: handle={task_handle}")
+            
+            # Add VOLTAGE channels with DIFFERENTIAL mode
+            num_channels = len(channels)
+            for i, channel in enumerate(channels):
+                physical_channel = f"{self.device_name}/{channel}"
+                config = self.channel_configs.get(channel, {})
+                shunt_r = config.get('shunt_r', 0.01)
+                rail_name = config.get('name', channel)
+                
+                print(f"\nChannel {i+1}/{num_channels}: {channel} ({rail_name})")
+                print(f"  → Shunt resistor: {shunt_r}Ω")
+                
+                # Use VOLTAGE measurement with DIFFERENTIAL (measures shunt drop)
+                wrapper.create_ai_voltage_chan(
+                    task_handle=task_handle,
+                    physical_channel=physical_channel,
+                    name_to_assign=f"Voltage_{channel}",
+                    terminal_config=DAQmx_Val_Diff,  # DIFFERENTIAL
+                    min_val=-0.2,  # ±200mV for shunt drop
+                    max_val=0.2,
+                    units=DAQmx_Val_Volts
+                )
+                print(f"  ✅ DIFFERENTIAL voltage channel created (±200mV)")
+            
+            # Configure FINITE mode timing
+            sampling_rate = 10000.0  # 10kHz
+            samples_to_collect = max(100, min(samples_per_channel, 1000))
+            
+            print(f"\nTiming Configuration:")
+            print(f"  → Mode: FINITE (exact sample count)")
+            print(f"  → Rate: {sampling_rate} Hz")
+            print(f"  → Samples per channel: {samples_to_collect}")
+            
+            wrapper.cfg_samp_clk_timing(
+                task_handle=task_handle,
+                source="",  # OnboardClock
+                rate=sampling_rate,
+                active_edge=DAQmx_Val_Rising,
+                sample_mode=DAQmx_Val_FiniteSamps,  # FINITE
+                samps_per_chan=samples_to_collect
+            )
+            print(f"✅ Timing configured")
+            
+            # Start task
+            print(f"\nStarting measurement...")
+            wrapper.start_task(task_handle)
+            print(f"✅ Task started")
+            
+            # Read data
+            print(f"Reading {samples_to_collect} samples per channel...")
+            total_samples = samples_to_collect * num_channels
+            data_buffer = [0.0] * total_samples
+            
+            estimated_time = (samples_to_collect / sampling_rate) + 1.0
+            timeout = max(2.0, min(estimated_time, 10.0))
+            
+            read_data, samples_read = wrapper.read_analog_f64(
+                task_handle=task_handle,
+                num_samps_per_chan=samples_to_collect,
+                timeout=timeout,
+                fill_mode=DAQmx_Val_GroupByScanNumber,
+                data_array=data_buffer,
+                array_size=total_samples
+            )
+            
+            print(f"✅ Read {samples_read} samples per channel")
+            
+            # Stop task
+            wrapper.stop_task(task_handle)
+            print(f"✅ Task stopped")
+            
+            # Process voltage data and convert to current
+            all_data = list(read_data[:samples_read * num_channels])
+            samples_collected = len(all_data) // num_channels
+            channel_data = [[] for _ in range(num_channels)]
+            
+            # De-interleave data
+            for i in range(samples_collected):
+                for ch_idx in range(num_channels):
+                    data_idx = i * num_channels + ch_idx
+                    if data_idx < len(all_data):
+                        channel_data[ch_idx].append(all_data[data_idx])
+            
+            # Calculate current from voltage
+            print(f"\nProcessing results:")
+            result = {}
+            for i, channel in enumerate(channels):
+                if i < len(channel_data) and len(channel_data[i]) > 0:
+                    voltage_samples = channel_data[i]
+                    num_samples = len(voltage_samples)
+                    
+                    config = self.channel_configs.get(channel, {})
+                    shunt_r = config.get('shunt_r', 0.01)
+                    rail_name = config.get('name', channel)
+                    
+                    # Convert voltage to current: I = V / R
+                    current_data_amps = [v / shunt_r for v in voltage_samples]
+                    
+                    # Calculate averages
+                    avg_voltage = sum(voltage_samples) / num_samples
+                    avg_current_amps = avg_voltage / shunt_r
+                    avg_current_ma = avg_current_amps * 1000.0
+                    
+                    # Calculate statistics
+                    if num_samples > 1:
+                        variance = sum((x - avg_current_amps) ** 2 for x in current_data_amps) / num_samples
+                        std_dev_amps = variance ** 0.5
+                        std_dev_ma = std_dev_amps * 1000.0
+                    else:
+                        std_dev_amps = 0.0
+                        std_dev_ma = 0.0
+                    
+                    print(f"\n{channel} ({rail_name}):")
+                    print(f"  → Samples: {num_samples}")
+                    print(f"  → Shunt: {shunt_r}Ω")
+                    print(f"  → Voltage: {avg_voltage*1000:.6f}mV ({avg_voltage:.9f}V)")
+                    print(f"  → Current: {avg_current_ma:.6f}mA ({avg_current_amps:.9f}A)")
+                    print(f"  → Std dev: {std_dev_ma:.6f}mA")
+                    
+                    # Warning if voltage too high
+                    if abs(avg_voltage) > 0.5:
+                        print(f"  ⚠️ WARNING: Voltage ({avg_voltage:.3f}V) too high!")
+                        print(f"  ⚠️ Expected < 100mV, got {avg_voltage*1000:.1f}mV")
+                    
+                    current_data_ma = [val * 1000.0 for val in current_data_amps]
+                    
+                    result[channel] = {
+                        'current_data': current_data_ma,
+                        'avg_current': avg_current_amps,
+                        'avg_voltage': avg_voltage,
+                        'std_dev': std_dev_amps,
+                        'sample_count': num_samples,
+                        'name': rail_name,
+                        'shunt_resistor': shunt_r
+                    }
+            
+            print(f"\n{'='*70}")
+            print(f"✅ C API measurement completed: {len(result)} channels")
+            print(f"{'='*70}\n")
+            return result
+            
+        except Exception as e:
+            error_msg = f"C API measurement error: {e}"
+            print(error_msg)
+            import traceback
+            traceback.print_exc()
+            self.error_occurred.emit(error_msg)
+            return None
+        finally:
+            if task_handle is not None:
+                try:
+                    wrapper.clear_task(task_handle)
+                    print(f"✅ Task cleared")
+                except Exception as e:
+                    print(f"⚠️ Task cleanup error: {e}")
+    
+    def _read_voltage_channels_nicaiu(self, channels: List[str], samples_per_channel: int = 12) -> Optional[dict]:
+        """Read voltage using C API (SAME as other tools)"""
+        if not NICAIU_AVAILABLE:
+            raise RuntimeError("nicaiu.dll not available")
+        
+        wrapper = NICAIUWrapper()
+        task_handle = None
+        
+        try:
+            print(f"\n{'='*70}")
+            print(f"C API: DIFFERENTIAL Voltage Measurement")
+            print(f"{'='*70}")
+            print(f"Method: Same as other measurement tools")
+            print(f"Channels: {channels}")
+            
+            # Create task
+            task_handle = wrapper.create_task()
+            print(f"✅ Task created: handle={task_handle}")
+            
+            # Add VOLTAGE channels with DIFFERENTIAL mode
+            num_channels = len(channels)
+            for i, channel in enumerate(channels):
+                physical_channel = f"{self.device_name}/{channel}"
+                config = self.channel_configs.get(channel, {})
+                rail_name = config.get('name', channel)
+                
+                print(f"\nChannel {i+1}/{num_channels}: {channel} ({rail_name})")
+                
+                # Use VOLTAGE measurement with DIFFERENTIAL
+                wrapper.create_ai_voltage_chan(
+                    task_handle=task_handle,
+                    physical_channel=physical_channel,
+                    name_to_assign=f"Voltage_{channel}",
+                    terminal_config=DAQmx_Val_Diff,  # DIFFERENTIAL
+                    min_val=-0.2,  # ±200mV for shunt drop
+                    max_val=0.2,
+                    units=DAQmx_Val_Volts
+                )
+                print(f"  ✅ DIFFERENTIAL voltage channel (±200mV)")
+            
+            # Configure timing
+            sampling_rate = 10000.0
+            samples_to_collect = max(12, min(samples_per_channel, 1000))
+            
+            print(f"\nTiming: FINITE, {sampling_rate}Hz, {samples_to_collect} samples")
+            
+            wrapper.cfg_samp_clk_timing(
+                task_handle=task_handle,
+                source="",
+                rate=sampling_rate,
+                active_edge=DAQmx_Val_Rising,
+                sample_mode=DAQmx_Val_FiniteSamps,
+                samps_per_chan=samples_to_collect
+            )
+            
+            # Start and read
+            wrapper.start_task(task_handle)
+            print(f"✅ Measuring...")
+            
+            total_samples = samples_to_collect * num_channels
+            data_buffer = [0.0] * total_samples
+            timeout = 2.0
+            
+            read_data, samples_read = wrapper.read_analog_f64(
+                task_handle=task_handle,
+                num_samps_per_chan=samples_to_collect,
+                timeout=timeout,
+                fill_mode=DAQmx_Val_GroupByScanNumber,
+                data_array=data_buffer,
+                array_size=total_samples
+            )
+            
+            wrapper.stop_task(task_handle)
+            print(f"✅ Read {samples_read} samples per channel")
+            
+            # De-interleave data
+            all_data = list(read_data[:samples_read * num_channels])
+            samples_collected = len(all_data) // num_channels
+            channel_data = [[] for _ in range(num_channels)]
+            
+            for i in range(samples_collected):
+                for ch_idx in range(num_channels):
+                    data_idx = i * num_channels + ch_idx
+                    if data_idx < len(all_data):
+                        channel_data[ch_idx].append(all_data[data_idx])
+            
+            # Process results
+            print(f"\nResults:")
+            result = {}
+            for i, channel in enumerate(channels):
+                if i < len(channel_data) and len(channel_data[i]) > 0:
+                    voltage_samples = channel_data[i]
+                    num_samples = len(voltage_samples)
+                    avg_voltage = sum(voltage_samples) / num_samples
+                    
+                    config = self.channel_configs.get(channel, {})
+                    rail_name = config.get('name', channel)
+                    
+                    print(f"\n{channel} ({rail_name}):")
+                    print(f"  → Voltage: {avg_voltage*1000:.6f}mV ({avg_voltage:.9f}V)")
+                    
+                    if abs(avg_voltage) > 0.5:
+                        print(f"  ⚠️ WARNING: {avg_voltage:.3f}V is too high!")
+                        print(f"  ⚠️ Expected < 100mV for shunt drop")
+                    
+                    result[channel] = {
+                        'voltage_data': voltage_samples,
+                        'avg_voltage': avg_voltage,
+                        'sample_count': num_samples
+                    }
+            
+            print(f"\n{'='*70}")
+            print(f"✅ C API voltage measurement completed")
+            print(f"{'='*70}\n")
+            return result
+            
+        except Exception as e:
+            print(f"C API voltage measurement error: {e}")
+            import traceback
+            traceback.print_exc()
+            return None
+        finally:
+            if task_handle is not None:
+                try:
+                    wrapper.clear_task(task_handle)
+                except:
+                    pass
     
     def _read_current_channels_nicaiu(self, channels: List[str], samples_per_channel: int = 1000) -> Optional[dict]:
         """Read current channels using nicaiu.dll C API (matches manual measurement exactly)
@@ -1468,12 +1789,28 @@ class NIDAQService(QObject):
             return None
     
     def read_voltage_channels_trace_based(self, channels: List[str], samples_per_channel: int = 12) -> Optional[dict]:
-        """Read voltage DROP across shunt resistors using DIFFERENTIAL mode
+        """Read voltage DROP across shunt resistors - Same as other tools
         
-        IMPORTANT: This measures shunt voltage drop (mV level), NOT rail voltage!
-        Use DIFFERENTIAL mode to measure voltage difference across shunt resistor.
+        Uses C API (nicaiu.dll) if available for compatibility with other tools.
+        Falls back to Python nidaqmx if C API is not available.
+        
+        Measures shunt voltage drop (mV level), NOT rail voltage!
         """
-        if not NI_AVAILABLE or not self.connected:
+        if not self.connected:
+            return None
+        
+        # Try C API first (same as other tools)
+        if NICAIU_AVAILABLE:
+            print("📌 Using C API (nicaiu.dll) - Same as other measurement tools")
+            try:
+                return self._read_voltage_channels_nicaiu(channels, samples_per_channel)
+            except Exception as e:
+                print(f"⚠️ C API failed: {e}")
+                print("→ Falling back to Python nidaqmx package...")
+        
+        # Fallback: Python nidaqmx
+        print("📌 Using Python nidaqmx package (fallback)")
+        if not NI_AVAILABLE:
             return None
             
         try:
