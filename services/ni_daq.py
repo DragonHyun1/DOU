@@ -1170,7 +1170,15 @@ class NIDAQService(QObject):
                 
                 # Configure timing: Match manual exactly
                 # Manual: Continuous Samples mode, 1000 samples per channel
-                # Use CONTINUOUS mode and read 60 samples at a time (like manual)
+                num_channels = len(channels)
+                total_samples = samples_per_channel_total * num_channels
+                
+                # Increase buffer size significantly to prevent overflow
+                # At 30kHz, we need buffer for at least 1 second of data (30000 samples)
+                # Use much larger buffer to handle continuous acquisition
+                min_buffer_size = int(sample_rate * 2)  # 2 seconds worth of data at 30kHz = 60000 samples
+                task.in_stream.input_buf_size = max(total_samples * 10, min_buffer_size)
+                
                 task.timing.cfg_samp_clk_timing(
                     rate=sample_rate,  # 30kHz
                     sample_mode=nidaqmx.constants.AcquisitionType.CONTINUOUS,  # Match manual: Continuous Samples
@@ -1178,16 +1186,18 @@ class NIDAQService(QObject):
                 )
                 
                 print(f"Starting CONTINUOUS acquisition (30kHz, Rising edge, match manual)...")
+                print(f"Buffer size: {task.in_stream.input_buf_size} samples (to prevent overflow)")
                 task.start()
                 
                 # Read samples exactly like manual: 60 samples repeatedly until we have 1000 per channel
                 # Manual: DAQReadNChanNSamp1DWfm with 60 samples, timeout 10.0s
-                read_timeout = 10.0  # Match manual: 10.0 seconds timeout
-                num_channels = len(channels)
+                # Use shorter timeout per chunk to read more frequently and prevent buffer overflow
+                read_timeout = 10.0  # Match manual: 10.0 seconds timeout (total)
+                chunk_timeout = 0.1  # Read every 0.1 seconds to keep up with hardware
                 
                 print(f"Reading {samples_per_channel_total} samples per channel in {samples_per_read}-sample chunks...")
                 
-                # Read repeatedly like manual
+                # Read repeatedly like manual, but more frequently to prevent buffer overflow
                 for read_idx in range(num_reads_needed):
                     remaining_samples = samples_per_channel_total - len(all_channel_data.get(channels[0], []))
                     read_size = min(samples_per_read, remaining_samples)
@@ -1196,10 +1206,27 @@ class NIDAQService(QObject):
                         break
                     
                     # Read chunk (matches DAQReadNChanNSamp1DWfm)
-                    chunk_data = task.read(
-                        number_of_samples_per_channel=read_size,
-                        timeout=read_timeout
-                    )
+                    # Use short timeout to read frequently and prevent buffer overflow
+                    try:
+                        chunk_data = task.read(
+                            number_of_samples_per_channel=read_size,
+                            timeout=chunk_timeout
+                        )
+                    except nidaqmx.errors.DaqReadError as e:
+                        # If buffer overflow, try to read available data
+                        if -200279 in str(e):  # Buffer overflow error
+                            print(f"Warning: Buffer overflow detected, trying to read available data...")
+                            try:
+                                # Try to read whatever is available
+                                chunk_data = task.read(
+                                    number_of_samples_per_channel=read_size,
+                                    timeout=0.01  # Very short timeout
+                                )
+                            except:
+                                print(f"Failed to recover from buffer overflow at chunk {read_idx + 1}")
+                                break
+                        else:
+                            raise
                     
                     if chunk_data is None:
                         print(f"Warning: Failed to read chunk {read_idx + 1}")
