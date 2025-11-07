@@ -1,13 +1,42 @@
-Hardware VOLTAGE acquisition completed, starting compression...
-Warning: Data format unexpected. Expected 6 channels, got 30000
-Channel ai0: 5000 raw voltage samples (reshaped)
-Hardware-timed collection error: unsupported operand type(s) for +: 'int' and 'list'
+Starting CONTINUOUS acquisition (30kHz, Rising edge, match manual)...
+Reading 1000 samples per channel in 60-sample chunks...
+Read chunk 1/17: 60 samples (total: 60/1000)
+Read chunk 2/17: 60 samples (total: 120/1000)
+Read chunk 3/17: 60 samples (total: 180/1000)
+Read chunk 4/17: 60 samples (total: 240/1000)
+Hardware-timed collection error: The application is not able to keep up with the hardware acquisition.
+
+Increasing the buffer size, reading the data more frequently, or specifying a fixed number of samples to read instead of reading all available samples might correct the problem.
+
+Property: DAQmx_Read_RelativeTo
+Corresponding Value: DAQmx_Val_CurrReadPos
+Property: DAQmx_Read_Offset
+Corresponding Value: 0
+
+Task Name: _unnamedTask<1>
+
+Status Code: -200279
 Traceback (most recent call last):
-  File "d:\PCT\Tool\DOU_0926\services\ni_daq.py", line 938, in read_current_channels_hardware_timed
-    compressed_volts = self._compress_data(voltage_data_volts, compress_ratio)
-  File "d:\PCT\Tool\DOU_0926\services\ni_daq.py", line 702, in _compress_data
-    avg_value = sum(group) / len(group)
-TypeError: unsupported operand type(s) for +: 'int' and 'list'
+  File "d:\PCT\Tool\DOU_0926\services\ni_daq.py", line 1199, in _read_current_channels_daqmx
+    chunk_data = task.read(
+  File "D:\PCT\Tool\DOU_0926\.venv\lib\site-packages\nidaqmx\task\_task.py", line 621, in read
+    _, samples_read = self._interpreter.read_analog_f64(
+  File "D:\PCT\Tool\DOU_0926\.venv\lib\site-packages\nidaqmx\_library_interpreter.py", line 4190, in read_analog_f64
+    self.check_for_error(error_code, samps_per_chan_read=samps_per_chan_read.value)
+  File "D:\PCT\Tool\DOU_0926\.venv\lib\site-packages\nidaqmx\_library_interpreter.py", line 6475, in check_for_error
+    raise DaqReadError(extended_error_info, error_code, samps_per_chan_read)
+nidaqmx.errors.DaqReadError: The application is not able to keep up with the hardware acquisition.
+
+Increasing the buffer size, reading the data more frequently, or specifying a fixed number of samples to read instead of reading all available samples might correct the problem.
+
+Property: DAQmx_Read_RelativeTo
+Corresponding Value: DAQmx_Val_CurrReadPos
+Property: DAQmx_Read_Offset
+Corresponding Value: 0
+
+Task Name: _unnamedTask<1>
+
+Status Code: -200279
 ERROR: DAQ collection returned no data
 === DAQ Hardware-Timed Collection Ended ===
 WARNING: No data was collected during monitoring!
