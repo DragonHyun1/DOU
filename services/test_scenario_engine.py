@@ -139,6 +139,67 @@ class TestScenarioEngine(QObject):
                 # Fallback to print if Qt signals fail
                 print(f"Signal emit error: {e}, args: {args}")
     
+    def _calculate_trimmed_mean(self, samples: List[float], trim_percent: float = 5.0) -> float:
+        """Calculate trimmed mean by removing outliers
+        
+        Removes top and bottom percentiles to eliminate spikes and noise,
+        providing a more accurate average for power measurements.
+        
+        Args:
+            samples: List of sample values
+            trim_percent: Percentage to trim from each end (default: 5%)
+            
+        Returns:
+            Trimmed mean value
+            
+        Example:
+            1000 samples with 5% trim:
+            - Remove top 50 samples (highest values)
+            - Remove bottom 50 samples (lowest values)  
+            - Calculate mean of remaining 900 samples
+        """
+        if not samples or len(samples) == 0:
+            return 0.0
+        
+        # If too few samples, use regular mean
+        if len(samples) < 20:
+            return sum(samples) / len(samples)
+        
+        # Sort samples to identify outliers
+        sorted_samples = sorted(samples)
+        
+        # Calculate number of samples to trim from each end
+        trim_count = int(len(sorted_samples) * (trim_percent / 100.0))
+        
+        # Ensure we don't trim everything
+        if trim_count * 2 >= len(sorted_samples):
+            trim_count = max(0, (len(sorted_samples) // 2) - 1)
+        
+        # Trim outliers from both ends
+        if trim_count > 0:
+            trimmed_samples = sorted_samples[trim_count:-trim_count]
+        else:
+            trimmed_samples = sorted_samples
+        
+        # Calculate mean of trimmed data
+        trimmed_mean = sum(trimmed_samples) / len(trimmed_samples)
+        
+        # Log trimming statistics for debugging
+        original_mean = sum(samples) / len(samples)
+        min_val = min(samples)
+        max_val = max(samples)
+        
+        self.log_callback(
+            f"📊 Trimmed Mean: {trimmed_mean:.6f}A ({trimmed_mean*1000:.3f}mA) | "
+            f"Original Mean: {original_mean:.6f}A ({original_mean*1000:.3f}mA) | "
+            f"Samples: {len(samples)} → {len(trimmed_samples)} | "
+            f"Range: [{min_val*1000:.3f}, {max_val*1000:.3f}]mA | "
+            f"Trim: {trim_percent}% ({trim_count} each side)",
+            "info"
+        )
+        
+        return trimmed_mean
+    
     def _register_builtin_scenarios(self):
         """Register built-in test scenarios"""
         self.log_callback("Registering built-in test scenarios...", "info")
@@ -1451,14 +1512,16 @@ class TestScenarioEngine(QObject):
                                                 channel_data_result = result[channel]
                                                 # Get averaged current from multiple samples
                                                 if 'current_data' in channel_data_result:
-                                                    # Calculate average of all samples
+                                                    # Calculate TRIMMED average to remove outliers (spikes)
                                                     current_samples = channel_data_result['current_data']
                                                     if current_samples:
-                                                        avg_current = sum(current_samples) / len(current_samples)
+                                                        # Use trimmed mean (5% trim) to eliminate outliers
+                                                        # This removes spikes that cause inflated averages
+                                                        avg_current = self._calculate_trimmed_mean(current_samples, trim_percent=5.0)
                                                         channel_data[f"{channel}_current"] = avg_current
                                                         successful_reads += 1
                                                         if loop_count == 1:
-                                                            print(f"Real DAQ current from {channel} (1000-sample avg, 30kHz): {avg_current}A")
+                                                            print(f"Real DAQ current from {channel} (1000-sample trimmed mean, 30kHz): {avg_current}A")
                                                 elif 'current' in channel_data_result:
                                                     channel_data[f"{channel}_current"] = channel_data_result['current']
                                                     successful_reads += 1
@@ -1748,8 +1811,22 @@ class TestScenarioEngine(QObject):
                         
                         print(f"Processing {samples_collected} collected samples into {target_samples} data points...")
                         
+                        # Calculate trimmed mean for each channel FIRST
+                        # This removes outliers before creating data points
+                        channel_trimmed_means = {}
+                        for channel in enabled_channels:
+                            if channel in daq_result:
+                                channel_data = daq_result[channel]['current_data']
+                                # Convert mA to A for consistency with other calculations
+                                channel_data_A = [x / 1000.0 for x in channel_data]
+                                # Calculate trimmed mean to remove spikes
+                                trimmed_mean_A = self._calculate_trimmed_mean(channel_data_A, trim_percent=5.0)
+                                # Convert back to mA for storage
+                                channel_trimmed_means[channel] = trimmed_mean_A * 1000.0
+                                print(f"Channel {channel}: Trimmed mean = {trimmed_mean_A*1000:.3f}mA")
+                        
                         # Create data points for 10-second test (10,000 data points at 1ms intervals)
-                        # Manual collects 1000 samples, we'll distribute them across 10 seconds
+                        # Use the trimmed mean for all data points (stable average)
                         for i in range(target_samples):
                             data_point = {
                                 'timestamp': datetime.now(),
@@ -1757,25 +1834,20 @@ class TestScenarioEngine(QObject):
                                 'screen_test_time': i
                             }
                             
-                            # Add current data for each channel
-                            # If we have 1000 samples, map them to 10,000 data points
+                            # Add TRIMMED MEAN current data for each channel
+                            # This provides a stable, accurate average without spikes
                             for channel in enabled_channels:
-                                if channel in daq_result:
-                                    channel_data = daq_result[channel]['current_data']
-                                    # Map 1000 samples to 10,000 data points (repeat or interpolate)
-                                    # Simple approach: use sample at index (i * len(channel_data) // target_samples)
-                                    sample_idx = (i * len(channel_data)) // target_samples
-                                    sample_idx = min(sample_idx, len(channel_data) - 1)
-                                    current_mA = channel_data[sample_idx]
-                                    data_point[f'{channel}_current'] = current_mA  # Current in mA
+                                if channel in channel_trimmed_means:
+                                    current_mA = channel_trimmed_means[channel]
+                                    data_point[f'{channel}_current'] = current_mA  # Current in mA (trimmed mean)
                             
                             self.daq_data.append(data_point)
                             
                             # Log progress every 1000 samples
                             if (i + 1) % 1000 == 0:
-                                print(f"Processed {i + 1}/{target_samples} data points")
+                                print(f"Processed {i + 1}/{target_samples} data points (using trimmed mean)")
                         
-                        print(f"? Successfully processed {len(self.daq_data)} data points")
+                        print(f"✅ Successfully processed {len(self.daq_data)} data points with trimmed mean values")
                     else:
                         print("ERROR: daq_data attribute not found")
                 else:
@@ -2311,12 +2383,13 @@ class TestScenarioEngine(QObject):
                     
                     if result and channel in result:
                         channel_data = result[channel]
-                        # Get all samples and calculate average
+                        # Get all samples and calculate TRIMMED average
                         if 'current_data' in channel_data:
                             current_samples = channel_data['current_data']
                             if current_samples:
-                                # Calculate average of all samples
-                                avg_current = sum(current_samples) / len(current_samples)
+                                # Calculate TRIMMED average to remove outliers (spikes)
+                                # This eliminates high-current spikes that inflate the average
+                                avg_current = self._calculate_trimmed_mean(current_samples, trim_percent=5.0)
                                 return avg_current
                         elif 'current' in channel_data:
                             return channel_data['current']
