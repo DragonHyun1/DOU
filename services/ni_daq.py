@@ -757,14 +757,15 @@ class NIDAQService(QObject):
                     try:
                         # Try DEFAULT first (follow hardware jumper settings, like Traditional DAQ API)
                         try:
+                            # Match manual measurement: -5V ~ 5V range (not -0.2V ~ 0.2V)
                             task.ai_channels.add_ai_voltage_chan(
                                 channel_name,
                                 terminal_config=nidaqmx.constants.TerminalConfiguration.DEFAULT,
-                                min_val=-0.2,  # ±200mV range (for shunt voltage drop)
-                                max_val=0.2,
+                                min_val=-5.0,  # Match manual: -5V range
+                                max_val=5.0,   # Match manual: +5V range
                                 units=nidaqmx.constants.VoltageUnits.VOLTS
                             )
-                            print(f"  → DEFAULT mode (following hardware jumper settings)")
+                            print(f"  → DEFAULT mode with -5V~5V range (matching manual)")
                         except Exception as default_error:
                             # Try explicit DIFFERENTIAL
                             print(f"  ⚠️ DEFAULT failed: {type(default_error).__name__}: {str(default_error)}")
@@ -773,11 +774,11 @@ class NIDAQService(QObject):
                                 task.ai_channels.add_ai_voltage_chan(
                                     channel_name,
                                     terminal_config=nidaqmx.constants.TerminalConfiguration.DIFFERENTIAL,
-                                    min_val=-0.2,  # ±200mV range (for shunt voltage drop)
-                                    max_val=0.2,
+                                    min_val=-5.0,  # Match manual: -5V range
+                                    max_val=5.0,   # Match manual: +5V range
                                     units=nidaqmx.constants.VoltageUnits.VOLTS
                                 )
-                                print(f"  → DIFFERENTIAL mode enabled")
+                                print(f"  → DIFFERENTIAL mode enabled with -5V~5V range")
                             except Exception as diff_error:
                                 # Try NRSE (Referenced Single-Ended) as fallback
                                 print(f"  ⚠️ DIFFERENTIAL failed: {type(diff_error).__name__}: {str(diff_error)}")
@@ -786,11 +787,11 @@ class NIDAQService(QObject):
                                     task.ai_channels.add_ai_voltage_chan(
                                         channel_name,
                                         terminal_config=nidaqmx.constants.TerminalConfiguration.NRSE,
-                                        min_val=-0.2,  # ±200mV range
-                                        max_val=0.2,
+                                        min_val=-5.0,  # Match manual: -5V range
+                                        max_val=5.0,   # Match manual: +5V range
                                         units=nidaqmx.constants.VoltageUnits.VOLTS
                                     )
-                                    print(f"  → NRSE mode enabled")
+                                    print(f"  → NRSE mode enabled with -5V~5V range")
                                 except:
                                     # Final fallback to RSE with warning
                                     print(f"  ⚠️ NRSE also failed, falling back to RSE")
@@ -798,28 +799,66 @@ class NIDAQService(QObject):
                                     task.ai_channels.add_ai_voltage_chan(
                                         channel_name,
                                         terminal_config=nidaqmx.constants.TerminalConfiguration.RSE,
-                                        min_val=-5.0,  # ±5V range (for rail voltage)
-                                        max_val=5.0,
+                                        min_val=-5.0,  # Match manual: -5V range
+                                        max_val=5.0,   # Match manual: +5V range
                                         units=nidaqmx.constants.VoltageUnits.VOLTS
                                     )
                     except Exception as e:
                         print(f"Error adding voltage channel {channel}: {e}")
                         raise
                 
-                # Configure hardware timing - FINITE mode for exact sample count
+                # Configure hardware timing
+                # Match manual measurement: Continuous Samples mode (not FiniteSamps)
+                # Manual uses: SampQuant.SampMode = Continuous Samples
+                # But we still need to read specific number of samples, so use FINITE
+                # However, we'll read in smaller chunks like manual (60 samples at a time)
                 task.timing.cfg_samp_clk_timing(
-                    rate=sample_rate,  # 1kHz = 1 sample per ms
+                    rate=sample_rate,  # 30kHz
                     sample_mode=nidaqmx.constants.AcquisitionType.FINITE,  # Collect exact number of samples
-                    samps_per_chan=total_samples  # Exactly 10,000 samples
+                    samps_per_chan=total_samples  # Total samples to collect
                 )
                 
                 print(f"Starting hardware-timed VOLTAGE acquisition (30kHz)...")
                 task.start()
                 
-                # Read all samples at once (hardware handles timing)
+                # Read samples in chunks like manual measurement
+                # Manual reads 60 samples at a time repeatedly
+                # We'll read in smaller chunks for better matching
+                chunk_size = 60  # Match manual: 60 samples per read
                 timeout = duration_seconds + 5.0  # Add buffer
-                print(f"Reading {total_samples} raw samples per channel...")
-                data = task.read(number_of_samples_per_channel=total_samples, timeout=timeout)
+                
+                print(f"Reading {total_samples} raw samples per channel in chunks of {chunk_size}...")
+                
+                # Read all samples in chunks
+                all_data = []
+                samples_read = 0
+                while samples_read < total_samples:
+                    remaining = total_samples - samples_read
+                    read_size = min(chunk_size, remaining)
+                    
+                    # Match manual: DAQmxReadAnalogF64 with GroupByChannel
+                    # Manual uses: DAQReadNChanNSamp1DWfm with 60 samples
+                    chunk_data = task.read(
+                        number_of_samples_per_channel=read_size,
+                        timeout=timeout
+                    )
+                    if chunk_data is not None:
+                        if len(all_data) == 0:
+                            all_data = chunk_data
+                        else:
+                            # Concatenate chunk data
+                            import numpy as np
+                            if isinstance(all_data, np.ndarray) and isinstance(chunk_data, np.ndarray):
+                                all_data = np.concatenate([all_data, chunk_data])
+                            else:
+                                all_data = list(all_data) + list(chunk_data)
+                        samples_read += read_size
+                    else:
+                        print(f"Warning: Failed to read chunk at {samples_read} samples")
+                        break
+                
+                data = all_data
+                print(f"Read {samples_read} samples total")
                 
                 task.stop()
                 print(f"Hardware VOLTAGE acquisition completed, starting compression...")
@@ -852,11 +891,48 @@ class NIDAQService(QObject):
                         print(f"  Avg voltage: {avg_v_mv:.3f}mV, Avg current: {avg_i_ma:.3f}mA (shunt={shunt_r}Ω)")
                 else:
                     # Multiple channels
-                    if isinstance(data, (list, tuple)) and len(data) == len(channels):
+                    # Manual uses GroupByChannel format: data is list of arrays, one per channel
+                    # Auto Test Trace shows: DAQmxReadAnalogF64 with GroupByChannel
+                    if not isinstance(data, (list, tuple)):
+                        print(f"Error: Unexpected data type: {type(data)}")
+                        return None
+                    
+                    # Check if data is in GroupByChannel format (list of arrays)
+                    if len(data) == len(channels):
+                        # GroupByChannel format: [channel0_data, channel1_data, ...]
                         for i, channel in enumerate(channels):
                             channel_data = data[i] if isinstance(data[i], (list, tuple)) else [data[i]]
                             voltage_data_volts = list(channel_data)
                             print(f"Channel {channel}: {len(voltage_data_volts)} raw voltage samples")
+                            
+                            # Compress voltage data by averaging (30:1 ratio)
+                            compressed_volts = self._compress_data(voltage_data_volts, compress_ratio)
+                            
+                            # Convert voltage to current using Ohm's law: I = V / R
+                            config = self.channel_configs.get(channel, {})
+                            shunt_r = config.get('shunt_r', 0.01)  # Default 0.01Ω
+                            compressed_ma = [(v / shunt_r) * 1000 for v in compressed_volts]  # V/R=A, *1000=mA
+                            
+                            result[channel] = {
+                                'current_data': compressed_ma,  # Current in mA (compressed)
+                                'sample_count': len(compressed_ma),
+                                'name': config.get('name', channel)
+                            }
+                            avg_v_mv = sum(compressed_volts) * 1000 / len(compressed_volts) if compressed_volts else 0
+                            avg_i_ma = sum(compressed_ma) / len(compressed_ma) if compressed_ma else 0
+                            print(f"Channel {channel}: {len(compressed_ma)} compressed samples")
+                            print(f"  Avg voltage: {avg_v_mv:.3f}mV, Avg current: {avg_i_ma:.3f}mA (shunt={shunt_r}Ω)")
+                    else:
+                        # Flat array format: need to reshape
+                        print(f"Warning: Data format unexpected. Expected {len(channels)} channels, got {len(data) if hasattr(data, '__len__') else 'unknown'}")
+                        # Try to handle flat array
+                        samples_per_channel = len(data) // len(channels) if len(data) > 0 else 0
+                        for i, channel in enumerate(channels):
+                            start_idx = i * samples_per_channel
+                            end_idx = start_idx + samples_per_channel
+                            channel_data = data[start_idx:end_idx] if hasattr(data, '__getitem__') else []
+                            voltage_data_volts = list(channel_data)
+                            print(f"Channel {channel}: {len(voltage_data_volts)} raw voltage samples (reshaped)")
                             
                             # Compress voltage data by averaging (30:1 ratio)
                             compressed_volts = self._compress_data(voltage_data_volts, compress_ratio)
