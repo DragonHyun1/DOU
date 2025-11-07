@@ -5,6 +5,8 @@ from PyQt6.QtCore import QObject, pyqtSignal, QTimer
 
 import os
 import sys
+import ctypes
+from ctypes import c_int32, c_uint32, c_double, c_char_p, POINTER, byref, Structure, c_void_p
 
 # NI-DAQmx 런타임 경로 추가 시도
 possible_paths = [
@@ -53,6 +55,36 @@ if found_paths:
 else:
     print("No NI-DAQmx paths found")
 
+# Try to load nicaiu.dll (NI-DAQmx C API) for direct C API access
+NICAIU_DLL = None
+NICAIU_AVAILABLE = False
+nicaiu_dll_paths = [
+    r"C:\Windows\System32\nicaiu.dll",
+    r"C:\Program Files\National Instruments\Shared\ExternalCompilerSupport\C\lib64\msvc\nicaiu.dll",
+    r"C:\Program Files (x86)\National Instruments\Shared\ExternalCompilerSupport\C\lib64\msvc\nicaiu.dll",
+    r"C:\Program Files\National Instruments\RT\NIDAQmx\bin\nicaiu.dll",
+    r"C:\Program Files (x86)\National Instruments\RT\NIDAQmx\bin\nicaiu.dll",
+]
+
+# Also check environment variable
+nicaiu_env_path = os.environ.get('NICAIU_DLL_PATH')
+if nicaiu_env_path:
+    nicaiu_dll_paths.insert(0, nicaiu_env_path)
+
+for dll_path in nicaiu_dll_paths:
+    if os.path.exists(dll_path):
+        try:
+            NICAIU_DLL = ctypes.CDLL(dll_path)
+            NICAIU_AVAILABLE = True
+            print(f"✅ Loaded nicaiu.dll from: {dll_path}")
+            break
+        except Exception as e:
+            print(f"⚠️ Failed to load nicaiu.dll from {dll_path}: {e}")
+            continue
+
+if not NICAIU_AVAILABLE:
+    print("⚠️ nicaiu.dll not found. Will use Python nidaqmx package instead.")
+
 try:
     import nidaqmx
     from nidaqmx.constants import AcquisitionType
@@ -81,6 +113,169 @@ except Exception as e:
     NI_AVAILABLE = False
     print(f"NI-DAQmx import error: {e}")
     print("This may indicate NI-DAQmx runtime is not properly installed")
+
+# NI-DAQmx C API Constants (from nidaqmx.h)
+DAQmx_Val_Volts = 10348
+DAQmx_Val_Amps = 10342
+DAQmx_Val_RSE = 10083  # Referenced Single-Ended
+DAQmx_Val_NRSE = 10078  # Non-Referenced Single-Ended
+DAQmx_Val_Diff = 10106  # Differential
+DAQmx_Val_FiniteSamps = 10178
+DAQmx_Val_ContSamps = 10123
+DAQmx_Val_Rising = 10280
+DAQmx_Val_Falling = 10171
+DAQmx_Val_OnboardClock = None  # Default, typically 0 or empty string
+DAQmx_Val_GroupByChannel = 0
+DAQmx_Val_GroupByScanNumber = 1
+
+class NICAIUWrapper:
+    """Wrapper for NI-DAQmx C API (nicaiu.dll) to match manual measurement behavior"""
+    
+    def __init__(self):
+        if not NICAIU_AVAILABLE or not NICAIU_DLL:
+            raise RuntimeError("nicaiu.dll not available")
+        
+        self.dll = NICAIU_DLL
+        
+        # Map C API functions
+        # DAQmxCreateTask
+        self.dll.DAQmxCreateTask.argtypes = [c_char_p, POINTER(c_uint32)]
+        self.dll.DAQmxCreateTask.restype = c_int32
+        
+        # DAQmxCreateAIVoltageChan
+        self.dll.DAQmxCreateAIVoltageChan.argtypes = [
+            c_uint32, c_char_p, c_char_p, c_int32, c_double, c_double, c_int32, c_char_p
+        ]
+        self.dll.DAQmxCreateAIVoltageChan.restype = c_int32
+        
+        # DAQmxCreateAICurrentChan
+        self.dll.DAQmxCreateAICurrentChan.argtypes = [
+            c_uint32, c_char_p, c_char_p, c_int32, c_double, c_double, c_int32, c_char_p, c_int32, c_double
+        ]
+        self.dll.DAQmxCreateAICurrentChan.restype = c_int32
+        
+        # DAQmxCfgSampClkTiming
+        self.dll.DAQmxCfgSampClkTiming.argtypes = [
+            c_uint32, c_char_p, c_double, c_int32, c_int32, c_uint64
+        ]
+        self.dll.DAQmxCfgSampClkTiming.restype = c_int32
+        
+        # DAQmxStartTask
+        self.dll.DAQmxStartTask.argtypes = [c_uint32]
+        self.dll.DAQmxStartTask.restype = c_int32
+        
+        # DAQmxReadAnalogF64
+        self.dll.DAQmxReadAnalogF64.argtypes = [
+            c_uint32, c_int32, c_double, c_int32, POINTER(c_double), c_uint32,
+            POINTER(c_int32), POINTER(c_void_p)
+        ]
+        self.dll.DAQmxReadAnalogF64.restype = c_int32
+        
+        # DAQmxStopTask
+        self.dll.DAQmxStopTask.argtypes = [c_uint32]
+        self.dll.DAQmxStopTask.restype = c_int32
+        
+        # DAQmxClearTask
+        self.dll.DAQmxClearTask.argtypes = [c_uint32]
+        self.dll.DAQmxClearTask.restype = c_int32
+        
+        # DAQmxGetErrorString
+        self.dll.DAQmxGetErrorString.argtypes = [c_int32, c_char_p, c_uint32]
+        self.dll.DAQmxGetErrorString.restype = c_int32
+        
+        print("✅ NICAIUWrapper initialized successfully")
+    
+    def create_task(self, task_name: str = ""):
+        """Create a DAQmx task"""
+        task_handle = c_uint32()
+        task_name_bytes = task_name.encode('utf-8') if task_name else None
+        error_code = self.dll.DAQmxCreateTask(task_name_bytes, byref(task_handle))
+        if error_code != 0:
+            raise RuntimeError(f"Failed to create task: error code {error_code}")
+        return task_handle.value
+    
+    def create_ai_voltage_chan(self, task_handle: int, physical_channel: str,
+                              name_to_assign: str = "", terminal_config: int = DAQmx_Val_RSE,
+                              min_val: float = -10.0, max_val: float = 10.0,
+                              units: int = DAQmx_Val_Volts, custom_scale_name: str = ""):
+        """Create analog input voltage channel"""
+        physical_channel_bytes = physical_channel.encode('utf-8')
+        name_bytes = name_to_assign.encode('utf-8') if name_to_assign else None
+        scale_name_bytes = custom_scale_name.encode('utf-8') if custom_scale_name else None
+        
+        error_code = self.dll.DAQmxCreateAIVoltageChan(
+            c_uint32(task_handle), physical_channel_bytes, name_bytes,
+            c_int32(terminal_config), c_double(min_val), c_double(max_val),
+            c_int32(units), scale_name_bytes
+        )
+        if error_code != 0:
+            raise RuntimeError(f"Failed to create voltage channel: error code {error_code}")
+    
+    def create_ai_current_chan(self, task_handle: int, physical_channel: str,
+                               name_to_assign: str = "", terminal_config: int = DAQmx_Val_RSE,
+                               min_val: float = -0.1, max_val: float = 0.1,
+                               units: int = DAQmx_Val_Amps, custom_scale_name: str = "",
+                               shunt_resistor_loc: int = 0, ext_shunt_resist_val: float = 0.01):
+        """Create analog input current channel"""
+        physical_channel_bytes = physical_channel.encode('utf-8')
+        name_bytes = name_to_assign.encode('utf-8') if name_to_assign else None
+        scale_name_bytes = custom_scale_name.encode('utf-8') if custom_scale_name else None
+        
+        error_code = self.dll.DAQmxCreateAICurrentChan(
+            c_uint32(task_handle), physical_channel_bytes, name_bytes,
+            c_int32(terminal_config), c_double(min_val), c_double(max_val),
+            c_int32(units), scale_name_bytes, c_int32(shunt_resistor_loc),
+            c_double(ext_shunt_resist_val)
+        )
+        if error_code != 0:
+            raise RuntimeError(f"Failed to create current channel: error code {error_code}")
+    
+    def cfg_samp_clk_timing(self, task_handle: int, source: str, rate: float,
+                           active_edge: int, sample_mode: int, samps_per_chan: int = 0):
+        """Configure sample clock timing"""
+        source_bytes = source.encode('utf-8') if source else None
+        error_code = self.dll.DAQmxCfgSampClkTiming(
+            c_uint32(task_handle), source_bytes, c_double(rate),
+            c_int32(active_edge), c_int32(sample_mode), c_uint64(samps_per_chan)
+        )
+        if error_code != 0:
+            raise RuntimeError(f"Failed to configure sample clock: error code {error_code}")
+    
+    def start_task(self, task_handle: int):
+        """Start task"""
+        error_code = self.dll.DAQmxStartTask(c_uint32(task_handle))
+        if error_code != 0:
+            raise RuntimeError(f"Failed to start task: error code {error_code}")
+    
+    def read_analog_f64(self, task_handle: int, num_samps_per_chan: int, timeout: float,
+                       fill_mode: int, data_array: list, array_size: int):
+        """Read analog F64 data"""
+        data_ptr = (c_double * array_size)(*data_array)
+        samps_per_chan_read = c_int32()
+        reserved = None  # Reserved parameter, should be None
+        
+        error_code = self.dll.DAQmxReadAnalogF64(
+            c_uint32(task_handle), c_int32(num_samps_per_chan), c_double(timeout),
+            c_int32(fill_mode), data_ptr, c_uint32(array_size),
+            byref(samps_per_chan_read), reserved
+        )
+        
+        if error_code != 0 and error_code != -200279:  # -200279 is buffer overflow warning
+            raise RuntimeError(f"Failed to read data: error code {error_code}")
+        
+        return list(data_ptr), samps_per_chan_read.value
+    
+    def stop_task(self, task_handle: int):
+        """Stop task"""
+        error_code = self.dll.DAQmxStopTask(c_uint32(task_handle))
+        if error_code != 0:
+            raise RuntimeError(f"Failed to stop task: error code {error_code}")
+    
+    def clear_task(self, task_handle: int):
+        """Clear task"""
+        error_code = self.dll.DAQmxClearTask(c_uint32(task_handle))
+        if error_code != 0:
+            raise RuntimeError(f"Failed to clear task: error code {error_code}")
 
 class NIDAQService(QObject):
     """Service for NI DAQ multi-channel voltage/current monitoring"""
@@ -461,8 +656,23 @@ class NIDAQService(QObject):
         
         This uses DAQ's built-in current measurement instead of voltage-based calculation.
         Similar to other tool's current mode measurement.
+        
+        If nicaiu.dll is available, uses C API directly to match manual measurement behavior.
+        Otherwise falls back to Python nidaqmx package.
         """
-        if not NI_AVAILABLE or not self.connected:
+        if not self.connected:
+            return None
+        
+        # Try to use nicaiu.dll C API first if available (matches manual measurement)
+        if NICAIU_AVAILABLE:
+            try:
+                return self._read_current_channels_nicaiu(channels, samples_per_channel)
+            except Exception as e:
+                print(f"⚠️ nicaiu.dll C API failed: {e}")
+                print(f"  → Falling back to Python nidaqmx package...")
+        
+        # Fallback to Python nidaqmx package
+        if not NI_AVAILABLE:
             return None
             
         try:
@@ -565,6 +775,185 @@ class NIDAQService(QObject):
             print(error_msg)
             self.error_occurred.emit(error_msg)
             return None
+    
+    def _read_current_channels_nicaiu(self, channels: List[str], samples_per_channel: int = 1000) -> Optional[dict]:
+        """Read current channels using nicaiu.dll C API (matches manual measurement exactly)
+        
+        This method uses the same C API calls as manual measurement tool:
+        - DAQmxCreateTask
+        - DAQmxCreateAICurrentChan
+        - DAQmxCfgSampClkTiming (30kHz, Rising edge, Continuous Samples, 1000 samples)
+        - DAQmxStartTask
+        - DAQmxReadAnalogF64 (reading in chunks like manual)
+        - DAQmxStopTask / DAQmxClearTask
+        """
+        if not NICAIU_AVAILABLE:
+            raise RuntimeError("nicaiu.dll not available")
+        
+        wrapper = NICAIUWrapper()
+        task_handle = None
+        
+        try:
+            print(f"=== Using nicaiu.dll C API for CURRENT measurement ===")
+            print(f"Channels: {channels}")
+            print(f"Samples per channel: {samples_per_channel}")
+            
+            # Create task
+            task_handle = wrapper.create_task()
+            print(f"✅ Task created: handle={task_handle}")
+            
+            # Add current channels
+            num_channels = len(channels)
+            for i, channel in enumerate(channels):
+                physical_channel = f"{self.device_name}/{channel}"
+                config = self.channel_configs.get(channel, {})
+                shunt_r = config.get('shunt_r', 0.01)
+                
+                print(f"Adding CURRENT channel {i+1}/{num_channels}: {physical_channel} (shunt={shunt_r}Ω)")
+                
+                try:
+                    # Try with external shunt resistor specification
+                    wrapper.create_ai_current_chan(
+                        task_handle=task_handle,
+                        physical_channel=physical_channel,
+                        name_to_assign=f"Current_{channel}",
+                        terminal_config=DAQmx_Val_RSE,
+                        min_val=-0.1,  # ±100mA range
+                        max_val=0.1,
+                        units=DAQmx_Val_Amps,
+                        shunt_resistor_loc=1,  # EXTERNAL shunt
+                        ext_shunt_resist_val=shunt_r
+                    )
+                    print(f"  ✅ Channel {channel} configured with external shunt ({shunt_r}Ω)")
+                except Exception as e:
+                    print(f"  ⚠️ External shunt config failed: {e}")
+                    print(f"  → Trying without shunt specification...")
+                    # Fallback: create without explicit shunt (hardware default)
+                    wrapper.create_ai_current_chan(
+                        task_handle=task_handle,
+                        physical_channel=physical_channel,
+                        name_to_assign=f"Current_{channel}",
+                        terminal_config=DAQmx_Val_RSE,
+                        min_val=-0.04,  # ±40mA range (safer)
+                        max_val=0.04,
+                        units=DAQmx_Val_Amps
+                    )
+                    print(f"  ✅ Channel {channel} configured (simplified)")
+            
+            # Configure timing - Match manual measurement exactly:
+            # - SampClk.Rate = 30000
+            # - SampClk.ActiveEdge = Rising
+            # - SampQuant.SampMode = Continuous Samples
+            # - SampQuant.SampPerChan = 1000
+            # - SampClk.Src = "OnboardClock" (empty string = default)
+            print(f"Configuring sample clock timing...")
+            print(f"  → Rate: 30000 Hz")
+            print(f"  → Active Edge: Rising")
+            print(f"  → Sample Mode: Continuous Samples")
+            print(f"  → Samples per Channel: {samples_per_channel}")
+            print(f"  → Clock Source: OnboardClock (default)")
+            
+            wrapper.cfg_samp_clk_timing(
+                task_handle=task_handle,
+                source="",  # Empty = OnboardClock (default)
+                rate=30000.0,  # 30kHz
+                active_edge=DAQmx_Val_Rising,
+                sample_mode=DAQmx_Val_ContSamps,  # Continuous Samples
+                samps_per_chan=samples_per_channel  # 1000 samples
+            )
+            print(f"✅ Timing configured")
+            
+            # Start task
+            print(f"Starting task...")
+            wrapper.start_task(task_handle)
+            print(f"✅ Task started")
+            
+            # Read data in chunks (like manual measurement)
+            # Manual reads in 60-sample chunks repeatedly until 1000 samples collected
+            total_samples = samples_per_channel * num_channels
+            chunk_size = 60  # Match manual: 60 samples per read
+            num_reads = (samples_per_channel + chunk_size - 1) // chunk_size  # Ceiling division
+            
+            print(f"Reading {samples_per_channel} samples per channel in {num_reads} chunks of {chunk_size}...")
+            
+            all_data = []
+            for read_idx in range(num_reads):
+                samples_to_read = min(chunk_size, samples_per_channel - len(all_data) // num_channels)
+                if samples_to_read <= 0:
+                    break
+                
+                # Allocate buffer for interleaved data (channels interleaved)
+                buffer_size = samples_to_read * num_channels
+                data_buffer = [0.0] * buffer_size
+                
+                try:
+                    read_data, samples_read = wrapper.read_analog_f64(
+                        task_handle=task_handle,
+                        num_samps_per_chan=samples_to_read,
+                        timeout=10.0,  # 10 second timeout (match manual)
+                        fill_mode=DAQmx_Val_GroupByScanNumber,  # Interleaved by scan number
+                        data_array=data_buffer,
+                        array_size=buffer_size
+                    )
+                    
+                    all_data.extend(read_data[:samples_read * num_channels])
+                    print(f"  Read chunk {read_idx+1}/{num_reads}: {samples_read} samples per channel (total: {len(all_data)//num_channels}/{samples_per_channel})")
+                    
+                except Exception as e:
+                    print(f"  ⚠️ Read chunk {read_idx+1} failed: {e}")
+                    break
+            
+            # Stop task
+            wrapper.stop_task(task_handle)
+            print(f"✅ Task stopped")
+            
+            # De-interleave data (channels are interleaved: ch0_s0, ch1_s0, ch2_s0, ..., ch0_s1, ch1_s1, ...)
+            samples_collected = len(all_data) // num_channels
+            channel_data = [[] for _ in range(num_channels)]
+            
+            for i in range(samples_collected):
+                for ch_idx in range(num_channels):
+                    data_idx = i * num_channels + ch_idx
+                    if data_idx < len(all_data):
+                        channel_data[ch_idx].append(all_data[data_idx])
+            
+            # Process results
+            result = {}
+            for i, channel in enumerate(channels):
+                if i < len(channel_data) and len(channel_data[i]) > 0:
+                    # Convert from Amps to mA
+                    current_data_ma = [val * 1000.0 for val in channel_data[i]]
+                    avg_current_ma = sum(current_data_ma) / len(current_data_ma)
+                    
+                    print(f"Channel {channel}: {len(channel_data[i])} samples, avg: {avg_current_ma:.3f}mA")
+                    
+                    config = self.channel_configs.get(channel, {})
+                    result[channel] = {
+                        'current_data': current_data_ma,  # Current in mA
+                        'avg_current': avg_current_ma / 1000.0,  # Average in Amps
+                        'voltage': 0.0,  # No voltage in current mode
+                        'sample_count': len(channel_data[i]),
+                        'name': config.get('name', channel)
+                    }
+            
+            print(f"=== nicaiu.dll C API measurement completed: {len(result)} channels ===")
+            return result
+            
+        except Exception as e:
+            error_msg = f"nicaiu.dll C API measurement error: {e}"
+            print(error_msg)
+            import traceback
+            traceback.print_exc()
+            self.error_occurred.emit(error_msg)
+            return None
+        finally:
+            # Clean up task
+            if task_handle is not None:
+                try:
+                    wrapper.clear_task(task_handle)
+                    print(f"✅ Task cleared")
+                except Exception as e:
+                    print(f"⚠️ Task cleanup error: {e}")
     
     def read_current_via_differential_measurement(self, voltage_channels: List[str], samples_per_channel: int = 12) -> Optional[dict]:
         """Read current using differential measurement across shunt resistors
