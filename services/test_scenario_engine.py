@@ -1861,6 +1861,111 @@ class TestScenarioEngine(QObject):
         """Get list of enabled channels from multi-channel monitor"""
         return self._get_enabled_channels_from_monitor()
     
+    def _calculate_robust_statistics(self, values: List[float], 
+                                     exclude_stabilization: bool = True,
+                                     stabilization_seconds: float = 1.0,
+                                     remove_outliers: bool = True,
+                                     outlier_method: str = 'iqr') -> Dict[str, Any]:
+        """
+        Calculate robust statistics with outlier removal and stabilization period exclusion
+        
+        Args:
+            values: List of values to analyze
+            exclude_stabilization: Whether to exclude initial stabilization period
+            stabilization_seconds: Duration of stabilization period in seconds (assuming 1ms sampling)
+            remove_outliers: Whether to remove outliers
+            outlier_method: Method for outlier detection ('iqr' or 'zscore')
+        
+        Returns:
+            Dictionary with statistics: avg, median, min, max, std, count, filtered_count
+        """
+        if not values:
+            return {
+                'avg': 0.0, 'median': 0.0, 'min': 0.0, 'max': 0.0,
+                'std': 0.0, 'count': 0, 'filtered_count': 0
+            }
+        
+        # Convert to numpy array for easier processing
+        import numpy as np
+        values_array = np.array(values)
+        
+        # Step 1: Exclude stabilization period (first N samples)
+        if exclude_stabilization and len(values_array) > 0:
+            # Assuming 1ms sampling rate (1000 samples per second)
+            stabilization_samples = int(stabilization_seconds * 1000)
+            if stabilization_samples < len(values_array):
+                values_array = values_array[stabilization_samples:]
+                self.log_callback(f"Excluded {stabilization_samples} stabilization samples", "info")
+        
+        if len(values_array) == 0:
+            return {
+                'avg': 0.0, 'median': 0.0, 'min': 0.0, 'max': 0.0,
+                'std': 0.0, 'count': len(values), 'filtered_count': 0
+            }
+        
+        # Step 2: Remove outliers
+        filtered_values = values_array.copy()
+        original_count = len(filtered_values)
+        
+        if remove_outliers and len(filtered_values) > 10:  # Need enough samples for outlier detection
+            if outlier_method == 'iqr':
+                # IQR (Interquartile Range) method
+                Q1 = np.percentile(filtered_values, 25)
+                Q3 = np.percentile(filtered_values, 75)
+                IQR = Q3 - Q1
+                
+                # Define outlier bounds (1.5 * IQR is standard)
+                lower_bound = Q1 - 1.5 * IQR
+                upper_bound = Q3 + 1.5 * IQR
+                
+                # Filter outliers
+                mask = (filtered_values >= lower_bound) & (filtered_values <= upper_bound)
+                filtered_values = filtered_values[mask]
+                
+                outlier_count = original_count - len(filtered_values)
+                if outlier_count > 0:
+                    self.log_callback(f"Removed {outlier_count} outliers using IQR method (bounds: {lower_bound:.3f} to {upper_bound:.3f})", "info")
+            
+            elif outlier_method == 'zscore':
+                # Z-score method (values beyond 3 standard deviations)
+                mean = np.mean(filtered_values)
+                std = np.std(filtered_values)
+                
+                if std > 0:
+                    z_scores = np.abs((filtered_values - mean) / std)
+                    mask = z_scores < 3.0
+                    filtered_values = filtered_values[mask]
+                    
+                    outlier_count = original_count - len(filtered_values)
+                    if outlier_count > 0:
+                        self.log_callback(f"Removed {outlier_count} outliers using Z-score method", "info")
+        
+        # Step 3: Calculate statistics on filtered data
+        if len(filtered_values) > 0:
+            avg = float(np.mean(filtered_values))
+            median = float(np.median(filtered_values))
+            min_val = float(np.min(filtered_values))
+            max_val = float(np.max(filtered_values))
+            std = float(np.std(filtered_values))
+        else:
+            # Fallback to original values if all filtered out
+            avg = float(np.mean(values_array))
+            median = float(np.median(values_array))
+            min_val = float(np.min(values_array))
+            max_val = float(np.max(values_array))
+            std = float(np.std(values_array))
+            filtered_values = values_array
+        
+        return {
+            'avg': avg,
+            'median': median,
+            'min': min_val,
+            'max': max_val,
+            'std': std,
+            'count': original_count,
+            'filtered_count': len(filtered_values)
+        }
+    
     def _read_channel_current(self, channel: str) -> float:
         """Read current from specific DAQ channel"""
         if not self.daq_service:
@@ -2295,26 +2400,42 @@ class TestScenarioEngine(QObject):
                     values = [data.get(channel_key, 0) for data in self.daq_data if channel_key in data]
                     
                     if values:
-                        # Calculate statistics
-                        avg_value = sum(values) / len(values)
-                        min_value = min(values)
-                        max_value = max(values)
+                        # Calculate robust statistics with outlier removal and stabilization exclusion
+                        stats = self._calculate_robust_statistics(
+                            values,
+                            exclude_stabilization=True,
+                            stabilization_seconds=1.0,  # Exclude first 1 second
+                            remove_outliers=True,
+                            outlier_method='iqr'
+                        )
                         
                         # Write statistics
-                        summary_sheet.write(f'A{row}', '  Average:', label_format)
-                        summary_sheet.write(f'B{row}', f"{avg_value:.3f} {unit}")
+                        summary_sheet.write(f'A{row}', '  Average (filtered):', label_format)
+                        summary_sheet.write(f'B{row}', f"{stats['avg']:.3f} {unit}")
+                        row += 1
+                        
+                        summary_sheet.write(f'A{row}', '  Median:', label_format)
+                        summary_sheet.write(f'B{row}', f"{stats['median']:.3f} {unit}")
                         row += 1
                         
                         summary_sheet.write(f'A{row}', '  Minimum:', label_format)
-                        summary_sheet.write(f'B{row}', f"{min_value:.3f} {unit}")
+                        summary_sheet.write(f'B{row}', f"{stats['min']:.3f} {unit}")
                         row += 1
                         
                         summary_sheet.write(f'A{row}', '  Maximum:', label_format)
-                        summary_sheet.write(f'B{row}', f"{max_value:.3f} {unit}")
+                        summary_sheet.write(f'B{row}', f"{stats['max']:.3f} {unit}")
                         row += 1
                         
                         summary_sheet.write(f'A{row}', '  Range:', label_format)
-                        summary_sheet.write(f'B{row}', f"{max_value - min_value:.3f} {unit}")
+                        summary_sheet.write(f'B{row}', f"{stats['max'] - stats['min']:.3f} {unit}")
+                        row += 1
+                        
+                        summary_sheet.write(f'A{row}', '  Std Dev:', label_format)
+                        summary_sheet.write(f'B{row}', f"{stats['std']:.3f} {unit}")
+                        row += 1
+                        
+                        summary_sheet.write(f'A{row}', '  Samples:', label_format)
+                        summary_sheet.write(f'B{row}', f"{stats['filtered_count']}/{stats['count']}")
                         row += 1
                     else:
                         summary_sheet.write(f'A{row}', '  Status:', label_format)
@@ -2505,10 +2626,14 @@ class TestScenarioEngine(QObject):
                         values = [v for v in formatted_data[column_name] if isinstance(v, (int, float))]
                         
                         if values:
-                            avg_value = sum(values) / len(values)
-                            min_value = min(values)
-                            max_value = max(values)
-                            range_value = max_value - min_value
+                            # Calculate robust statistics with outlier removal and stabilization exclusion
+                            stats = self._calculate_robust_statistics(
+                                values,
+                                exclude_stabilization=True,
+                                stabilization_seconds=1.0,  # Exclude first 1 second
+                                remove_outliers=True,
+                                outlier_method='iqr'
+                            )
                             
                             # Add rail header
                             summary_data['Metric'].append(f'[{rail_name}]')
@@ -2516,16 +2641,22 @@ class TestScenarioEngine(QObject):
                             
                             # Add statistics
                             summary_data['Metric'].extend([
-                                f'  Average ({unit})',
+                                f'  Average (filtered) ({unit})',
+                                f'  Median ({unit})',
                                 f'  Minimum ({unit})',
                                 f'  Maximum ({unit})',
-                                f'  Range ({unit})'
+                                f'  Range ({unit})',
+                                f'  Std Dev ({unit})',
+                                f'  Samples (filtered/total)'
                             ])
                             summary_data['Value'].extend([
-                                float(f'{avg_value:.6f}'),
-                                float(f'{min_value:.6f}'),
-                                float(f'{max_value:.6f}'),
-                                float(f'{range_value:.6f}')
+                                float(f'{stats["avg"]:.6f}'),
+                                float(f'{stats["median"]:.6f}'),
+                                float(f'{stats["min"]:.6f}'),
+                                float(f'{stats["max"]:.6f}'),
+                                float(f'{stats["max"] - stats["min"]:.6f}'),
+                                float(f'{stats["std"]:.6f}'),
+                                f"{stats['filtered_count']}/{stats['count']}"
                             ])
                             
                             # Add separator between rails
