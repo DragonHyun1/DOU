@@ -1169,20 +1169,27 @@ class NIDAQService(QObject):
                         raise
                 
                 # Configure timing: Match manual exactly
-                # Manual: Continuous Samples mode, 1000 samples per channel
+                # Manual: Continuous Samples mode, but SampQuant.SampPerChan = 1000
+                # Manual Trace shows: setTimingF64U64AP("", SampQuant.SampPerChan, 1000.0)
+                # This sets buffer size or sample limit even in Continuous mode
                 num_channels = len(channels)
                 total_samples = samples_per_channel_total * num_channels
                 
-                # Increase buffer size significantly to prevent overflow
-                # At 30kHz, we need buffer for at least 1 second of data (30000 samples)
-                # Use much larger buffer to handle continuous acquisition
-                min_buffer_size = int(sample_rate * 2)  # 2 seconds worth of data at 30kHz = 60000 samples
-                task.in_stream.input_buf_size = max(total_samples * 10, min_buffer_size)
+                # Match manual: Set buffer size to handle 1000 samples per channel
+                # Manual uses SampPerChan=1000 even in Continuous mode
+                task.in_stream.input_buf_size = max(total_samples * 2, 10000)  # At least 2x samples or 10k
                 
+                # Match manual exactly:
+                # - SampQuant.SampMode = Continuous Samples
+                # - SampQuant.SampPerChan = 1000
+                # - SampClk.Rate = 30000
+                # - SampClk.ActiveEdge = Rising
+                # - SampClk.Src = "OnboardClock" (default)
                 task.timing.cfg_samp_clk_timing(
-                    rate=sample_rate,  # 30kHz
-                    sample_mode=nidaqmx.constants.AcquisitionType.CONTINUOUS,  # Match manual: Continuous Samples
-                    active_edge=nidaqmx.constants.Edge.RISING  # Match manual: Rising
+                    rate=sample_rate,  # 30kHz (SampClk.Rate)
+                    sample_mode=nidaqmx.constants.AcquisitionType.CONTINUOUS,  # Continuous Samples (SampQuant.SampMode)
+                    samps_per_chan=samples_per_channel_total,  # 1000 (SampQuant.SampPerChan) - sets buffer/limit
+                    active_edge=nidaqmx.constants.Edge.RISING  # Rising (SampClk.ActiveEdge)
                 )
                 
                 print(f"Starting CONTINUOUS acquisition (30kHz, Rising edge, match manual)...")
