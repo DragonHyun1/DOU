@@ -1480,31 +1480,32 @@ class NIDAQService(QObject):
                             print(f"  🚨 Current calculation will be INCORRECT!")
                             print(f"")
                         
-                        # CRITICAL: Apply calibration factor to correct systematic measurement error
-                        # DoU measures larger shunt voltage than Manual (6~68x depending on channel)
-                        # This may be due to DEFAULT terminal mode not being true differential
-                        # or hardware measurement path differences
-                        # TODO: Investigate root cause and fix measurement, not just calibration
+                        # WARNING: Calibration factors are DISABLED
+                        # Reason: Only validated for Phone App scenario (1~6mA range)
+                        # Different scenarios (Idle, WiFi Heavy, etc.) may have different current ranges
+                        # If error is non-linear, same calibration factor won't work for all scenarios
+                        # TODO: Find root cause (likely incorrect shunt resistor values or measurement mode issue)
                         
-                        # Calibration factors determined by comparing with Manual measurements
-                        # Format: channel -> factor (Manual / DoU ratio)
-                        CALIBRATION_FACTORS = {
-                            'ai0': 0.237,  # -0.337mA -> -0.080mA (Manual: 0.08mA)
-                            'ai1': 0.507,  # 0.789mA -> 0.400mA (Manual: 0.4mA)
-                            'ai2': 0.431,  # -1.786mA -> -0.770mA (Manual: -0.77mA)
-                            'ai3': 0.156,  # 6.533mA -> 1.019mA (Manual: 1.018mA)
-                            'ai4': 0.415,  # 0.337mA -> 0.140mA (Manual: 0.14mA)
-                            'ai5': 0.015,  # 2.984mA -> 0.045mA (Manual: 0.044mA)
-                        }
+                        # Calibration factors (DISABLED - for reference only)
+                        # These were determined from Phone App scenario only:
+                        # 'ai0': 0.237, 'ai1': 0.507, 'ai2': 0.431, 
+                        # 'ai3': 0.156, 'ai4': 0.415, 'ai5': 0.015
                         
-                        # Apply calibration if available
-                        calibration_factor = CALIBRATION_FACTORS.get(channels[0], 1.0)
+                        # Use ENABLE_CALIBRATION = True to enable (not recommended without validation)
+                        ENABLE_CALIBRATION = False
                         
-                        compressed_ma = [(v / shunt_r) * 1000 * calibration_factor for v in compressed_volts]  # V/R=A, *1000=mA, * calib
+                        if ENABLE_CALIBRATION:
+                            CALIBRATION_FACTORS = {
+                                'ai0': 0.237, 'ai1': 0.507, 'ai2': 0.431,
+                                'ai3': 0.156, 'ai4': 0.415, 'ai5': 0.015,
+                            }
+                            calibration_factor = CALIBRATION_FACTORS.get(channels[0], 1.0)
+                            print(f"  ⚙️ Calibration factor: {calibration_factor:.3f} (Phone App scenario only!)")
+                        else:
+                            calibration_factor = 1.0
+                        
+                        compressed_ma = [(v / shunt_r) * 1000 * calibration_factor for v in compressed_volts]
                         avg_i_ma = sum(compressed_ma) / len(compressed_ma) if compressed_ma else 0
-                        
-                        if calibration_factor != 1.0:
-                            print(f"  ⚙️ Calibration factor applied: {calibration_factor:.3f}")
                         
                         # Additional validation: Check if current is unreasonably high
                         if abs(avg_i_ma) > 10000:  # > 10A (10,000mA)
@@ -1564,25 +1565,21 @@ class NIDAQService(QObject):
                                 print(f"  🚨 Current calculation will be INCORRECT!")
                                 print(f"")
                             
-                            # CRITICAL: Apply calibration factor to correct systematic measurement error
-                            # Calibration factors determined by comparing with Manual measurements
-                            CALIBRATION_FACTORS = {
-                                'ai0': 0.237,
-                                'ai1': 0.507,
-                                'ai2': 0.431,
-                                'ai3': 0.156,
-                                'ai4': 0.415,
-                                'ai5': 0.015,
-                            }
+                            # WARNING: Calibration factors are DISABLED (see above for details)
+                            ENABLE_CALIBRATION = False
                             
-                            # Apply calibration if available
-                            calibration_factor = CALIBRATION_FACTORS.get(channel, 1.0)
+                            if ENABLE_CALIBRATION:
+                                CALIBRATION_FACTORS = {
+                                    'ai0': 0.237, 'ai1': 0.507, 'ai2': 0.431,
+                                    'ai3': 0.156, 'ai4': 0.415, 'ai5': 0.015,
+                                }
+                                calibration_factor = CALIBRATION_FACTORS.get(channel, 1.0)
+                                print(f"  ⚙️ Calibration: {calibration_factor:.3f} (Phone App only!)")
+                            else:
+                                calibration_factor = 1.0
                             
-                            compressed_ma = [(v / shunt_r) * 1000 * calibration_factor for v in compressed_volts]  # V/R=A, *1000=mA, * calib
+                            compressed_ma = [(v / shunt_r) * 1000 * calibration_factor for v in compressed_volts]
                             avg_i_ma = sum(compressed_ma) / len(compressed_ma) if compressed_ma else 0
-                            
-                            if calibration_factor != 1.0:
-                                print(f"  ⚙️ Calibration factor applied: {calibration_factor:.3f}")
                             
                             # Additional validation: Check if current is unreasonably high
                             if abs(avg_i_ma) > 10000:  # > 10A (10,000mA)
