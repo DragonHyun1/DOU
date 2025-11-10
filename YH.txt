@@ -1,80 +1,16 @@
-=== Hardware-Timed VOLTAGE Collection (with Compression) ===
-Channels: ['ai0', 'ai1', 'ai2', 'ai3', 'ai4', 'ai5']
-Sampling rate: 30000.0 Hz (30kHz)
-Duration: 10.0 seconds
-Raw samples: 300000 (300k)
-Compress ratio: 30:1
-Final samples: 10000 (after compression)
-Mode: VOLTAGE measurement (external shunt)
-Adding VOLTAGE channel: Dev1/ai0 (VBAT)
-  → Trying DIFFERENTIAL mode with ±5V range...
-  ⚠️ DIFFERENTIAL failed: AttributeError: DIFFERENTIAL
-     Error details: DIFFERENTIAL
-  → Trying DEFAULT mode (hardware jumpers)...
-  ✅ DEFAULT mode enabled (±5V range)
-  📌 Channel ai0 configured with DEFAULT mode
-Adding VOLTAGE channel: Dev1/ai1 (VDD_1P8_AP)
-  → Trying DIFFERENTIAL mode with ±5V range...
-  ⚠️ DIFFERENTIAL failed: AttributeError: DIFFERENTIAL
-     Error details: DIFFERENTIAL
-  → Trying DEFAULT mode (hardware jumpers)...
-  ✅ DEFAULT mode enabled (±5V range)
-  📌 Channel ai1 configured with DEFAULT mode
-Adding VOLTAGE channel: Dev1/ai2 (VDD_MLDO_2P0)
-  → Trying DIFFERENTIAL mode with ±5V range...
-  ⚠️ DIFFERENTIAL failed: AttributeError: DIFFERENTIAL
-     Error details: DIFFERENTIAL
-  → Trying DEFAULT mode (hardware jumpers)...
-  ✅ DEFAULT mode enabled (±5V range)
-  📌 Channel ai2 configured with DEFAULT mode
-Adding VOLTAGE channel: Dev1/ai3 (VDD_WIFI_1P0)
-  → Trying DIFFERENTIAL mode with ±5V range...
-  ⚠️ DIFFERENTIAL failed: AttributeError: DIFFERENTIAL
-     Error details: DIFFERENTIAL
-  → Trying DEFAULT mode (hardware jumpers)...
-  ✅ DEFAULT mode enabled (±5V range)
-  📌 Channel ai3 configured with DEFAULT mode
-Adding VOLTAGE channel: Dev1/ai4 (VDD_1P2_AP_WIFI)
-  → Trying DIFFERENTIAL mode with ±5V range...
-  ⚠️ DIFFERENTIAL failed: AttributeError: DIFFERENTIAL
-     Error details: DIFFERENTIAL
-  → Trying DEFAULT mode (hardware jumpers)...
-  ✅ DEFAULT mode enabled (±5V range)
-  📌 Channel ai4 configured with DEFAULT mode
-Adding VOLTAGE channel: Dev1/ai5 (VDD_1P35_WIFIPMU)
-  → Trying DIFFERENTIAL mode with ±5V range...
-  ⚠️ DIFFERENTIAL failed: AttributeError: DIFFERENTIAL
-     Error details: DIFFERENTIAL
-  → Trying DEFAULT mode (hardware jumpers)...
-  ✅ DEFAULT mode enabled (±5V range)
-  📌 Channel ai5 configured with DEFAULT mode
-Starting hardware-timed VOLTAGE acquisition (30kHz)...
-Reading 300000 raw samples per channel...
-Hardware VOLTAGE acquisition completed, starting compression...
-Channel ai0: 300000 raw voltage samples
-Channel ai0: 10000 compressed samples
-  Avg voltage: -0.003mV, Avg current: -0.337mA (shunt=0.01Ω)
-  Terminal mode: DEFAULT, Validation: ✅ PASSED
-Channel ai1: 300000 raw voltage samples
-Channel ai1: 10000 compressed samples
-  Avg voltage: 0.079mV, Avg current: 0.789mA (shunt=0.1Ω)
-  Terminal mode: DEFAULT, Validation: ✅ PASSED
-Channel ai2: 300000 raw voltage samples
-Channel ai2: 10000 compressed samples
-  Avg voltage: -0.009mV, Avg current: -1.786mA (shunt=0.005Ω)
-  Terminal mode: DEFAULT, Validation: ✅ PASSED
-Channel ai3: 300000 raw voltage samples
-Channel ai3: 10000 compressed samples
-  Avg voltage: 0.033mV, Avg current: 6.533mA (shunt=0.005Ω)
-  Terminal mode: DEFAULT, Validation: ✅ PASSED
-Channel ai4: 300000 raw voltage samples
-Channel ai4: 10000 compressed samples
-  Avg voltage: 0.034mV, Avg current: 0.337mA (shunt=0.1Ω)
-  Terminal mode: DEFAULT, Validation: ✅ PASSED
-Channel ai5: 300000 raw voltage samples
-Channel ai5: 10000 compressed samples
-  Avg voltage: 0.030mV, Avg current: 2.984mA (shunt=0.01Ω)
-  Terminal mode: DEFAULT, Validation: ✅ PASSED
-=== Hardware-timed VOLTAGE collection completed: 6 channels ===
-DAQ collection completed: 6 channels
-Processing 10000 samples...
+================================================================================
+
+📌 Manual Measurement Reference:
+   → ai3 Average Current: 1.018 mA
+   → ai3 Max Current: 29.59 mA
+   → ai3 Min Current: -1.513 mA
+
+================================================================================
+
+🔌 Connecting to NI DAQ device...
+Traceback (most recent call last):
+  File "d:\PCT\Tool\DOU_0926\test_shunt_resistor.py", line 190, in <module>
+    test_shunt_values()
+  File "d:\PCT\Tool\DOU_0926\test_shunt_resistor.py", line 45, in test_shunt_values
+    if not daq_service.connect():
+AttributeError: 'NIDAQService' object has no attribute 'connect'. Did you mean: 'connected'?
