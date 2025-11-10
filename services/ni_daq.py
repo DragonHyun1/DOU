@@ -1320,10 +1320,13 @@ class NIDAQService(QObject):
                         # Method 1: Try TerminalConfiguration.DIFFERENTIAL
                         try:
                             print(f"  → Trying DIFFERENTIAL mode (method 1: TerminalConfiguration.DIFFERENTIAL)...")
+                            # NOTE: Voltage range affects measurement scaling
+                            # If using ±5V when Manual uses ±1.67V, results will be 3x higher
+                            # TODO: Confirm Manual's voltage range and adjust accordingly
                             task.ai_channels.add_ai_voltage_chan(
                                 channel_name,
                                 terminal_config=nidaqmx.constants.TerminalConfiguration.DIFFERENTIAL,
-                                min_val=-5.0,
+                                min_val=-5.0,  # TODO: Check if Manual uses ±1.67V or ±2V
                                 max_val=5.0,
                                 units=nidaqmx.constants.VoltageUnits.VOLTS
                             )
