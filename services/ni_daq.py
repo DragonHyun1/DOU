@@ -1304,57 +1304,74 @@ class NIDAQService(QObject):
                     
                     # Use voltage measurement with DIFFERENTIAL configuration
                     # to measure voltage drop across external shunt resistor
+                    # 
+                    # CRITICAL FIX: Increased voltage range to prevent DIFFERENTIAL mode failure
+                    # Previous range (±200mV) was too narrow and caused fallback to RSE mode,
+                    # which measures rail voltage instead of shunt drop (causing 100,000x error)
+                    terminal_mode_used = "UNKNOWN"
                     try:
-                        # Try DEFAULT first (follow hardware jumper settings, like Traditional DAQ API)
+                        # Try DIFFERENTIAL first with WIDE range to ensure success
+                        # Wide range (±5V) ensures no range errors while still measuring shunt drop accurately
                         try:
+                            print(f"  → Trying DIFFERENTIAL mode with ±5V range...")
                             task.ai_channels.add_ai_voltage_chan(
                                 channel_name,
-                                terminal_config=nidaqmx.constants.TerminalConfiguration.DEFAULT,
-                                min_val=-0.2,  # ±200mV range (for shunt voltage drop)
-                                max_val=0.2,
+                                terminal_config=nidaqmx.constants.TerminalConfiguration.DIFFERENTIAL,
+                                min_val=-5.0,  # ±5V range (wide enough to prevent failures)
+                                max_val=5.0,
                                 units=nidaqmx.constants.VoltageUnits.VOLTS
                             )
-                            print(f"  → DEFAULT mode (following hardware jumper settings)")
-                        except Exception as default_error:
-                            # Try explicit DIFFERENTIAL
-                            print(f"  ⚠️ DEFAULT failed: {type(default_error).__name__}: {str(default_error)}")
+                            terminal_mode_used = "DIFFERENTIAL"
+                            print(f"  ✅ DIFFERENTIAL mode enabled (±5V range)")
+                        except Exception as diff_error:
+                            # If DIFFERENTIAL fails, try DEFAULT (follows hardware jumper settings)
+                            print(f"  ⚠️ DIFFERENTIAL failed: {type(diff_error).__name__}: {str(diff_error)}")
+                            print(f"     Error details: {diff_error}")
                             try:
-                                print(f"  → Trying explicit DIFFERENTIAL...")
+                                print(f"  → Trying DEFAULT mode (hardware jumpers)...")
                                 task.ai_channels.add_ai_voltage_chan(
                                     channel_name,
-                                    terminal_config=nidaqmx.constants.TerminalConfiguration.DIFFERENTIAL,
-                                    min_val=-0.2,  # ±200mV range (for shunt voltage drop)
-                                    max_val=0.2,
+                                    terminal_config=nidaqmx.constants.TerminalConfiguration.DEFAULT,
+                                    min_val=-5.0,  # ±5V range
+                                    max_val=5.0,
                                     units=nidaqmx.constants.VoltageUnits.VOLTS
                                 )
-                                print(f"  → DIFFERENTIAL mode enabled")
-                            except Exception as diff_error:
-                                # Try NRSE (Referenced Single-Ended) as fallback
-                                print(f"  ⚠️ DIFFERENTIAL failed: {type(diff_error).__name__}: {str(diff_error)}")
+                                terminal_mode_used = "DEFAULT"
+                                print(f"  ✅ DEFAULT mode enabled (±5V range)")
+                            except Exception as default_error:
+                                # Try NRSE as fallback
+                                print(f"  ⚠️ DEFAULT failed: {type(default_error).__name__}: {str(default_error)}")
                                 try:
-                                    print(f"  → Trying NRSE (Referenced Single-Ended)...")
+                                    print(f"  → Trying NRSE mode...")
                                     task.ai_channels.add_ai_voltage_chan(
                                         channel_name,
                                         terminal_config=nidaqmx.constants.TerminalConfiguration.NRSE,
-                                        min_val=-0.2,  # ±200mV range
-                                        max_val=0.2,
-                                        units=nidaqmx.constants.VoltageUnits.VOLTS
-                                    )
-                                    print(f"  → NRSE mode enabled")
-                                except:
-                                    # Final fallback to RSE with warning
-                                    print(f"  ⚠️ NRSE also failed, falling back to RSE")
-                                    print(f"  ⚠️ WARNING: RSE mode will measure Rail voltage, not Shunt drop!")
-                                    task.ai_channels.add_ai_voltage_chan(
-                                        channel_name,
-                                        terminal_config=nidaqmx.constants.TerminalConfiguration.RSE,
-                                        min_val=-5.0,  # ±5V range (for rail voltage)
+                                        min_val=-5.0,
                                         max_val=5.0,
                                         units=nidaqmx.constants.VoltageUnits.VOLTS
                                     )
+                                    terminal_mode_used = "NRSE"
+                                    print(f"  ⚠️ NRSE mode enabled (may not measure differential correctly)")
+                                except:
+                                    # Last resort: RSE mode (will measure rail voltage!)
+                                    print(f"  ⚠️ NRSE also failed, using RSE as last resort")
+                                    print(f"  🚨 WARNING: RSE mode measures Rail Voltage, NOT shunt drop!")
+                                    print(f"  🚨 This will cause ~100,000x error in current measurement!")
+                                    task.ai_channels.add_ai_voltage_chan(
+                                        channel_name,
+                                        terminal_config=nidaqmx.constants.TerminalConfiguration.RSE,
+                                        min_val=-10.0,  # ±10V range for rail voltage
+                                        max_val=10.0,
+                                        units=nidaqmx.constants.VoltageUnits.VOLTS
+                                    )
+                                    terminal_mode_used = "RSE"
                     except Exception as e:
-                        print(f"Error adding voltage channel {channel}: {e}")
+                        print(f"❌ Error adding voltage channel {channel}: {e}")
                         raise
+                    
+                    # Store terminal mode for validation
+                    config['terminal_mode'] = terminal_mode_used
+                    print(f"  📌 Channel {channel} configured with {terminal_mode_used} mode")
                 
                 # Configure hardware timing - FINITE mode for exact sample count
                 task.timing.cfg_samp_clk_timing(
@@ -1389,17 +1406,55 @@ class NIDAQService(QObject):
                         # Convert voltage to current using Ohm's law: I = V / R
                         config = self.channel_configs.get(channels[0], {})
                         shunt_r = config.get('shunt_r', 0.01)  # Default 0.01Ω
+                        terminal_mode = config.get('terminal_mode', 'UNKNOWN')
+                        target_v = config.get('target_v', 0.0)
+                        
+                        # Calculate average voltage for validation
+                        avg_v_volts = sum(compressed_volts) / len(compressed_volts) if compressed_volts else 0
+                        avg_v_mv = avg_v_volts * 1000
+                        
+                        # VALIDATION: Check if measuring rail voltage instead of shunt drop
+                        # Expected shunt drop: 0.01mV ~ 100mV (typically < 10mV for most cases)
+                        # Rail voltage: 1V ~ 5V (1000mV ~ 5000mV)
+                        is_rail_voltage = False
+                        if abs(avg_v_volts) > 0.5:  # > 500mV is suspicious for shunt drop
+                            is_rail_voltage = True
+                            print(f"")
+                            print(f"  🚨 CRITICAL WARNING for {channels[0]} 🚨")
+                            print(f"  🚨 Measured voltage ({avg_v_mv:.1f}mV) is too high for shunt drop!")
+                            print(f"  🚨 Expected shunt drop: < 100mV")
+                            print(f"  🚨 Measured value: {avg_v_mv:.1f}mV (likely measuring Rail Voltage!)")
+                            print(f"  🚨 Rail voltage for this channel: ~{target_v*1000:.0f}mV")
+                            print(f"  🚨 Terminal mode: {terminal_mode}")
+                            if terminal_mode == "RSE":
+                                print(f"  🚨 RSE mode measures rail voltage, not shunt drop!")
+                                print(f"  🚨 Hardware must be connected in DIFFERENTIAL mode")
+                            print(f"  🚨 Current calculation will be INCORRECT!")
+                            print(f"")
+                        
                         compressed_ma = [(v / shunt_r) * 1000 for v in compressed_volts]  # V/R=A, *1000=mA
+                        avg_i_ma = sum(compressed_ma) / len(compressed_ma) if compressed_ma else 0
+                        
+                        # Additional validation: Check if current is unreasonably high
+                        if abs(avg_i_ma) > 10000:  # > 10A (10,000mA)
+                            print(f"  🚨 WARNING: Current {avg_i_ma:.1f}mA is unreasonably high!")
+                            print(f"  🚨 This confirms measurement error (likely rail voltage)")
                         
                         result[channels[0]] = {
                             'current_data': compressed_ma,  # Current in mA (compressed)
                             'sample_count': len(compressed_ma),
-                            'name': config.get('name', channels[0])
+                            'name': config.get('name', channels[0]),
+                            'validation': {
+                                'is_rail_voltage': is_rail_voltage,
+                                'terminal_mode': terminal_mode,
+                                'avg_voltage_mv': avg_v_mv,
+                                'expected_shunt_drop_mv': '< 100mV'
+                            }
                         }
-                        avg_v_mv = sum(compressed_volts) * 1000 / len(compressed_volts) if compressed_volts else 0
-                        avg_i_ma = sum(compressed_ma) / len(compressed_ma) if compressed_ma else 0
+                        
                         print(f"Channel {channels[0]}: {len(compressed_ma)} compressed samples")
                         print(f"  Avg voltage: {avg_v_mv:.3f}mV, Avg current: {avg_i_ma:.3f}mA (shunt={shunt_r}Ω)")
+                        print(f"  Terminal mode: {terminal_mode}, Validation: {'❌ FAILED' if is_rail_voltage else '✅ PASSED'}")
                 else:
                     # Multiple channels
                     if isinstance(data, (list, tuple)) and len(data) == len(channels):
@@ -1414,17 +1469,53 @@ class NIDAQService(QObject):
                             # Convert voltage to current using Ohm's law: I = V / R
                             config = self.channel_configs.get(channel, {})
                             shunt_r = config.get('shunt_r', 0.01)  # Default 0.01Ω
+                            terminal_mode = config.get('terminal_mode', 'UNKNOWN')
+                            target_v = config.get('target_v', 0.0)
+                            
+                            # Calculate average voltage for validation
+                            avg_v_volts = sum(compressed_volts) / len(compressed_volts) if compressed_volts else 0
+                            avg_v_mv = avg_v_volts * 1000
+                            
+                            # VALIDATION: Check if measuring rail voltage instead of shunt drop
+                            is_rail_voltage = False
+                            if abs(avg_v_volts) > 0.5:  # > 500mV is suspicious for shunt drop
+                                is_rail_voltage = True
+                                print(f"")
+                                print(f"  🚨 CRITICAL WARNING for {channel} 🚨")
+                                print(f"  🚨 Measured voltage ({avg_v_mv:.1f}mV) is too high for shunt drop!")
+                                print(f"  🚨 Expected shunt drop: < 100mV")
+                                print(f"  🚨 Measured value: {avg_v_mv:.1f}mV (likely measuring Rail Voltage!)")
+                                print(f"  🚨 Rail voltage for this channel: ~{target_v*1000:.0f}mV")
+                                print(f"  🚨 Terminal mode: {terminal_mode}")
+                                if terminal_mode == "RSE":
+                                    print(f"  🚨 RSE mode measures rail voltage, not shunt drop!")
+                                    print(f"  🚨 Hardware must be connected in DIFFERENTIAL mode")
+                                print(f"  🚨 Current calculation will be INCORRECT!")
+                                print(f"")
+                            
                             compressed_ma = [(v / shunt_r) * 1000 for v in compressed_volts]  # V/R=A, *1000=mA
+                            avg_i_ma = sum(compressed_ma) / len(compressed_ma) if compressed_ma else 0
+                            
+                            # Additional validation: Check if current is unreasonably high
+                            if abs(avg_i_ma) > 10000:  # > 10A (10,000mA)
+                                print(f"  🚨 WARNING: Current {avg_i_ma:.1f}mA is unreasonably high!")
+                                print(f"  🚨 This confirms measurement error (likely rail voltage)")
                             
                             result[channel] = {
                                 'current_data': compressed_ma,  # Current in mA (compressed)
                                 'sample_count': len(compressed_ma),
-                                'name': config.get('name', channel)
+                                'name': config.get('name', channel),
+                                'validation': {
+                                    'is_rail_voltage': is_rail_voltage,
+                                    'terminal_mode': terminal_mode,
+                                    'avg_voltage_mv': avg_v_mv,
+                                    'expected_shunt_drop_mv': '< 100mV'
+                                }
                             }
-                            avg_v_mv = sum(compressed_volts) * 1000 / len(compressed_volts) if compressed_volts else 0
-                            avg_i_ma = sum(compressed_ma) / len(compressed_ma) if compressed_ma else 0
+                            
                             print(f"Channel {channel}: {len(compressed_ma)} compressed samples")
                             print(f"  Avg voltage: {avg_v_mv:.3f}mV, Avg current: {avg_i_ma:.3f}mA (shunt={shunt_r}Ω)")
+                            print(f"  Terminal mode: {terminal_mode}, Validation: {'❌ FAILED' if is_rail_voltage else '✅ PASSED'}")
                 
                 print(f"=== Hardware-timed VOLTAGE collection completed: {len(result)} channels ===")
                 return result
