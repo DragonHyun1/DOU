@@ -39,9 +39,21 @@ def test_shunt_values():
     # Create NI DAQ Service
     daq_service = NIDAQService()
     
-    # Connect to device
-    print("🔌 Connecting to NI DAQ device...")
-    if not daq_service.connect():
+    # Get available devices
+    print("🔍 Searching for NI DAQ devices...")
+    devices = daq_service.get_available_devices()
+    
+    if not devices:
+        print("❌ No NI DAQ devices found!")
+        return
+    
+    print(f"✅ Found {len(devices)} device(s): {devices}")
+    
+    # Use first available device
+    device_name = devices[0]
+    print(f"🔌 Connecting to device: {device_name}")
+    
+    if not daq_service.connect_device(device_name, "ai3"):
         print("❌ Failed to connect to DAQ device!")
         return
     
@@ -181,7 +193,7 @@ def test_shunt_values():
         print("❌ No successful measurements")
     
     # Disconnect
-    daq_service.disconnect()
+    daq_service.disconnect_device()
     print()
     print("✅ Test completed")
 
