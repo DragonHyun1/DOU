@@ -1312,21 +1312,66 @@ class NIDAQService(QObject):
                     try:
                         # Try DIFFERENTIAL first with WIDE range to ensure success
                         # Wide range (±5V) ensures no range errors while still measuring shunt drop accurately
+                        #
+                        # Try multiple ways to specify DIFFERENTIAL mode (library version compatibility)
+                        differential_success = False
+                        diff_error = None
+                        
+                        # Method 1: Try TerminalConfiguration.DIFFERENTIAL
                         try:
-                            print(f"  → Trying DIFFERENTIAL mode with ±5V range...")
+                            print(f"  → Trying DIFFERENTIAL mode (method 1: TerminalConfiguration.DIFFERENTIAL)...")
                             task.ai_channels.add_ai_voltage_chan(
                                 channel_name,
                                 terminal_config=nidaqmx.constants.TerminalConfiguration.DIFFERENTIAL,
-                                min_val=-5.0,  # ±5V range (wide enough to prevent failures)
+                                min_val=-5.0,
                                 max_val=5.0,
                                 units=nidaqmx.constants.VoltageUnits.VOLTS
                             )
                             terminal_mode_used = "DIFFERENTIAL"
-                            print(f"  ✅ DIFFERENTIAL mode enabled (±5V range)")
-                        except Exception as diff_error:
-                            # If DIFFERENTIAL fails, try DEFAULT (follows hardware jumper settings)
-                            print(f"  ⚠️ DIFFERENTIAL failed: {type(diff_error).__name__}: {str(diff_error)}")
-                            print(f"     Error details: {diff_error}")
+                            differential_success = True
+                            print(f"  ✅ DIFFERENTIAL mode enabled (method 1)")
+                        except (AttributeError, Exception) as e1:
+                            diff_error = e1
+                            print(f"     Method 1 failed: {type(e1).__name__}: {str(e1)}")
+                            
+                            # Method 2: Try TerminalConfiguration.Diff
+                            try:
+                                print(f"  → Trying DIFFERENTIAL mode (method 2: TerminalConfiguration.Diff)...")
+                                task.ai_channels.add_ai_voltage_chan(
+                                    channel_name,
+                                    terminal_config=nidaqmx.constants.TerminalConfiguration.Diff,
+                                    min_val=-5.0,
+                                    max_val=5.0,
+                                    units=nidaqmx.constants.VoltageUnits.VOLTS
+                                )
+                                terminal_mode_used = "DIFFERENTIAL"
+                                differential_success = True
+                                print(f"  ✅ DIFFERENTIAL mode enabled (method 2)")
+                            except (AttributeError, Exception) as e2:
+                                print(f"     Method 2 failed: {type(e2).__name__}: {str(e2)}")
+                                
+                                # Method 3: Try direct constant 10106
+                                try:
+                                    print(f"  → Trying DIFFERENTIAL mode (method 3: direct constant 10106)...")
+                                    task.ai_channels.add_ai_voltage_chan(
+                                        channel_name,
+                                        terminal_config=10106,  # DAQmx_Val_Diff
+                                        min_val=-5.0,
+                                        max_val=5.0,
+                                        units=nidaqmx.constants.VoltageUnits.VOLTS
+                                    )
+                                    terminal_mode_used = "DIFFERENTIAL"
+                                    differential_success = True
+                                    print(f"  ✅ DIFFERENTIAL mode enabled (method 3)")
+                                except Exception as e3:
+                                    print(f"     Method 3 failed: {type(e3).__name__}: {str(e3)}")
+                                    diff_error = e3
+                        
+                        if not differential_success:
+                            # All DIFFERENTIAL methods failed, try DEFAULT (follows hardware jumper settings)
+                            # Note: DEFAULT often works as DIFFERENTIAL if hardware is configured that way
+                            print(f"  ⚠️ All DIFFERENTIAL methods failed")
+                            print(f"     Last error: {type(diff_error).__name__}: {str(diff_error)}")
                             try:
                                 print(f"  → Trying DEFAULT mode (hardware jumpers)...")
                                 task.ai_channels.add_ai_voltage_chan(
