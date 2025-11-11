@@ -885,14 +885,14 @@ class NIDAQService(QObject):
                         
                         # Method 1: Try TerminalConfiguration.DIFF (most compatible)
                         try:
-            print(f"  → Trying DIFFERENTIAL mode (method 1: TerminalConfiguration.DIFF)...")
-                        task.ai_channels.add_ai_voltage_chan(
-                            channel_name,
-                            terminal_config=nidaqmx.constants.TerminalConfiguration.DIFF,
-                            min_val=-voltage_range,
-                            max_val=voltage_range,
-                            units=nidaqmx.constants.VoltageUnits.VOLTS
-                        )
+                            print(f"  → Trying DIFFERENTIAL mode (method 1: TerminalConfiguration.DIFF)...")
+                            task.ai_channels.add_ai_voltage_chan(
+                                channel_name,
+                                terminal_config=nidaqmx.constants.TerminalConfiguration.DIFF,
+                                min_val=-voltage_range,
+                                max_val=voltage_range,
+                                units=nidaqmx.constants.VoltageUnits.VOLTS
+                            )
                             terminal_mode_used = "DIFFERENTIAL"
                             differential_success = True
                             print(f"  ✅ DIFFERENTIAL mode enabled (method 1)")
