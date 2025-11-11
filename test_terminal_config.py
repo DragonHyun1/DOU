@@ -58,9 +58,24 @@ def test_terminal_configs():
     configs_to_test = [
         ("RSE", TerminalConfiguration.RSE),
         ("NRSE", TerminalConfiguration.NRSE),
-        ("DIFFERENTIAL", TerminalConfiguration.DIFFERENTIAL),
         ("DEFAULT", TerminalConfiguration.DEFAULT),
     ]
+    
+    # Try to add DIFFERENTIAL mode (library version compatibility)
+    try:
+        # Method 1: Try DIFFERENTIAL
+        diff_config = TerminalConfiguration.DIFFERENTIAL
+        configs_to_test.insert(2, ("DIFFERENTIAL", diff_config))
+    except AttributeError:
+        try:
+            # Method 2: Try Diff
+            diff_config = TerminalConfiguration.Diff
+            configs_to_test.insert(2, ("DIFFERENTIAL", diff_config))
+        except AttributeError:
+            # Method 3: Use direct constant (DAQmx_Val_Diff = 10106)
+            configs_to_test.insert(2, ("DIFFERENTIAL", 10106))
+            print("⚠️  Note: Using direct constant 10106 for DIFFERENTIAL mode")
+            print()
     
     # Test different voltage ranges
     voltage_ranges = [
