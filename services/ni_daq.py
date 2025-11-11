@@ -860,6 +860,7 @@ class NIDAQService(QObject):
             print(f"Compress ratio: {compress_ratio}:1 (avg {compress_ratio} samples → 1 per ms)")
             print(f"Final samples: {compressed_samples} (after compression)")
             print(f"Mode: VOLTAGE measurement (external shunt)")
+            print(f"Acquisition Type: CONTINUOUS (matches Manual tool)")
             
             with nidaqmx.Task() as task:
                 # Add VOLTAGE input channels (to measure external shunt voltage drop)
@@ -970,17 +971,19 @@ class NIDAQService(QObject):
                     config['terminal_mode'] = terminal_mode_used
                     print(f"  📌 Channel {channel} configured with {terminal_mode_used} mode")
                 
-                # Configure hardware timing - FINITE mode for exact sample count
+                # Configure hardware timing - CONTINUOUS mode (like Manual tool)
+                # IMPORTANT: Manual tool uses CONTINUOUS mode, not FINITE
+                # This ensures consistent timing and data collection behavior
                 task.timing.cfg_samp_clk_timing(
-                    rate=sample_rate,  # 1kHz = 1 sample per ms
-                    sample_mode=nidaqmx.constants.AcquisitionType.FINITE,  # Collect exact number of samples
-                    samps_per_chan=total_samples  # Exactly 10,000 samples
+                    rate=sample_rate,  # 100kHz sampling rate
+                    sample_mode=nidaqmx.constants.AcquisitionType.CONTINUOUS,  # CONTINUOUS mode (matches Manual tool)
+                    samps_per_chan=total_samples  # Buffer size
                 )
                 
-                print(f"Starting hardware-timed VOLTAGE acquisition (30kHz)...")
+                print(f"Starting hardware-timed VOLTAGE acquisition ({sample_rate/1000:.0f}kHz, CONTINUOUS mode)...")
                 task.start()
                 
-                # Read all samples at once (hardware handles timing)
+                # Read samples (CONTINUOUS mode - reads from circular buffer)
                 timeout = duration_seconds + 5.0  # Add buffer
                 print(f"Reading {total_samples} raw samples per channel...")
                 data = task.read(number_of_samples_per_channel=total_samples, timeout=timeout)
