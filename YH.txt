@@ -1,22 +1,114 @@
-import nidaqmx
-from nidaqmx.constants import TerminalConfiguration
+================================================================================
+🔬 Terminal Configuration & Voltage Range Test for ai3 Channel
+================================================================================
 
-# Differential 채널 설정
-with nidaqmx.Task() as task:
-    task.ai_channels.add_ai_voltage_chan(
-        "Dev1/ai0",                    # 채널 이름
-        terminal_config=TerminalConfiguration.DIFFERENTIAL,  # 차동 모드
-        min_val=-10.0,                 # 최소 전압
-        max_val=10.0,                  # 최대 전압
-        units=nidaqmx.constants.VoltageUnits.VOLTS
-    )
+📌 Manual Configuration (from NI Trace):
+   → Terminal Config: -1 (RSE)
+   → Voltage Range: ±5V
+   → Sample Rate: 30,000 Hz
+   → Sample Mode: Continuous
+   → Samples Per Chan: 1,000
 
-    # 샘플링 설정
-    task.timing.cfg_samp_clk_timing(
-        rate=1000,                     # 1kHz
-        samps_per_chan=1000
-    )
+📌 Manual Measurement Result:
+   → ai3 Voltage: 1.05V (Rail voltage)
+   → ai3 Current: 1.018 mA
 
-    # 데이터 읽기
-    data = task.read(number_of_samples_per_channel=1000)
-    print("측정 데이터:", data)
+📌 DoU Current Configuration:
+   → Terminal Config: DEFAULT
+   → Voltage Range: ±5V
+   → Measured Voltage: 0.033mV (Shunt drop)
+   → Calculated Current: 6.533 mA (6.42x higher)
+
+🔍 Test Objectives:
+   1. Voltage Range: Test ±5V vs ±10V
+   2. Current Calculation: Test Average vs Cumulative
+
+================================================================================
+
+⚠️  Note: Using direct constant 10106 for DIFFERENTIAL mode
+
+================================================================================
+🧪 Testing: RSE + ±5V
+================================================================================
+Creating channel: Dev1/ai3
+  → Terminal Config: RSE
+  → Voltage Range: ±5V (-5.0V to 5.0V)
+
+   ❌ RSE + ±5V failed: Task specified is invalid or does not exist.
+Status Code: -200088
+
+================================================================================
+🧪 Testing: RSE + ±10V
+================================================================================
+Creating channel: Dev1/ai3
+  → Terminal Config: RSE
+  → Voltage Range: ±10V (-10.0V to 10.0V)
+
+   ❌ RSE + ±10V failed: Task specified is invalid or does not exist.
+Status Code: -200088
+
+================================================================================
+🧪 Testing: NRSE + ±5V
+================================================================================
+Creating channel: Dev1/ai3
+  → Terminal Config: NRSE
+  → Voltage Range: ±5V (-5.0V to 5.0V)
+
+   ❌ NRSE + ±5V failed: Task specified is invalid or does not exist.
+Status Code: -200088
+
+================================================================================
+🧪 Testing: NRSE + ±10V
+================================================================================
+Creating channel: Dev1/ai3
+  → Terminal Config: NRSE
+  → Voltage Range: ±10V (-10.0V to 10.0V)
+
+   ❌ NRSE + ±10V failed: Task specified is invalid or does not exist.
+Status Code: -200088
+
+================================================================================
+🧪 Testing: DIFFERENTIAL + ±5V
+================================================================================
+Creating channel: Dev1/ai3
+  → Terminal Config: DIFFERENTIAL
+  → Voltage Range: ±5V (-5.0V to 5.0V)
+
+   ❌ DIFFERENTIAL + ±5V failed: 'int' object has no attribute 'value'
+
+================================================================================
+🧪 Testing: DIFFERENTIAL + ±10V
+================================================================================
+Creating channel: Dev1/ai3
+  → Terminal Config: DIFFERENTIAL
+  → Voltage Range: ±10V (-10.0V to 10.0V)
+
+   ❌ DIFFERENTIAL + ±10V failed: 'int' object has no attribute 'value'
+
+================================================================================
+🧪 Testing: DEFAULT + ±5V
+================================================================================
+Creating channel: Dev1/ai3
+  → Terminal Config: DEFAULT
+  → Voltage Range: ±5V (-5.0V to 5.0V)
+
+   ❌ DEFAULT + ±5V failed: Task specified is invalid or does not exist.
+Status Code: -200088
+
+================================================================================
+🧪 Testing: DEFAULT + ±10V
+================================================================================
+Creating channel: Dev1/ai3
+  → Terminal Config: DEFAULT
+  → Voltage Range: ±10V (-10.0V to 10.0V)
+
+   ❌ DEFAULT + ±10V failed: Task specified is invalid or does not exist.
+Status Code: -200088
+
+================================================================================
+📋 SUMMARY - Terminal Configuration & Voltage Range Comparison
+================================================================================
+
+❌ No successful measurements
+
+✅ Test completed
