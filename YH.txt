@@ -1,32 +1,8 @@
-5.  DAQCreateAIVoltageChan ("_invalidTask", "", "Dev1/ai4", -1, -5.000000 (-5.000000E+00), 5.000000 (5.000000E+00), Volts, "", "Dev1/ai4", "")
-Process ID: 0x00008C74         Thread ID: 0x00008A18
-Start Time: 12:04:01.8154      Call Duration 00:00:00.0000
-Status: 0
-6.  DAQCreateAIVoltageChan ("_invalidTask", "", "Dev1/ai5", -1, -5.000000 (-5.000000E+00), 5.000000 (5.000000E+00), Volts, "", "Dev1/ai5", "")
-Process ID: 0x00008C74         Thread ID: 0x00008A18
-Start Time: 12:04:01.8154      Call Duration 00:00:00.0000
-Status: 0
-7.  setTimingI32EnumAP ("_unnamedTask<6>", "", SampTimingType, Sample Clock, "")
-Process ID: 0x00008C74         Thread ID: 0x00008A18
-Start Time: 12:04:01.8154      Call Duration 00:00:00.0000
-Status: 0
-8.  setTimingI32EnumAP ("_unnamedTask<6>", "", SampQuant.SampMode, Continuous Samples, "")
-Process ID: 0x00008C74         Thread ID: 0x00008A18
-Start Time: 12:04:01.8154      Call Duration 00:00:00.0000
-Status: 0
-9.  setTimingF64U64AP ("_unnamedTask<6>", "", SampQuant.SampPerChan, 1000.000000 (1.000000E+03), "")
-Process ID: 0x00008C74         Thread ID: 0x00008A18
-Start Time: 12:04:01.8154      Call Duration 00:00:00.0000
-Status: 0
-10.  setTimingI32EnumAP ("_unnamedTask<6>", "", SampClk.ActiveEdge, Rising, "")
-Process ID: 0x00008C74         Thread ID: 0x00008A18
-Start Time: 12:04:01.8154      Call Duration 00:00:00.0000
-Status: 0
-11.  setTimingF64AP ("_unnamedTask<6>", "", SampClk.Rate, 30000.000000 (3.000000E+04), "")
-Process ID: 0x00008C74         Thread ID: 0x00008A18
-Start Time: 12:04:01.8154      Call Duration 00:00:00.0000
-Status: 0
-12.  setTimingTerminalAP ("_unnamedTask<6>", "", SampClk.Src, "OnboardClock", "")
-Process ID: 0x00008C74         Thread ID: 0x00008A18
-Start Time: 12:04:01.8154      Call Duration 00:00:00.0000
-Status: 0
+Traceback (most recent call last):
+  File "d:\PCT\Tool\DOU_0926\ss.py", line 276, in <module>
+    test_terminal_configs()
+  File "d:\PCT\Tool\DOU_0926\ss.py", line 61, in test_terminal_configs
+    ("DIFFERENTIAL", TerminalConfiguration.DIFFERENTIAL),
+  File "C:\Users\yh003.kim\AppData\Local\aipforge\lib\enum.py", line 437, in __getattr__
+    raise AttributeError(name) from None
+AttributeError: DIFFERENTIAL
