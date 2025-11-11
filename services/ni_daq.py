@@ -820,7 +820,7 @@ class NIDAQService(QObject):
         
         return compressed
     
-    def read_current_channels_hardware_timed(self, channels: List[str], sample_rate: float = 30000.0, compress_ratio: int = 30, duration_seconds: float = 10.0, voltage_range: float = 5.0) -> Optional[dict]:
+    def read_current_channels_hardware_timed(self, channels: List[str], sample_rate: float = 30000.0, compress_ratio: int = 30, duration_seconds: float = 10.0, voltage_range: float = 10.0) -> Optional[dict]:
         """Read current using DAQ hardware timing with compression
         
         Uses NI-DAQmx API to read voltage drop across external shunt resistor.
@@ -853,6 +853,7 @@ class NIDAQService(QObject):
             
             print(f"=== Hardware-Timed VOLTAGE Collection (with Compression) ===")
             print(f"Channels: {channels}")
+            print(f"Voltage range: ±{voltage_range}V")
             print(f"Sampling rate: {sample_rate} Hz (30kHz)")
             print(f"Duration: {duration_seconds} seconds")
             print(f"Raw samples: {total_samples} ({total_samples/1000:.0f}k)")
@@ -877,7 +878,7 @@ class NIDAQService(QObject):
                     terminal_mode_used = "UNKNOWN"
                     try:
                         # Try DIFFERENTIAL first with WIDE range to ensure success
-                        # Wide range (±5V) ensures no range errors while still measuring shunt drop accurately
+                        # Wide range (±10V) ensures no range errors while still measuring shunt drop accurately
                         #
                         # Try multiple ways to specify DIFFERENTIAL mode (library version compatibility)
                         differential_success = False
