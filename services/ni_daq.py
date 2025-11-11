@@ -820,7 +820,7 @@ class NIDAQService(QObject):
         
         return compressed
     
-    def read_current_channels_hardware_timed(self, channels: List[str], sample_rate: float = 30000.0, compress_ratio: int = 30, duration_seconds: float = 10.0, voltage_range: float = 10.0) -> Optional[dict]:
+    def read_current_channels_hardware_timed(self, channels: List[str], sample_rate: float = 30000.0, compress_ratio: int = 30, duration_seconds: float = 10.0, voltage_range: float = 0.1) -> Optional[dict]:
         """Read current using DAQ hardware timing with compression
         
         Uses NI-DAQmx API to read voltage drop across external shunt resistor.
@@ -872,13 +872,14 @@ class NIDAQService(QObject):
                     # Use voltage measurement with DIFFERENTIAL configuration
                     # to measure voltage drop across external shunt resistor
                     # 
-                    # CRITICAL FIX: Increased voltage range to prevent DIFFERENTIAL mode failure
-                    # Previous range (±200mV) was too narrow and caused fallback to RSE mode,
-                    # which measures rail voltage instead of shunt drop (causing 100,000x error)
+                    # Voltage range configuration:
+                    # - Narrow range (±0.1V = ±100mV) provides better ADC resolution for small shunt drops
+                    # - Typical shunt drops: 0.01mV ~ 100mV
+                    # - If DIFFERENTIAL fails with narrow range, fallback modes will be attempted
                     terminal_mode_used = "UNKNOWN"
                     try:
-                        # Try DIFFERENTIAL first with WIDE range to ensure success
-                        # Wide range (±10V) ensures no range errors while still measuring shunt drop accurately
+                        # Try DIFFERENTIAL first with current voltage range
+                        # Narrow range (±0.1V) improves measurement precision for shunt voltage drops
                         #
                         # Try multiple ways to specify DIFFERENTIAL mode (library version compatibility)
                         differential_success = False
