@@ -34,8 +34,43 @@ Creating channel: Dev1/ai3
   → Terminal Config: RSE
   → Voltage Range: ±5V (-5.0V to 5.0V)
 
-   ❌ RSE + ±5V failed: Task specified is invalid or does not exist.
-Status Code: -200088
+📊 Reading 1000 samples at 30000.0 Hz...
+✅ Read 1000 samples
+
+📊 Voltage Results (RSE + ±5V):
+   → Average: 1.013136 V (1013.136 mV)
+   → Max: 1.033908 V (1033.908 mV)
+   → Min: 0.999383 V (999.383 mV)
+
+📊 Current Calculation Method 1: AVERAGE (평균 전류)
+   → Method: (Avg_Voltage / Shunt_R) × 1000
+   → Average Current: 202627.163 mA
+   → Max Current: 206781.593 mA
+   → Min Current: 199876.621 mA
+
+📊 Current Calculation Method 2: CUMULATIVE (누적 전류)
+   → Method: Sum(Each_Sample / Shunt_R) / Num_Samples
+   → Cumulative Sum: 202627162.790 mA·samples
+   → Average from Cumulative: 202627.163 mA
+   → Difference: 0.000000 mA
+
+   ✅ Both methods give same result (as expected)
+
+📈 Comparison with Manual:
+   → Voltage: 1.013136 V vs 1.05 V (Manual)
+   → Voltage Ratio: 0.964891x
+
+   → Current (Method 1): 202627.163 mA vs 1.018 mA (Manual)
+   → Current Ratio: 199044.364x
+
+   → Current (Method 2): 202627.163 mA vs 1.018 mA (Manual)
+   → Current Ratio: 199044.364x
+
+   🔍 Measurement Type: Rail Voltage
+   → This measures the power rail voltage (like Manual!)
+
+   ✅ VOLTAGE MATCHES MANUAL! (RSE + ±5V is correct)
+   ✗ Current mismatch (ratio: 199044.364x)
 
 ================================================================================
 🧪 Testing: RSE + ±10V
@@ -44,8 +79,43 @@ Creating channel: Dev1/ai3
   → Terminal Config: RSE
   → Voltage Range: ±10V (-10.0V to 10.0V)
 
-   ❌ RSE + ±10V failed: Task specified is invalid or does not exist.
-Status Code: -200088
+📊 Reading 1000 samples at 30000.0 Hz...
+✅ Read 1000 samples
+
+📊 Voltage Results (RSE + ±10V):
+   → Average: 1.013359 V (1013.359 mV)
+   → Max: 1.032442 V (1032.442 mV)
+   → Min: 0.999284 V (999.284 mV)
+
+📊 Current Calculation Method 1: AVERAGE (평균 전류)
+   → Method: (Avg_Voltage / Shunt_R) × 1000
+   → Average Current: 202671.776 mA
+   → Max Current: 206488.477 mA
+   → Min Current: 199856.894 mA
+
+📊 Current Calculation Method 2: CUMULATIVE (누적 전류)
+   → Method: Sum(Each_Sample / Shunt_R) / Num_Samples
+   → Cumulative Sum: 202671776.432 mA·samples
+   → Average from Cumulative: 202671.776 mA
+   → Difference: 0.000000 mA
+
+   ✅ Both methods give same result (as expected)
+
+📈 Comparison with Manual:
+   → Voltage: 1.013359 V vs 1.05 V (Manual)
+   → Voltage Ratio: 0.965104x
+
+   → Current (Method 1): 202671.776 mA vs 1.018 mA (Manual)
+   → Current Ratio: 199088.189x
+
+   → Current (Method 2): 202671.776 mA vs 1.018 mA (Manual)
+   → Current Ratio: 199088.189x
+
+   🔍 Measurement Type: Rail Voltage
+   → This measures the power rail voltage (like Manual!)
+
+   ✅ VOLTAGE MATCHES MANUAL! (RSE + ±10V is correct)
+   ✗ Current mismatch (ratio: 199088.189x)
 
 ================================================================================
 🧪 Testing: NRSE + ±5V
@@ -54,8 +124,43 @@ Creating channel: Dev1/ai3
   → Terminal Config: NRSE
   → Voltage Range: ±5V (-5.0V to 5.0V)
 
-   ❌ NRSE + ±5V failed: Task specified is invalid or does not exist.
-Status Code: -200088
+📊 Reading 1000 samples at 30000.0 Hz...
+✅ Read 1000 samples
+
+📊 Voltage Results (NRSE + ±5V):
+   → Average: 1.031419 V (1031.419 mV)
+   → Max: 1.036231 V (1036.231 mV)
+   → Min: 1.027339 V (1027.339 mV)
+
+📊 Current Calculation Method 1: AVERAGE (평균 전류)
+   → Method: (Avg_Voltage / Shunt_R) × 1000
+   → Average Current: 206283.762 mA
+   → Max Current: 207246.196 mA
+   → Min Current: 205467.886 mA
+
+📊 Current Calculation Method 2: CUMULATIVE (누적 전류)
+   → Method: Sum(Each_Sample / Shunt_R) / Num_Samples
+   → Cumulative Sum: 206283761.855 mA·samples
+   → Average from Cumulative: 206283.762 mA
+   → Difference: 0.000000 mA
+
+   ✅ Both methods give same result (as expected)
+
+📈 Comparison with Manual:
+   → Voltage: 1.031419 V vs 1.05 V (Manual)
+   → Voltage Ratio: 0.982304x
+
+   → Current (Method 1): 206283.762 mA vs 1.018 mA (Manual)
+   → Current Ratio: 202636.308x
+
+   → Current (Method 2): 206283.762 mA vs 1.018 mA (Manual)
+   → Current Ratio: 202636.308x
+
+   🔍 Measurement Type: Rail Voltage
+   → This measures the power rail voltage (like Manual!)
+
+   ✅ VOLTAGE MATCHES MANUAL! (NRSE + ±5V is correct)
+   ✗ Current mismatch (ratio: 202636.308x)
 
 ================================================================================
 🧪 Testing: NRSE + ±10V
@@ -64,8 +169,43 @@ Creating channel: Dev1/ai3
   → Terminal Config: NRSE
   → Voltage Range: ±10V (-10.0V to 10.0V)
 
-   ❌ NRSE + ±10V failed: Task specified is invalid or does not exist.
-Status Code: -200088
+📊 Reading 1000 samples at 30000.0 Hz...
+✅ Read 1000 samples
+
+📊 Voltage Results (NRSE + ±10V):
+   → Average: 1.031420 V (1031.420 mV)
+   → Max: 1.037648 V (1037.648 mV)
+   → Min: 1.027236 V (1027.236 mV)
+
+📊 Current Calculation Method 1: AVERAGE (평균 전류)
+   → Method: (Avg_Voltage / Shunt_R) × 1000
+   → Average Current: 206283.923 mA
+   → Max Current: 207529.667 mA
+   → Min Current: 205447.286 mA
+
+📊 Current Calculation Method 2: CUMULATIVE (누적 전류)
+   → Method: Sum(Each_Sample / Shunt_R) / Num_Samples
+   → Cumulative Sum: 206283922.917 mA·samples
+   → Average from Cumulative: 206283.923 mA
+   → Difference: 0.000000 mA
+
+   ✅ Both methods give same result (as expected)
+
+📈 Comparison with Manual:
+   → Voltage: 1.031420 V vs 1.05 V (Manual)
+   → Voltage Ratio: 0.982304x
+
+   → Current (Method 1): 206283.923 mA vs 1.018 mA (Manual)
+   → Current Ratio: 202636.467x
+
+   → Current (Method 2): 206283.923 mA vs 1.018 mA (Manual)
+   → Current Ratio: 202636.467x
+
+   🔍 Measurement Type: Rail Voltage
+   → This measures the power rail voltage (like Manual!)
+
+   ✅ VOLTAGE MATCHES MANUAL! (NRSE + ±10V is correct)
+   ✗ Current mismatch (ratio: 202636.467x)
 
 ================================================================================
 🧪 Testing: DIFFERENTIAL + ±5V
@@ -92,8 +232,41 @@ Creating channel: Dev1/ai3
   → Terminal Config: DEFAULT
   → Voltage Range: ±5V (-5.0V to 5.0V)
 
-   ❌ DEFAULT + ±5V failed: Task specified is invalid or does not exist.
-Status Code: -200088
+📊 Reading 1000 samples at 30000.0 Hz...
+✅ Read 1000 samples
+
+📊 Voltage Results (DEFAULT + ±5V):
+   → Average: 0.000008 V (0.008 mV)
+   → Max: 0.000486 V (0.486 mV)
+   → Min: -0.000114 V (-0.114 mV)
+
+📊 Current Calculation Method 1: AVERAGE (평균 전류)
+   → Method: (Avg_Voltage / Shunt_R) × 1000
+   → Average Current: 1.675 mA
+   → Max Current: 97.287 mA
+   → Min Current: -22.869 mA
+
+📊 Current Calculation Method 2: CUMULATIVE (누적 전류)
+   → Method: Sum(Each_Sample / Shunt_R) / Num_Samples
+   → Cumulative Sum: 1674.835 mA·samples
+   → Average from Cumulative: 1.675 mA
+   → Difference: 0.000000 mA
+
+   ✅ Both methods give same result (as expected)
+
+📈 Comparison with Manual:
+   → Voltage: 0.000008 V vs 1.05 V (Manual)
+   → Voltage Ratio: 0.000008x
+
+   → Current (Method 1): 1.675 mA vs 1.018 mA (Manual)
+   → Current Ratio: 1.645x
+
+   → Current (Method 2): 1.675 mA vs 1.018 mA (Manual)
+   → Current Ratio: 1.645x
+
+   🔍 Measurement Type: Near Zero
+
+   ✗ Current mismatch (ratio: 1.645x)
 
 ================================================================================
 🧪 Testing: DEFAULT + ±10V
@@ -102,13 +275,69 @@ Creating channel: Dev1/ai3
   → Terminal Config: DEFAULT
   → Voltage Range: ±10V (-10.0V to 10.0V)
 
-   ❌ DEFAULT + ±10V failed: Task specified is invalid or does not exist.
-Status Code: -200088
+📊 Reading 1000 samples at 30000.0 Hz...
+✅ Read 1000 samples
+
+📊 Voltage Results (DEFAULT + ±10V):
+   → Average: -0.000013 V (-0.013 mV)
+   → Max: 0.001183 V (1.183 mV)
+   → Min: -0.000258 V (-0.258 mV)
+
+📊 Current Calculation Method 1: AVERAGE (평균 전류)
+   → Method: (Avg_Voltage / Shunt_R) × 1000
+   → Average Current: -2.578 mA
+   → Max Current: 236.655 mA
+   → Min Current: -51.675 mA
+
+📊 Current Calculation Method 2: CUMULATIVE (누적 전류)
+   → Method: Sum(Each_Sample / Shunt_R) / Num_Samples
+   → Cumulative Sum: -2578.453 mA·samples
+   → Average from Cumulative: -2.578 mA
+   → Difference: 0.000000 mA
+
+   ✅ Both methods give same result (as expected)
+
+📈 Comparison with Manual:
+   → Voltage: 0.000013 V vs 1.05 V (Manual)
+   → Voltage Ratio: 0.000012x
+
+   → Current (Method 1): 2.578 mA vs 1.018 mA (Manual)
+   → Current Ratio: 2.533x
+
+   → Current (Method 2): 2.578 mA vs 1.018 mA (Manual)
+   → Current Ratio: 2.533x
+
+   🔍 Measurement Type: Shunt Drop
+   → This measures voltage drop across shunt
+
+   ✗ Current mismatch (ratio: 2.533x)
 
 ================================================================================
 📋 SUMMARY - Terminal Configuration & Voltage Range Comparison
 ================================================================================
 
-❌ No successful measurements
+Config       Range    Voltage      Current      Type            Match
+-------------------------------------------------------------------------------------
+RSE          ±5V        1013.136mV 202627.163mA Rail Voltage
+RSE          ±10V       1013.359mV 202671.776mA Rail Voltage
+NRSE         ±5V        1031.419mV 206283.762mA Rail Voltage
+NRSE         ±10V       1031.420mV 206283.923mA Rail Voltage
+DEFAULT      ±5V           0.008mV      1.675mA Near Zero
+DEFAULT      ±10V          0.013mV      2.578mA Shunt Drop
+
+=====================================================================================
+🎯 RECOMMENDED CONFIGURATION:
+   → Terminal Config: DEFAULT
+   → Voltage Range: ±5V
+   → Measured Voltage: 0.008 mV
+   → Calculated Current: 1.675 mA
+   → Current Ratio: 1.645x (vs Manual)
+   → Measurement Type: Near Zero
+
+📝 Note on Current Calculation:
+   → Method 1 (Average): (Avg_Voltage / R) - 현재 DoU 방식
+   → Method 2 (Cumulative): Sum(V[i]/R) / N - 동일한 결과
+   → Both methods are mathematically equivalent
+=====================================================================================
 
 ✅ Test completed
