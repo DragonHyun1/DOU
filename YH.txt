@@ -1,30 +1,47 @@
-import nidaqmx
-from nidaqmx.constants import TerminalConfiguration, VoltageUnits
+================================================================================
+🔍 Checking TerminalConfiguration Enum Values
+================================================================================
 
-def measure_shunt_current():
-    with nidaqmx.Task() as task:
-        # Differential 모드로 채널 추가
-        task.ai_channels.add_ai_voltage_chan(
-            "Dev1/ai3",
-            terminal_config=TerminalConfiguration.DIFFERENTIAL,
-            min_val=-0.1,      # ±100mV
-            max_val=0.1,
-            units=VoltageUnits.VOLTS
-        )
-        
-        # 샘플링 설정
-        task.timing.cfg_samp_clk_timing(
-            rate=10000,        # 10kHz
-            samps_per_chan=1000
-        )
-        
-        # 데이터 읽기
-        data = task.read(number_of_samples_per_channel=1000)
-        
-        # 전류 계산 (Shunt: 10mΩ)
-        shunt_resistance = 0.01  # 10mΩ
-        current_data = [v / shunt_resistance for v in data]
-        avg_current = sum(current_data) / len(current_data) * 1000  # mA
-        
-        print(f"Average Current: {avg_current:.3f} mA")
-        return avg_current
+Available TerminalConfiguration values:
+  → DEFAULT: TerminalConfiguration.DEFAULT
+  → DIFF: TerminalConfiguration.DIFF
+  → NRSE: TerminalConfiguration.NRSE
+  → PSEUDO_DIFF: TerminalConfiguration.PSEUDO_DIFF
+  → RSE: TerminalConfiguration.RSE
+
+================================================================================
+🧪 Testing DIFFERENTIAL Mode Methods
+================================================================================
+
+Methods to test: 3
+  → DIFF: TerminalConfiguration.DIFF (type: TerminalConfiguration)
+  → DEFAULT: TerminalConfiguration.DEFAULT (type: TerminalConfiguration)
+  → RSE: TerminalConfiguration.RSE (type: TerminalConfiguration)
+
+================================================================================
+Testing: DIFF
+================================================================================
+Creating channel with DIFF...
+Reading samples...
+✅ DIFF works!
+   → Average voltage: 0.014 mV
+
+================================================================================
+Testing: DEFAULT
+================================================================================
+Creating channel with DEFAULT...
+Reading samples...
+✅ DEFAULT works!
+   → Average voltage: 0.023 mV
+
+================================================================================
+Testing: RSE
+================================================================================
+Creating channel with RSE...
+Reading samples...
+✅ RSE works!
+   → Average voltage: 1013.131 mV
+
+================================================================================
+✅ Test completed
+================================================================================
