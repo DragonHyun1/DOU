@@ -883,16 +883,13 @@ class NIDAQService(QObject):
                         differential_success = False
                         diff_error = None
                         
-                        # Method 1: Try TerminalConfiguration.DIFFERENTIAL
+                        # Method 1: Try TerminalConfiguration.DIFF (most compatible)
                         try:
-                            print(f"  → Trying DIFFERENTIAL mode (method 1: TerminalConfiguration.DIFFERENTIAL)...")
-                            # NOTE: Voltage range affects measurement scaling
-                            # If using ±5V when Manual uses ±1.67V, results will be 3x higher
-                            # TODO: Confirm Manual's voltage range and adjust accordingly
+                            print(f"  → Trying DIFFERENTIAL mode (method 1: TerminalConfiguration.DIFF)...")
                             task.ai_channels.add_ai_voltage_chan(
                                 channel_name,
-                                terminal_config=nidaqmx.constants.TerminalConfiguration.DIFFERENTIAL,
-                                min_val=-5.0,  # TODO: Check if Manual uses ±1.67V or ±2V
+                                terminal_config=nidaqmx.constants.TerminalConfiguration.DIFF,
+                                min_val=-5.0,
                                 max_val=5.0,
                                 units=nidaqmx.constants.VoltageUnits.VOLTS
                             )
@@ -903,12 +900,12 @@ class NIDAQService(QObject):
                             diff_error = e1
                             print(f"     Method 1 failed: {type(e1).__name__}: {str(e1)}")
                             
-                            # Method 2: Try TerminalConfiguration.Diff
+                            # Method 2: Try TerminalConfiguration.DIFFERENTIAL (alternative spelling)
                             try:
-                                print(f"  → Trying DIFFERENTIAL mode (method 2: TerminalConfiguration.Diff)...")
+                                print(f"  → Trying DIFFERENTIAL mode (method 2: TerminalConfiguration.DIFFERENTIAL)...")
                                 task.ai_channels.add_ai_voltage_chan(
                                     channel_name,
-                                    terminal_config=nidaqmx.constants.TerminalConfiguration.Diff,
+                                    terminal_config=nidaqmx.constants.TerminalConfiguration.DIFFERENTIAL,
                                     min_val=-5.0,
                                     max_val=5.0,
                                     units=nidaqmx.constants.VoltageUnits.VOLTS
@@ -918,23 +915,7 @@ class NIDAQService(QObject):
                                 print(f"  ✅ DIFFERENTIAL mode enabled (method 2)")
                             except (AttributeError, Exception) as e2:
                                 print(f"     Method 2 failed: {type(e2).__name__}: {str(e2)}")
-                                
-                                # Method 3: Try direct constant 10106
-                                try:
-                                    print(f"  → Trying DIFFERENTIAL mode (method 3: direct constant 10106)...")
-                                    task.ai_channels.add_ai_voltage_chan(
-                                        channel_name,
-                                        terminal_config=10106,  # DAQmx_Val_Diff
-                                        min_val=-5.0,
-                                        max_val=5.0,
-                                        units=nidaqmx.constants.VoltageUnits.VOLTS
-                                    )
-                                    terminal_mode_used = "DIFFERENTIAL"
-                                    differential_success = True
-                                    print(f"  ✅ DIFFERENTIAL mode enabled (method 3)")
-                                except Exception as e3:
-                                    print(f"     Method 3 failed: {type(e3).__name__}: {str(e3)}")
-                                    diff_error = e3
+                                diff_error = e2
                         
                         if not differential_success:
                             # All DIFFERENTIAL methods failed, try DEFAULT (follows hardware jumper settings)
