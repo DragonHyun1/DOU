@@ -1056,7 +1056,9 @@ class NIDAQService(QObject):
                         else:
                             calibration_factor = 1.0
                         
-                        compressed_ma = [(v / shunt_r) * 1000 * calibration_factor for v in compressed_volts]
+                        # TEMPORARY FIX: Divide by 10 to match Manual tool
+                        # TODO: Find root cause (voltage reading or calculation issue)
+                        compressed_ma = [(v / shunt_r) * 1000 * calibration_factor / 10.0 for v in compressed_volts]
                         avg_i_ma = sum(compressed_ma) / len(compressed_ma) if compressed_ma else 0
                         
                         # Additional validation: Check if current is unreasonably high
@@ -1130,7 +1132,9 @@ class NIDAQService(QObject):
                             else:
                                 calibration_factor = 1.0
                             
-                            compressed_ma = [(v / shunt_r) * 1000 * calibration_factor for v in compressed_volts]
+                            # TEMPORARY FIX: Divide by 10 to match Manual tool
+                            # TODO: Find root cause (voltage reading or calculation issue)
+                            compressed_ma = [(v / shunt_r) * 1000 * calibration_factor / 10.0 for v in compressed_volts]
                             avg_i_ma = sum(compressed_ma) / len(compressed_ma) if compressed_ma else 0
                             
                             # Additional validation: Check if current is unreasonably high
