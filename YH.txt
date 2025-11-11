@@ -1,16 +1,163 @@
 ================================================================================
-
-📌 Manual Measurement Reference:
-   → ai3 Average Current: 1.018 mA
-   → ai3 Max Current: 29.59 mA
-   → ai3 Min Current: -1.513 mA
-
+📊 Sampling Information Test
 ================================================================================
 
-🔌 Connecting to NI DAQ device...
-Traceback (most recent call last):
-  File "d:\PCT\Tool\DOU_0926\test_shunt_resistor.py", line 190, in <module>
-    test_shunt_values()
-  File "d:\PCT\Tool\DOU_0926\test_shunt_resistor.py", line 45, in test_shunt_values
-    if not daq_service.connect():
-AttributeError: 'NIDAQService' object has no attribute 'connect'. Did you mean: 'connected'?
+🔍 Testing different sampling rates...
+
+================================================================================
+🧪 Testing Sample Rate: 1,000 Hz (1.0 kHz)
+================================================================================
+📊 Sampling Configuration:
+   → Requested Rate: 1,000 Hz
+   → Actual Rate: 1,000.00 Hz
+   → Samples per 1ms: 1.00 samples
+   → Time per sample: 1.000000 ms
+
+📏 Sample counts for different intervals:
+   →     1.0 ms (0.001 sec):            1 samples
+   →    10.0 ms (0.010 sec):           10 samples
+   →   100.0 ms (0.100 sec):          100 samples
+   →  1000.0 ms (1.000 sec):        1,000 samples
+   → 10000.0 ms (10.000 sec):       10,000 samples
+
+   ✅ Rate achieved successfully
+
+================================================================================
+🧪 Testing Sample Rate: 10,000 Hz (10.0 kHz)
+================================================================================
+📊 Sampling Configuration:
+   → Requested Rate: 10,000 Hz
+   → Actual Rate: 10,000.00 Hz
+   → Samples per 1ms: 10.00 samples
+   → Time per sample: 0.100000 ms
+
+📏 Sample counts for different intervals:
+   →     1.0 ms (0.001 sec):           10 samples
+   →    10.0 ms (0.010 sec):          100 samples
+   →   100.0 ms (0.100 sec):        1,000 samples
+   →  1000.0 ms (1.000 sec):       10,000 samples
+   → 10000.0 ms (10.000 sec):      100,000 samples
+
+   ✅ Rate achieved successfully
+
+================================================================================
+🧪 Testing Sample Rate: 30,000 Hz (30.0 kHz)
+================================================================================
+📊 Sampling Configuration:
+   → Requested Rate: 30,000 Hz
+   → Actual Rate: 30,030.03 Hz
+   → Samples per 1ms: 30.03 samples
+   → Time per sample: 0.033300 ms
+
+📏 Sample counts for different intervals:
+   →     1.0 ms (0.001 sec):           30 samples
+   →    10.0 ms (0.010 sec):          300 samples
+   →   100.0 ms (0.100 sec):        3,003 samples
+   →  1000.0 ms (1.000 sec):       30,030 samples
+   → 10000.0 ms (10.000 sec):      300,300 samples
+
+   ⚠️  Note: Actual rate differs from requested rate
+   → Difference: 30.03 Hz
+
+================================================================================
+🧪 Testing Sample Rate: 100,000 Hz (100.0 kHz)
+================================================================================
+📊 Sampling Configuration:
+   → Requested Rate: 100,000 Hz
+   → Actual Rate: 100,000.00 Hz
+   → Samples per 1ms: 100.00 samples
+   → Time per sample: 0.010000 ms
+
+📏 Sample counts for different intervals:
+   →     1.0 ms (0.001 sec):          100 samples
+   →    10.0 ms (0.010 sec):        1,000 samples
+   →   100.0 ms (0.100 sec):       10,000 samples
+   →  1000.0 ms (1.000 sec):      100,000 samples
+   → 10000.0 ms (10.000 sec):    1,000,000 samples
+
+   ✅ Rate achieved successfully
+
+================================================================================
+🧪 Testing Sample Rate: 250,000 Hz (250.0 kHz)
+================================================================================
+📊 Sampling Configuration:
+   → Requested Rate: 250,000 Hz
+   → Actual Rate: 250,000.00 Hz
+   → Samples per 1ms: 250.00 samples
+   → Time per sample: 0.004000 ms
+
+📏 Sample counts for different intervals:
+   →     1.0 ms (0.001 sec):          250 samples
+   →    10.0 ms (0.010 sec):        2,500 samples
+   →   100.0 ms (0.100 sec):       25,000 samples
+   →  1000.0 ms (1.000 sec):      250,000 samples
+   → 10000.0 ms (10.000 sec):    2,500,000 samples
+
+   ✅ Rate achieved successfully
+
+================================================================================
+🧪 Testing Sample Rate: 500,000 Hz (500.0 kHz)
+================================================================================
+📊 Sampling Configuration:
+   → Requested Rate: 500,000 Hz
+   → Actual Rate: 500,000.00 Hz
+   → Samples per 1ms: 500.00 samples
+   → Time per sample: 0.002000 ms
+
+📏 Sample counts for different intervals:
+   →     1.0 ms (0.001 sec):          500 samples
+   →    10.0 ms (0.010 sec):        5,000 samples
+   →   100.0 ms (0.100 sec):       50,000 samples
+   →  1000.0 ms (1.000 sec):      500,000 samples
+   → 10000.0 ms (10.000 sec):    5,000,000 samples
+
+   ✅ Rate achieved successfully
+
+================================================================================
+📋 Current DoU Configuration (Phone App Scenario)
+================================================================================
+
+🔧 Configuration:
+   → Sample Rate: 30,000.0 Hz (30.0 kHz)
+   → Duration: 10.0 seconds
+   → Channels: 6
+   → Compression Ratio: 30:1
+
+📊 Raw Sampling (before compression):
+   → Samples per 1ms: 30.0 samples
+   → Samples per channel: 300,000 samples
+   → Total samples (all channels): 1,800,000 samples
+   → Memory per channel: 2,400,000 bytes (2343.8 KB)
+
+📦 After Compression (30:1):
+   → Compressed samples per 1ms: 1.00 samples
+   → Compressed samples per channel: 10,000 samples
+   → Total compressed (all channels): 60,000 samples
+   → Memory per channel: 80,000 bytes (78.1 KB)
+
+⏱️  Time Resolution:
+   → Raw: 0.033333 ms per sample (33.333 µs)
+   → Compressed: 1.000000 ms per sample (1000.000 µs)
+
+📈 Averaging:
+   → Each compressed sample = average of 30 raw samples
+   → Reduces noise by factor of √30 ≈ 5.48x
+
+================================================================================
+🚀 Maximum Sampling Rate Test
+================================================================================
+
+📊 Device Maximum Sample Rate:
+   → Max Rate: 666,667 Hz (666.7 kHz)
+   → Max samples per 1ms: 666.7 samples
+
+📈 Current Utilization:
+   → Current: 30,000.0 Hz
+   → Maximum: 666,667 Hz
+   → Utilization: 4.5%
+
+   ✅ Safe operating range (< 50%)
+
+================================================================================
+✅ Test completed
+================================================================================
