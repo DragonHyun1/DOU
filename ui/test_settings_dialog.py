@@ -24,7 +24,12 @@ class TestSettingsDialog(QtWidgets.QDialog):
             'test_duration': 10,
             'stabilization_time': 10,
             'sampling_interval': 1.0,
-            'skip_stabilization_data': True
+            'skip_stabilization_data': True,
+            # DAQ Configuration
+            'voltage_range': 5.0,  # ±5V (default)
+            'sample_rate': 30000,  # Hz
+            'compression_ratio': 30,  # 30:1
+            'measurement_duration': 10.0  # seconds
         }
         
         # Connect signals
@@ -142,6 +147,18 @@ class TestSettingsDialog(QtWidgets.QDialog):
             self.samplingInterval_SB.setValue(self.settings['sampling_interval'])
         if hasattr(self, 'skipStabilization_CB'):
             self.skipStabilization_CB.setChecked(self.settings['skip_stabilization_data'])
+        
+        # Load DAQ settings
+        if hasattr(self, 'voltageRange_CB'):
+            voltage_range = self.settings.get('voltage_range', 5.0)
+            index = 0 if voltage_range == 5.0 else 1
+            self.voltageRange_CB.setCurrentIndex(index)
+        if hasattr(self, 'sampleRate_SB'):
+            self.sampleRate_SB.setValue(self.settings.get('sample_rate', 30000))
+        if hasattr(self, 'compressionRatio_SB'):
+            self.compressionRatio_SB.setValue(self.settings.get('compression_ratio', 30))
+        if hasattr(self, 'measurementDuration_SB'):
+            self.measurementDuration_SB.setValue(self.settings.get('measurement_duration', 10.0))
     
     def save_settings(self):
         """Save UI values to settings"""
@@ -159,6 +176,17 @@ class TestSettingsDialog(QtWidgets.QDialog):
             self.settings['sampling_interval'] = self.samplingInterval_SB.value()
         if hasattr(self, 'skipStabilization_CB'):
             self.settings['skip_stabilization_data'] = self.skipStabilization_CB.isChecked()
+        
+        # Save DAQ settings
+        if hasattr(self, 'voltageRange_CB'):
+            voltage_range_text = self.voltageRange_CB.currentText()
+            self.settings['voltage_range'] = 5.0 if '±5V' in voltage_range_text else 10.0
+        if hasattr(self, 'sampleRate_SB'):
+            self.settings['sample_rate'] = self.sampleRate_SB.value()
+        if hasattr(self, 'compressionRatio_SB'):
+            self.settings['compression_ratio'] = self.compressionRatio_SB.value()
+        if hasattr(self, 'measurementDuration_SB'):
+            self.settings['measurement_duration'] = self.measurementDuration_SB.value()
     
     def restore_defaults(self):
         """Restore default settings"""
@@ -169,7 +197,12 @@ class TestSettingsDialog(QtWidgets.QDialog):
             'test_duration': 10,
             'stabilization_time': 10,
             'sampling_interval': 1.0,
-            'skip_stabilization_data': True
+            'skip_stabilization_data': True,
+            # DAQ Configuration defaults
+            'voltage_range': 5.0,
+            'sample_rate': 30000,
+            'compression_ratio': 30,
+            'measurement_duration': 10.0
         }
         self.settings.update(defaults)
         self.load_settings()

@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>400</width>
-    <height>500</height>
+    <width>450</width>
+    <height>650</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -222,6 +222,114 @@
         </property>
         <property name="checked">
          <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="daqConfigGroupBox">
+     <property name="title">
+      <string>DAQ Configuration</string>
+     </property>
+     <layout class="QFormLayout" name="daqConfigLayout">
+      <property name="spacing">
+       <number>10</number>
+      </property>
+      <item row="0" column="0">
+       <widget class="QLabel" name="voltageRangeLabel">
+        <property name="text">
+         <string>Voltage Range:</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="QComboBox" name="voltageRange_CB">
+        <item>
+         <property name="text">
+          <string>±5V</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>±10V</string>
+         </property>
+        </item>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="sampleRateLabel">
+        <property name="text">
+         <string>Sample Rate:</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="QSpinBox" name="sampleRate_SB">
+        <property name="suffix">
+         <string> Hz</string>
+        </property>
+        <property name="minimum">
+         <number>1000</number>
+        </property>
+        <property name="maximum">
+         <number>500000</number>
+        </property>
+        <property name="singleStep">
+         <number>1000</number>
+        </property>
+        <property name="value">
+         <number>30000</number>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="0">
+       <widget class="QLabel" name="compressionRatioLabel">
+        <property name="text">
+         <string>Compression Ratio:</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="1">
+       <widget class="QSpinBox" name="compressionRatio_SB">
+        <property name="suffix">
+         <string>:1</string>
+        </property>
+        <property name="minimum">
+         <number>1</number>
+        </property>
+        <property name="maximum">
+         <number>100</number>
+        </property>
+        <property name="value">
+         <number>30</number>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="0">
+       <widget class="QLabel" name="measurementDurationLabel">
+        <property name="text">
+         <string>Measurement Duration:</string>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="1">
+       <widget class="QDoubleSpinBox" name="measurementDuration_SB">
+        <property name="suffix">
+         <string> s</string>
+        </property>
+        <property name="decimals">
+         <number>1</number>
+        </property>
+        <property name="minimum">
+         <double>0.1</double>
+        </property>
+        <property name="maximum">
+         <double>60.0</double>
+        </property>
+        <property name="value">
+         <double>10.0</double>
         </property>
        </widget>
       </item>

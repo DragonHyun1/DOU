@@ -820,7 +820,7 @@ class NIDAQService(QObject):
         
         return compressed
     
-    def read_current_channels_hardware_timed(self, channels: List[str], sample_rate: float = 30000.0, compress_ratio: int = 30, duration_seconds: float = 10.0) -> Optional[dict]:
+    def read_current_channels_hardware_timed(self, channels: List[str], sample_rate: float = 30000.0, compress_ratio: int = 30, duration_seconds: float = 10.0, voltage_range: float = 5.0) -> Optional[dict]:
         """Read current using DAQ hardware timing with compression
         
         Uses NI-DAQmx API to read voltage drop across external shunt resistor.
@@ -885,14 +885,14 @@ class NIDAQService(QObject):
                         
                         # Method 1: Try TerminalConfiguration.DIFF (most compatible)
                         try:
-                            print(f"  → Trying DIFFERENTIAL mode (method 1: TerminalConfiguration.DIFF)...")
-                            task.ai_channels.add_ai_voltage_chan(
-                                channel_name,
-                                terminal_config=nidaqmx.constants.TerminalConfiguration.DIFF,
-                                min_val=-5.0,
-                                max_val=5.0,
-                                units=nidaqmx.constants.VoltageUnits.VOLTS
-                            )
+            print(f"  → Trying DIFFERENTIAL mode (method 1: TerminalConfiguration.DIFF)...")
+                        task.ai_channels.add_ai_voltage_chan(
+                            channel_name,
+                            terminal_config=nidaqmx.constants.TerminalConfiguration.DIFF,
+                            min_val=-voltage_range,
+                            max_val=voltage_range,
+                            units=nidaqmx.constants.VoltageUnits.VOLTS
+                        )
                             terminal_mode_used = "DIFFERENTIAL"
                             differential_success = True
                             print(f"  ✅ DIFFERENTIAL mode enabled (method 1)")
@@ -906,8 +906,8 @@ class NIDAQService(QObject):
                                 task.ai_channels.add_ai_voltage_chan(
                                     channel_name,
                                     terminal_config=nidaqmx.constants.TerminalConfiguration.DIFFERENTIAL,
-                                    min_val=-5.0,
-                                    max_val=5.0,
+                                    min_val=-voltage_range,
+                                    max_val=voltage_range,
                                     units=nidaqmx.constants.VoltageUnits.VOLTS
                                 )
                                 terminal_mode_used = "DIFFERENTIAL"
@@ -927,8 +927,8 @@ class NIDAQService(QObject):
                                 task.ai_channels.add_ai_voltage_chan(
                                     channel_name,
                                     terminal_config=nidaqmx.constants.TerminalConfiguration.DEFAULT,
-                                    min_val=-5.0,  # ±5V range
-                                    max_val=5.0,
+                                    min_val=-voltage_range,
+                                    max_val=voltage_range,
                                     units=nidaqmx.constants.VoltageUnits.VOLTS
                                 )
                                 terminal_mode_used = "DEFAULT"
@@ -941,8 +941,8 @@ class NIDAQService(QObject):
                                     task.ai_channels.add_ai_voltage_chan(
                                         channel_name,
                                         terminal_config=nidaqmx.constants.TerminalConfiguration.NRSE,
-                                        min_val=-5.0,
-                                        max_val=5.0,
+                                        min_val=-voltage_range,
+                                        max_val=voltage_range,
                                         units=nidaqmx.constants.VoltageUnits.VOLTS
                                     )
                                     terminal_mode_used = "NRSE"
