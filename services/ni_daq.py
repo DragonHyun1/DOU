@@ -820,7 +820,7 @@ class NIDAQService(QObject):
         
         return compressed
     
-    def read_current_channels_hardware_timed(self, channels: List[str], sample_rate: float = 30000.0, compress_ratio: int = 30, duration_seconds: float = 10.0, voltage_range: float = 0.1) -> Optional[dict]:
+    def read_current_channels_hardware_timed(self, channels: List[str], sample_rate: float = 100000.0, compress_ratio: int = 100, duration_seconds: float = 10.0, voltage_range: float = 0.1) -> Optional[dict]:
         """Read current using DAQ hardware timing with compression
         
         Uses NI-DAQmx API to read voltage drop across external shunt resistor.
@@ -828,18 +828,18 @@ class NIDAQService(QObject):
         
         Args:
             channels: List of channel names (e.g., ['ai0', 'ai1'])
-            sample_rate: Sampling rate in Hz (default: 30000.0 = 30kHz)
-            compress_ratio: Compression ratio (default: 30, meaning 30:1 compression)
+            sample_rate: Sampling rate in Hz (default: 100000.0 = 100kHz)
+            compress_ratio: Compression ratio (default: 100, meaning 100:1 compression)
             duration_seconds: Duration of data collection (default: 10.0 seconds)
             
         Returns:
             dict: {channel: {'current_data': [mA], 'sample_count': int}}
             
         Example:
-            - Sampling: 30kHz = 30,000 samples/sec
+            - Sampling: 100kHz = 100,000 samples/sec
             - Duration: 10 seconds
-            - Raw samples: 300,000
-            - Compress: 30:1
+            - Raw samples: 1,000,000 (1M)
+            - Compress: 100:1 (average 100 samples)
             - Final samples: 10,000 (one per ms)
         """
         if not NI_AVAILABLE or not self.connected:
@@ -848,16 +848,16 @@ class NIDAQService(QObject):
             
         try:
             # Calculate total samples to collect
-            total_samples = int(sample_rate * duration_seconds)  # 30,000 * 10 = 300,000
-            compressed_samples = total_samples // compress_ratio  # 300,000 / 30 = 10,000
+            total_samples = int(sample_rate * duration_seconds)  # 100,000 * 10 = 1,000,000
+            compressed_samples = total_samples // compress_ratio  # 1,000,000 / 100 = 10,000
             
             print(f"=== Hardware-Timed VOLTAGE Collection (with Compression) ===")
             print(f"Channels: {channels}")
             print(f"Voltage range: ±{voltage_range}V")
-            print(f"Sampling rate: {sample_rate} Hz (30kHz)")
+            print(f"Sampling rate: {sample_rate} Hz ({sample_rate/1000:.0f}kHz)")
             print(f"Duration: {duration_seconds} seconds")
             print(f"Raw samples: {total_samples} ({total_samples/1000:.0f}k)")
-            print(f"Compress ratio: {compress_ratio}:1")
+            print(f"Compress ratio: {compress_ratio}:1 (avg {compress_ratio} samples → 1 per ms)")
             print(f"Final samples: {compressed_samples} (after compression)")
             print(f"Mode: VOLTAGE measurement (external shunt)")
             
