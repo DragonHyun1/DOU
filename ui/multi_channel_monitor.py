@@ -21,6 +21,14 @@ class MultiChannelMonitorDialog(QtWidgets.QDialog):
         self.channel_configs = {}
         self.channel_widgets = {}  # Store UI widgets for each channel
         
+        # DAQ settings (default values)
+        self.daq_settings = {
+            'voltage_range': 5.0,  # ±5V
+            'sample_rate': 30000,  # Hz
+            'compression_ratio': 30,  # 30:1
+            'measurement_duration': 10.0  # seconds
+        }
+        
         self.setup_ui()
         self.init_default_channels()
         
@@ -131,6 +139,41 @@ class MultiChannelMonitorDialog(QtWidgets.QDialog):
         
         config_layout.addLayout(file_layout)
         layout.addWidget(config_group)
+        
+        # DAQ Configuration section
+        daq_group = QtWidgets.QGroupBox("DAQ Configuration")
+        daq_layout = QtWidgets.QFormLayout(daq_group)
+        
+        # Voltage Range
+        self.voltage_range_cb = QtWidgets.QComboBox()
+        self.voltage_range_cb.addItems(["±5V", "±10V"])
+        self.voltage_range_cb.setCurrentIndex(0)  # Default ±5V
+        daq_layout.addRow("Voltage Range:", self.voltage_range_cb)
+        
+        # Sample Rate
+        self.sample_rate_sb = QtWidgets.QSpinBox()
+        self.sample_rate_sb.setRange(1000, 500000)
+        self.sample_rate_sb.setSingleStep(1000)
+        self.sample_rate_sb.setValue(30000)
+        self.sample_rate_sb.setSuffix(" Hz")
+        daq_layout.addRow("Sample Rate:", self.sample_rate_sb)
+        
+        # Compression Ratio
+        self.compression_ratio_sb = QtWidgets.QSpinBox()
+        self.compression_ratio_sb.setRange(1, 100)
+        self.compression_ratio_sb.setValue(30)
+        self.compression_ratio_sb.setSuffix(":1")
+        daq_layout.addRow("Compression Ratio:", self.compression_ratio_sb)
+        
+        # Measurement Duration
+        self.measurement_duration_sb = QtWidgets.QDoubleSpinBox()
+        self.measurement_duration_sb.setRange(0.1, 60.0)
+        self.measurement_duration_sb.setDecimals(1)
+        self.measurement_duration_sb.setValue(10.0)
+        self.measurement_duration_sb.setSuffix(" s")
+        daq_layout.addRow("Measurement Duration:", self.measurement_duration_sb)
+        
+        layout.addWidget(daq_group)
         
         # Create scrollable area for channels
         scroll_area = QtWidgets.QScrollArea()
@@ -369,11 +412,27 @@ class MultiChannelMonitorDialog(QtWidgets.QDialog):
         except Exception as e:
             QtWidgets.QMessageBox.critical(self, "Import Error", f"Failed to import data:\n{e}")
     
+    def update_daq_settings(self):
+        """Update DAQ settings from UI"""
+        voltage_range_text = self.voltage_range_cb.currentText()
+        self.daq_settings['voltage_range'] = 5.0 if '±5V' in voltage_range_text else 10.0
+        self.daq_settings['sample_rate'] = self.sample_rate_sb.value()
+        self.daq_settings['compression_ratio'] = self.compression_ratio_sb.value()
+        self.daq_settings['measurement_duration'] = self.measurement_duration_sb.value()
+        
+        print(f"📊 DAQ Settings Updated:")
+        print(f"   → Voltage Range: ±{self.daq_settings['voltage_range']}V")
+        print(f"   → Sample Rate: {self.daq_settings['sample_rate']} Hz")
+        print(f"   → Compression: {self.daq_settings['compression_ratio']}:1")
+        print(f"   → Duration: {self.daq_settings['measurement_duration']}s")
+    
     def toggle_monitoring(self):
         """Toggle monitoring state with mode support"""
         self.monitoring = not self.monitoring
         
         if self.monitoring:
+            # Update DAQ settings from UI
+            self.update_daq_settings()
             # Check measurement mode
             is_current_mode = self.current_mode_rb.isChecked()
             mode_name = "Current" if is_current_mode else "Voltage"
@@ -417,9 +476,14 @@ class MultiChannelMonitorDialog(QtWidgets.QDialog):
                     
                     try:
                         if is_current_mode:
-                            # Current mode monitoring - Use same settings as auto test:
-                            # FINITE mode, Differential, 10kHz oversampling, 1000 samples averaged
-                            results = ni_service.read_current_channels_direct(enabled_channels, samples_per_channel=1000)
+                            # Current mode monitoring with hardware-timed measurement
+                            results = ni_service.read_current_channels_hardware_timed(
+                                channels=enabled_channels,
+                                sample_rate=self.daq_settings['sample_rate'],
+                                compress_ratio=self.daq_settings['compression_ratio'],
+                                duration_seconds=self.daq_settings['measurement_duration'],
+                                voltage_range=self.daq_settings['voltage_range']
+                            )
                         else:
                             # Voltage mode monitoring
                             results = ni_service.read_voltage_channels_trace_based(enabled_channels, samples_per_channel=12)
@@ -536,9 +600,14 @@ class MultiChannelMonitorDialog(QtWidgets.QDialog):
                         print(f"[Single Read] {mode_name} mode selected for channels: {enabled_channels}")
                         
                         if is_current_mode:
-                            # Current mode: Use same settings as auto test:
-                            # FINITE mode, Differential, 10kHz oversampling, 1000 samples averaged
-                            results = ni_service.read_current_channels_direct(enabled_channels, samples_per_channel=1000)
+                            # Current mode: Use hardware-timed measurement with user settings
+                            results = ni_service.read_current_channels_hardware_timed(
+                                channels=enabled_channels,
+                                sample_rate=self.daq_settings['sample_rate'],
+                                compress_ratio=self.daq_settings['compression_ratio'],
+                                duration_seconds=self.daq_settings['measurement_duration'],
+                                voltage_range=self.daq_settings['voltage_range']
+                            )
                         else:
                             # Voltage mode: Use regular voltage measurement
                             results = ni_service.read_voltage_channels_trace_based(enabled_channels, samples_per_channel=12)
