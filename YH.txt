@@ -1,8 +1,22 @@
-Traceback (most recent call last):
-  File "d:\PCT\Tool\DOU_0926\ss.py", line 276, in <module>
-    test_terminal_configs()
-  File "d:\PCT\Tool\DOU_0926\ss.py", line 61, in test_terminal_configs
-    ("DIFFERENTIAL", TerminalConfiguration.DIFFERENTIAL),
-  File "C:\Users\yh003.kim\AppData\Local\aipforge\lib\enum.py", line 437, in __getattr__
-    raise AttributeError(name) from None
-AttributeError: DIFFERENTIAL
+import nidaqmx
+from nidaqmx.constants import TerminalConfiguration
+
+# Differential 채널 설정
+with nidaqmx.Task() as task:
+    task.ai_channels.add_ai_voltage_chan(
+        "Dev1/ai0",                    # 채널 이름
+        terminal_config=TerminalConfiguration.DIFFERENTIAL,  # 차동 모드
+        min_val=-10.0,                 # 최소 전압
+        max_val=10.0,                  # 최대 전압
+        units=nidaqmx.constants.VoltageUnits.VOLTS
+    )
+
+    # 샘플링 설정
+    task.timing.cfg_samp_clk_timing(
+        rate=1000,                     # 1kHz
+        samps_per_chan=1000
+    )
+
+    # 데이터 읽기
+    data = task.read(number_of_samples_per_channel=1000)
+    print("측정 데이터:", data)
