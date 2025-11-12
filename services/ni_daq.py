@@ -820,7 +820,7 @@ class NIDAQService(QObject):
         
         return compressed
     
-    def read_current_channels_hardware_timed(self, channels: List[str], sample_rate: float = 30000.0, compress_ratio: int = 30, duration_seconds: float = 10.0, voltage_range: float = 5.0) -> Optional[dict]:
+    def read_current_channels_hardware_timed(self, channels: List[str], sample_rate: float = 30000.0, compress_ratio: int = 30, duration_seconds: float = 10.0, voltage_range: float = 0.1) -> Optional[dict]:
         """Read current using DAQ hardware timing with compression
         
         Uses NI-DAQmx API to read voltage drop across external shunt resistor.
@@ -851,17 +851,12 @@ class NIDAQService(QObject):
             total_samples = int(sample_rate * duration_seconds)  # 30,000 * 10 = 300,000
             compressed_samples = total_samples // compress_ratio  # 300,000 / 30 = 10,000
             
-            # Chunked reading configuration (for memory efficiency and large data)
-            chunk_size = 10000  # Read 10,000 samples at a time (~0.33 seconds at 30kHz)
-            num_chunks = total_samples // chunk_size  # 300,000 / 10,000 = 30 chunks
-            
-            print(f"=== Hardware-Timed VOLTAGE Collection (Chunked + Compression) ===")
+            print(f"=== Hardware-Timed VOLTAGE Collection (with Compression) ===")
             print(f"Channels: {channels}")
             print(f"Voltage range: ±{voltage_range}V")
             print(f"Sampling rate: {sample_rate} Hz ({sample_rate/1000:.0f}kHz)")
             print(f"Duration: {duration_seconds} seconds")
             print(f"Raw samples: {total_samples} ({total_samples/1000:.0f}k)")
-            print(f"Chunked reading: {chunk_size} samples/chunk × {num_chunks} chunks")
             print(f"Compress ratio: {compress_ratio}:1 (avg {compress_ratio} samples → 1 per ms)")
             print(f"Final samples: {compressed_samples} (after compression)")
             print(f"Mode: VOLTAGE measurement (external shunt)")
@@ -989,46 +984,13 @@ class NIDAQService(QObject):
                 print(f"Starting hardware-timed VOLTAGE acquisition ({sample_rate/1000:.0f}kHz, CONTINUOUS mode)...")
                 task.start()
                 
-                # Read samples in chunks (CONTINUOUS mode - memory efficient)
-                print(f"Reading {total_samples} raw samples in {num_chunks} chunks...")
-                
-                # Store all channel data
-                if len(channels) == 1:
-                    all_data = []  # Single channel: simple list
-                else:
-                    all_data = [[] for _ in range(len(channels))]  # Multiple channels: list per channel
-                
-                # Read chunks
-                chunk_timeout = (chunk_size / sample_rate) + 2.0  # chunk duration + 2s buffer
-                for chunk_idx in range(num_chunks):
-                    try:
-                        chunk_data = task.read(
-                            number_of_samples_per_channel=chunk_size,
-                            timeout=chunk_timeout
-                        )
-                        
-                        # Append chunk data
-                        if len(channels) == 1:
-                            all_data.extend(chunk_data)
-                        else:
-                            for ch_idx in range(len(channels)):
-                                all_data[ch_idx].extend(chunk_data[ch_idx])
-                        
-                        # Progress update every 10 chunks
-                        if (chunk_idx + 1) % 10 == 0:
-                            progress = ((chunk_idx + 1) / num_chunks) * 100
-                            print(f"  Progress: {chunk_idx + 1}/{num_chunks} chunks ({progress:.0f}%)")
-                    
-                    except Exception as chunk_error:
-                        print(f"  ⚠️ Warning: Chunk {chunk_idx + 1} read error: {chunk_error}")
-                        # Continue with next chunk
+                # Read samples (CONTINUOUS mode - reads from circular buffer)
+                timeout = duration_seconds + 5.0  # Add buffer
+                print(f"Reading {total_samples} raw samples per channel...")
+                data = task.read(number_of_samples_per_channel=total_samples, timeout=timeout)
                 
                 task.stop()
-                print(f"Hardware VOLTAGE acquisition completed ({len(all_data) if len(channels)==1 else len(all_data[0])} samples collected)")
-                print(f"Starting compression...")
-                
-                # Use collected data
-                data = all_data
+                print(f"Hardware VOLTAGE acquisition completed, starting compression...")
                 
                 # Process and compress voltage data, then convert to current
                 result = {}
