@@ -975,9 +975,10 @@ class NIDAQService(QObject):
                 # IMPORTANT: Manual tool uses CONTINUOUS mode, not FINITE
                 # This ensures consistent timing and data collection behavior
                 task.timing.cfg_samp_clk_timing(
-                    rate=sample_rate,  # 100kHz sampling rate
+                    rate=sample_rate,  # 30kHz sampling rate
                     sample_mode=nidaqmx.constants.AcquisitionType.CONTINUOUS,  # CONTINUOUS mode (matches Manual tool)
-                    samps_per_chan=total_samples  # Buffer size
+                    samps_per_chan=total_samples,  # Buffer size
+                    active_edge=nidaqmx.constants.Edge.RISING  # Sample on rising edge (matches Manual tool)
                 )
                 
                 print(f"Starting hardware-timed VOLTAGE acquisition ({sample_rate/1000:.0f}kHz, CONTINUOUS mode)...")
