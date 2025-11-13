@@ -820,7 +820,7 @@ class NIDAQService(QObject):
         
         return compressed
     
-    def read_current_channels_hardware_timed(self, channels: List[str], sample_rate: float = 30000.0, compress_ratio: int = 30, duration_seconds: float = 10.0, voltage_range: float = 5.0) -> Optional[dict]:
+    def read_current_channels_hardware_timed(self, channels: List[str], sample_rate: float = 30000.0, compress_ratio: int = 1000, duration_seconds: float = 10.0, voltage_range: float = 5.0) -> Optional[dict]:
         """Read current using DAQ hardware timing with compression
         
         Uses NI-DAQmx API to read voltage drop across external shunt resistor.
@@ -829,7 +829,7 @@ class NIDAQService(QObject):
         Args:
             channels: List of channel names (e.g., ['ai0', 'ai1'])
             sample_rate: Sampling rate in Hz (default: 30000.0 = 30kHz, matches Manual tool)
-            compress_ratio: Compression ratio (default: 30, meaning 30:1 compression)
+            compress_ratio: Compression ratio (default: 1000, meaning 1000:1 compression)
             duration_seconds: Duration of data collection (default: 10.0 seconds)
             
         Returns:
@@ -839,8 +839,8 @@ class NIDAQService(QObject):
             - Sampling: 30kHz = 30,000 samples/sec (matches Manual tool)
             - Duration: 10 seconds
             - Raw samples: 300,000
-            - Compress: 30:1 (average 30 samples)
-            - Final samples: 10,000 (one per ms)
+            - Compress: 1000:1 (average 1000 samples)
+            - Final samples: 300 (one per ~33ms)
         """
         if not NI_AVAILABLE or not self.connected:
             print("DAQ not available or not connected")
