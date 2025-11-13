@@ -154,19 +154,19 @@ class TestScenarioEngine(QObject):
         )
         
         phone_app_config.steps = [
-            # Init Mode Setup - SKIPPED (user will init manually before starting test)
-            # TestStep("init_hvpm", 2.0, "set_hvpm_voltage", {"voltage": 4.0}),
-            # TestStep("init_adb", 3.0, "setup_adb_device"),
-            # TestStep("init_flight_mode", 2.0, "enable_flight_mode"),
-            # TestStep("init_wifi_2g", 8.0, "connect_wifi_2g"),
-            # TestStep("init_bluetooth", 3.0, "enable_bluetooth"),
-            # TestStep("init_screen_timeout", 3.0, "set_screen_timeout_10min"),
-            # TestStep("init_unlock_clear", 10.0, "lcd_on_unlock_home_clear_apps"),
+            # Init Mode Setup
+            TestStep("init_hvpm", 2.0, "set_hvpm_voltage", {"voltage": 4.0}),
+            TestStep("init_adb", 3.0, "setup_adb_device"),
+            TestStep("init_flight_mode", 2.0, "enable_flight_mode"),
+            TestStep("init_wifi_2g", 8.0, "connect_wifi_2g"),
+            TestStep("init_bluetooth", 3.0, "enable_bluetooth"),
+            TestStep("init_screen_timeout", 3.0, "set_screen_timeout_10min"),
+            TestStep("init_unlock_clear", 10.0, "lcd_on_unlock_home_clear_apps"),
             
-            # Stabilization - SKIPPED (user will prepare manually)
-            # TestStep("stabilize", 10.0, "wait_stabilization"),
+            # Stabilization - INCREASED to 60 seconds (WiFi/Bluetooth need time to stabilize)
+            TestStep("stabilize", 60.0, "wait_stabilization"),
             
-            # DAQ Start + Phone App Test + DAQ Stop (direct execution)
+            # DAQ Start + Phone App Test + DAQ Stop (separated)
             TestStep("start_daq", 2.0, "start_daq_monitoring"),
             TestStep("phone_app_test", 10.0, "phone_app_scenario_test"),
             TestStep("stop_daq", 2.0, "stop_daq_monitoring"),
@@ -829,8 +829,8 @@ class TestScenarioEngine(QObject):
             return False
     
     def _step_wait_stabilization(self) -> bool:
-        """Wait for current stabilization"""
-        self.log_callback("Waiting for current stabilization (20 seconds)...", "info")
+        """Wait for current stabilization (duration handled by main loop)"""
+        self.log_callback("Waiting for current stabilization...", "info")
         # This step's duration is handled by the main execution loop
         return True
     
