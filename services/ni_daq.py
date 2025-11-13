@@ -820,7 +820,7 @@ class NIDAQService(QObject):
         
         return compressed
     
-    def read_current_channels_hardware_timed(self, channels: List[str], sample_rate: float = 300000.0, compress_ratio: int = 300, duration_seconds: float = 10.0, voltage_range: float = 5.0) -> Optional[dict]:
+    def read_current_channels_hardware_timed(self, channels: List[str], sample_rate: float = 100000.0, compress_ratio: int = 100, duration_seconds: float = 10.0, voltage_range: float = 5.0) -> Optional[dict]:
         """Read current using DAQ hardware timing with compression
         
         Uses NI-DAQmx API to read voltage drop across external shunt resistor.
@@ -828,18 +828,18 @@ class NIDAQService(QObject):
         
         Args:
             channels: List of channel names (e.g., ['ai0', 'ai1'])
-            sample_rate: Sampling rate in Hz (default: 300000.0 = 300kHz, 300 samples per ms)
-            compress_ratio: Compression ratio (default: 300, meaning 300:1 compression)
+            sample_rate: Sampling rate in Hz (default: 100000.0 = 100kHz, 100 samples per ms)
+            compress_ratio: Compression ratio (default: 100, meaning 100:1 compression)
             duration_seconds: Duration of data collection (default: 10.0 seconds)
             
         Returns:
             dict: {channel: {'current_data': [mA], 'sample_count': int}}
             
         Example:
-            - Sampling: 300kHz = 300,000 samples/sec (300 samples per ms)
+            - Sampling: 100kHz = 100,000 samples/sec (100 samples per ms)
             - Duration: 10 seconds
-            - Raw samples: 3,000,000 (3M)
-            - Compress: 300:1 (average 300 samples → 1 per ms)
+            - Raw samples: 1,000,000 (1M)
+            - Compress: 100:1 (average 100 samples → 1 per ms)
             - Final samples: 10,000 (one per ms, 0-9999ms)
         """
         if not NI_AVAILABLE or not self.connected:
@@ -848,8 +848,8 @@ class NIDAQService(QObject):
             
         try:
             # Calculate total samples to collect
-            total_samples = int(sample_rate * duration_seconds)  # 300,000 * 10 = 3,000,000
-            compressed_samples = total_samples // compress_ratio  # 3,000,000 / 300 = 10,000
+            total_samples = int(sample_rate * duration_seconds)  # 100,000 * 10 = 1,000,000
+            compressed_samples = total_samples // compress_ratio  # 1,000,000 / 100 = 10,000
             
             print(f"=== Hardware-Timed VOLTAGE Collection (with Compression) ===")
             print(f"Channels: {channels}")
@@ -973,10 +973,11 @@ class NIDAQService(QObject):
                 
                 # Configure hardware timing - FINITE mode for exact sample count
                 # FINITE mode ensures we get exactly the number of samples needed for 1ms intervals
+                # 100kHz sampling rate is safe for USB bandwidth (300kHz caused USB transfer errors)
                 task.timing.cfg_samp_clk_timing(
-                    rate=sample_rate,  # 300kHz sampling rate (300 samples per ms)
+                    rate=sample_rate,  # 100kHz sampling rate (100 samples per ms, USB-safe)
                     sample_mode=nidaqmx.constants.AcquisitionType.FINITE,  # FINITE mode (exact sample count)
-                    samps_per_chan=total_samples,  # Exact number of samples (3,000,000)
+                    samps_per_chan=total_samples,  # Exact number of samples (1,000,000)
                     active_edge=nidaqmx.constants.Edge.RISING  # Sample on rising edge
                 )
                 
@@ -990,7 +991,7 @@ class NIDAQService(QObject):
                 
                 task.stop()
                 print(f"Hardware VOLTAGE acquisition completed ({len(data) if isinstance(data, list) else len(data[0])} samples)")
-                print(f"Starting compression (300:1 → 10,000 samples at 1ms intervals)...")
+                print(f"Starting compression (100:1 → 10,000 samples at 1ms intervals)...")
                 
                 # Process and compress voltage data, then convert to current
                 result = {}

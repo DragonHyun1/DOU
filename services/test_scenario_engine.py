@@ -1758,13 +1758,13 @@ class TestScenarioEngine(QObject):
             # Use DAQ hardware timing: 1kHz for 10 seconds = 10,000 samples
             # Use CURRENT measurement mode (same as Multi-Channel Monitor)
             if hasattr(self, 'daq_service') and self.daq_service:
-                print("Starting DAQ hardware-timed CURRENT collection (1ms interval, 300 samples avg, 10 seconds)...")
+                print("Starting DAQ hardware-timed CURRENT collection (1ms interval, 100 samples avg, 10 seconds)...")
                 
                 daq_result = self.daq_service.read_current_channels_hardware_timed(
                     channels=enabled_channels,
-                    sample_rate=300000.0,  # 300kHz (300 samples per ms)
-                    compress_ratio=300,  # 300:1 compression (average 300 samples → 1 per ms)
-                    duration_seconds=10.0  # 10 seconds → 3M raw → 10k compressed (1ms intervals)
+                    sample_rate=100000.0,  # 100kHz (100 samples per ms, USB-safe)
+                    compress_ratio=100,  # 100:1 compression (average 100 samples → 1 per ms)
+                    duration_seconds=10.0  # 10 seconds → 1M raw → 10k compressed (1ms intervals)
                 )
                 
                 if daq_result:
