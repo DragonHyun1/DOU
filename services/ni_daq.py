@@ -1057,8 +1057,17 @@ class NIDAQService(QObject):
                         else:
                             calibration_factor = 1.0
                         
+                        # Battery voltage compensation factor
+                        # VBAT (4V) channel: no compensation needed
+                        # Other rails (1.2V, 1.8V, etc.): divide by 4 (battery voltage base)
+                        battery_compensation = 1.0
+                        if channels[0] != 'ai0':  # ai0 is VBAT (4V), others need compensation
+                            battery_compensation = 4.0
+                            print(f"  🔋 Battery voltage compensation: ÷{battery_compensation} (non-VBAT rail)")
+                        
                         # Convert voltage to current: I = V / R * 1000 (mA)
-                        compressed_ma = [(v / shunt_r) * 1000 * calibration_factor for v in compressed_volts]
+                        # Apply battery compensation for non-VBAT rails
+                        compressed_ma = [(v / shunt_r) * 1000 * calibration_factor / battery_compensation for v in compressed_volts]
                         avg_i_ma = sum(compressed_ma) / len(compressed_ma) if compressed_ma else 0
                         
                         # Additional validation: Check if current is unreasonably high
@@ -1132,8 +1141,17 @@ class NIDAQService(QObject):
                             else:
                                 calibration_factor = 1.0
                             
+                            # Battery voltage compensation factor
+                            # VBAT (4V) channel: no compensation needed
+                            # Other rails (1.2V, 1.8V, etc.): divide by 4 (battery voltage base)
+                            battery_compensation = 1.0
+                            if channel != 'ai0':  # ai0 is VBAT (4V), others need compensation
+                                battery_compensation = 4.0
+                                print(f"  🔋 Battery voltage compensation for {channel}: ÷{battery_compensation}")
+                            
                             # Convert voltage to current: I = V / R * 1000 (mA)
-                            compressed_ma = [(v / shunt_r) * 1000 * calibration_factor for v in compressed_volts]
+                            # Apply battery compensation for non-VBAT rails
+                            compressed_ma = [(v / shunt_r) * 1000 * calibration_factor / battery_compensation for v in compressed_volts]
                             avg_i_ma = sum(compressed_ma) / len(compressed_ma) if compressed_ma else 0
                             
                             # Additional validation: Check if current is unreasonably high
