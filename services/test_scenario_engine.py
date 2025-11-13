@@ -224,8 +224,13 @@ class TestScenarioEngine(QObject):
             self.log_callback(f"  Available: {key} -> {config.name}", "info")
         return self.scenarios.copy()
     
-    def start_test(self, scenario_name: str) -> bool:
-        """Start test scenario execution"""
+    def start_test(self, scenario_name: str, repeat_count: int = 10) -> bool:
+        """Start test scenario execution with repeat
+        
+        Args:
+            scenario_name: Scenario to execute
+            repeat_count: Number of times to repeat (default: 10)
+        """
         if self.status != TestStatus.IDLE:
             self.log_callback("Test already running or not idle", "error")
             return False
@@ -256,16 +261,20 @@ class TestScenarioEngine(QObject):
         self.current_step = 0
         self.total_steps = len(scenario.steps)
         
+        # Store repeat count
+        self.repeat_count = repeat_count
+        self.current_repeat = 0
+        
         self.status = TestStatus.INITIALIZING
         self.stop_requested = False
         
         # Execute test in separate thread for UI responsiveness
-        self.log_callback(f"Starting test scenario: {scenario_name}", "info")
+        self.log_callback(f"Starting test scenario: {scenario_name} (Repeat: {repeat_count} times)", "info")
         
         try:
             # Start test in separate thread to prevent UI blocking
             self.test_thread = threading.Thread(
-                target=self._execute_test_unified,
+                target=self._execute_test_with_repeat,
                 args=(scenario,),
                 daemon=True
             )
@@ -332,7 +341,60 @@ class TestScenarioEngine(QObject):
         
         return not self.stop_requested
     
-    def _execute_test_unified(self, scenario: TestConfig):
+    def _execute_test_with_repeat(self, scenario: TestConfig):
+        """Execute test scenario with repeat logic"""
+        try:
+            for repeat_idx in range(self.repeat_count):
+                if self.stop_requested:
+                    self.log_callback("Test stopped by user", "warn")
+                    break
+                
+                self.current_repeat = repeat_idx + 1
+                self.log_callback(f"", "info")
+                self.log_callback(f"{'='*60}", "info")
+                self.log_callback(f"🔄 Test Iteration {self.current_repeat}/{self.repeat_count}", "info")
+                self.log_callback(f"{'='*60}", "info")
+                
+                # First iteration: Full init
+                if repeat_idx == 0:
+                    self.log_callback("📌 First iteration: Running full initialization", "info")
+                    success = self._execute_test_unified(scenario, is_first_iteration=True)
+                else:
+                    # Subsequent iterations: Quick reset only
+                    self.log_callback(f"📌 Iteration {self.current_repeat}: Quick reset (clear apps + 5s wait)", "info")
+                    success = self._execute_test_unified(scenario, is_first_iteration=False)
+                
+                if not success and not self.stop_requested:
+                    self.log_callback(f"❌ Test iteration {self.current_repeat} failed", "error")
+                    break
+                
+                # Brief pause between iterations (except last one)
+                if repeat_idx < self.repeat_count - 1:
+                    self.log_callback(f"✅ Completed iteration {self.current_repeat}/{self.repeat_count}", "info")
+                    if not self._interruptible_sleep(2):
+                        break
+            
+            # All iterations completed
+            if not self.stop_requested:
+                self.log_callback(f"", "info")
+                self.log_callback(f"🎉 All {self.repeat_count} test iterations completed successfully!", "info")
+                self.status = TestStatus.COMPLETED
+                self._emit_signal_safe(self.test_completed, True, f"Completed {self.repeat_count} iterations")
+            else:
+                self.status = TestStatus.STOPPED
+                self._emit_signal_safe(self.test_completed, False, "Test stopped by user")
+                
+        except Exception as e:
+            self.log_callback(f"Error in repeat test execution: {e}", "error")
+            import traceback
+            self.log_callback(f"Traceback: {traceback.format_exc()}", "error")
+            self.status = TestStatus.FAILED
+            self._emit_signal_safe(self.test_completed, False, f"Test failed: {e}")
+        finally:
+            self.running = False
+            self.monitoring_active = False
+    
+    def _execute_test_unified(self, scenario: TestConfig, is_first_iteration: bool = True):
         """Execute test scenario in single thread (unified approach)"""
         try:
             self.status = TestStatus.RUNNING
@@ -342,10 +404,25 @@ class TestScenarioEngine(QObject):
             if not scenario.steps:
                 raise ValueError("No test steps defined in scenario")
             
-            self.log_callback(f"Starting {len(scenario.steps)} test steps", "info")
+            # Filter steps based on iteration
+            if is_first_iteration:
+                # First iteration: Execute all steps
+                steps_to_execute = scenario.steps
+                self.log_callback(f"Starting {len(steps_to_execute)} test steps (full initialization)", "info")
+            else:
+                # Subsequent iterations: Quick reset + DAQ + Test + Export
+                quick_reset_step = TestStep("quick_reset", 5.0, "quick_reset_before_test")
+                
+                # Find DAQ and test steps (skip all init steps)
+                daq_test_steps = [step for step in scenario.steps 
+                                 if step.action in ['start_daq_monitoring', 'phone_app_scenario_test', 
+                                                    'stop_daq_monitoring', 'export_to_excel']]
+                
+                steps_to_execute = [quick_reset_step] + daq_test_steps
+                self.log_callback(f"Starting {len(steps_to_execute)} test steps (quick reset)", "info")
             
             # Execute each step in single thread
-            for i, step in enumerate(scenario.steps):
+            for i, step in enumerate(steps_to_execute):
                 if self.stop_requested:
                     break
                 
@@ -353,10 +430,10 @@ class TestScenarioEngine(QObject):
                     self.current_step = i + 1
                     
                     # Update progress bar
-                    progress = int((i / self.total_steps) * 100) if self.total_steps > 0 else 0
-                    self._emit_signal_safe(self.progress_updated, progress, f"Step {i+1}/{self.total_steps}: {step.name}")
+                    progress = int((i / len(steps_to_execute)) * 100) if len(steps_to_execute) > 0 else 0
+                    self._emit_signal_safe(self.progress_updated, progress, f"Iter {self.current_repeat}/{self.repeat_count} - Step {i+1}/{len(steps_to_execute)}: {step.name}")
                     
-                    self.log_callback(f"Step {self.current_step}/{self.total_steps}: {step.name}", "info")
+                    self.log_callback(f"Step {self.current_step}/{len(steps_to_execute)}: {step.name}", "info")
                     
                     # Special handling for screen test with DAQ monitoring
                     if step.action == "screen_on_off_with_daq_monitoring":
@@ -374,15 +451,9 @@ class TestScenarioEngine(QObject):
                         self.current_test.end_time = datetime.now()
                         self.log_callback(f"Test failed at step: {step.name}", "error")
                     
-                    # Reset to IDLE state before emitting failure signal
-                    self.monitoring_active = False
-                    old_status = self.status
-                    self.status = TestStatus.IDLE
-                    self.log_callback(f"Auto test status changed after step failure: {old_status.value} ? {self.status.value}", "info")
-                    
-                    # Emit failure signal after state reset
-                    self._emit_signal_safe(self.test_completed, False, f"Test failed at step: {step.name}")
-                    return
+                    # Don't emit completion signal here, let repeat handler deal with it
+                    self.log_callback(f"Step failed: {step.name}", "error")
+                    return False
                 
                 # Wait for step duration with interruptible sleep
                 if step.duration > 0:
@@ -391,23 +462,14 @@ class TestScenarioEngine(QObject):
                         self.log_callback("Step duration interrupted by stop request", "info")
                         break
             
-            # Test completed successfully
-            self.status = TestStatus.COMPLETED
+            # Single iteration completed successfully
             if self.current_test:
                 self.current_test.end_time = datetime.now()
-                self.log_callback("Test scenario completed successfully", "info")
             
-            # Final progress update - 100%
-            self._emit_signal_safe(self.progress_updated, 100, "Test completed")
+            self.log_callback(f"Test iteration {self.current_repeat}/{self.repeat_count} completed", "info")
             
-            # Reset to IDLE state before emitting completion signal
-            self.monitoring_active = False
-            old_status = self.status
-            self.status = TestStatus.IDLE
-            self.log_callback(f"Auto test status changed: {old_status.value} ? {self.status.value}", "info")
-            
-            # Emit completion signal after state reset
-            self._emit_signal_safe(self.test_completed, True, "Test completed successfully")
+            # Return success (let repeat handler deal with completion)
+            return True
             
         except Exception as e:
             self.status = TestStatus.FAILED
@@ -744,6 +806,8 @@ class TestScenarioEngine(QObject):
                 return self._step_turn_screen_on()
             elif step.action == "unlock_screen":
                 return self._step_unlock_screen()
+            elif step.action == "quick_reset_before_test":
+                return self._step_quick_reset_before_test()
             else:
                 self.log_callback(f"Unknown step action: {step.action}", "error")
                 return False
@@ -895,6 +959,31 @@ class TestScenarioEngine(QObject):
         except Exception as e:
             self.log_callback(f"Error unlocking screen: {e}", "error")
             return False
+    
+    def _step_quick_reset_before_test(self) -> bool:
+        """Quick reset between test iterations (clear apps only)"""
+        try:
+            self.log_callback("=== Quick Reset (Clear Apps + 5s wait) ===", "info")
+            
+            if not self.adb_service:
+                self.log_callback("ADB service not available", "error")
+                return False
+            
+            # Clear all apps
+            self.log_callback("Clearing all apps...", "info")
+            success = self.adb_service.clear_recent_apps()
+            
+            if success:
+                self.log_callback("✅ Apps cleared, waiting 5 seconds for stabilization", "info")
+                # 5 second wait (handled by step duration)
+                return True
+            else:
+                self.log_callback("⚠️ Failed to clear apps, continuing anyway", "warn")
+                return True  # Continue even if clear fails
+                
+        except Exception as e:
+            self.log_callback(f"Error in quick reset: {e}", "error")
+            return True  # Don't fail test for quick reset issues
     
     def _step_wait_stabilization(self) -> bool:
         """Wait for current stabilization (duration handled by main loop)"""
@@ -1435,6 +1524,12 @@ class TestScenarioEngine(QObject):
             self.log_callback(f"Error stopping DAQ monitoring: {e}", "error")
             return False
     
+    def _get_excel_filename_with_repeat(self, base_name: str = "test_results") -> str:
+        """Generate Excel filename with repeat iteration number"""
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        repeat_suffix = f"_iter{self.current_repeat:02d}" if hasattr(self, 'current_repeat') and self.current_repeat > 0 else ""
+        return f"{base_name}_{timestamp}{repeat_suffix}.xlsx"
+    
     def _step_export_to_csv(self) -> bool:
         """Export DAQ data to Excel (with scenario-based filename)"""
         try:
@@ -1467,10 +1562,14 @@ class TestScenarioEngine(QObject):
                 self.log_callback(f"Created directory: {results_dir}", "info")
             
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            # Use scenario name for filename
+            # Use scenario name for filename with iteration number
             scenario_name = self.current_test.scenario_name if self.current_test else "test"
             safe_name = scenario_name.replace(" ", "_").replace("/", "_").replace("\\", "_")
-            csv_filename = f"{results_dir}/{safe_name}_{timestamp}.csv"
+            
+            # Add iteration number to filename
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            repeat_suffix = f"_iter{self.current_repeat:02d}" if hasattr(self, 'current_repeat') and self.current_repeat > 0 else ""
+            csv_filename = f"{results_dir}/{safe_name}_{timestamp}{repeat_suffix}.xlsx"
             
             self.log_callback(f"Exporting to CSV file: {csv_filename}", "info")
             
