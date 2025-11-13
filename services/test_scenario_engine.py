@@ -163,8 +163,11 @@ class TestScenarioEngine(QObject):
             TestStep("init_screen_timeout", 3.0, "set_screen_timeout_10min"),
             TestStep("init_unlock_clear", 10.0, "lcd_on_unlock_home_clear_apps"),
             
-            # Stabilization - INCREASED to 60 seconds (WiFi/Bluetooth need time to stabilize)
-            TestStep("stabilize", 60.0, "wait_stabilization"),
+            # Press Home button before stabilization (ensure clean state)
+            TestStep("press_home_before_stabilize", 2.0, "go_to_home"),
+            
+            # Stabilization - INCREASED to 120 seconds (2 minutes for complete WiFi/Bluetooth stabilization)
+            TestStep("stabilize", 120.0, "wait_stabilization"),
             
             # DAQ Start + Phone App Test + DAQ Stop (separated)
             TestStep("start_daq", 2.0, "start_daq_monitoring"),
