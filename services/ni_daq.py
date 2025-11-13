@@ -820,7 +820,7 @@ class NIDAQService(QObject):
         
         return compressed
     
-    def read_current_channels_hardware_timed(self, channels: List[str], sample_rate: float = 100000.0, compress_ratio: int = 100, duration_seconds: float = 10.0, voltage_range: float = 5.0) -> Optional[dict]:
+    def read_current_channels_hardware_timed(self, channels: List[str], sample_rate: float = 20000.0, compress_ratio: int = 20, duration_seconds: float = 10.0, voltage_range: float = 5.0) -> Optional[dict]:
         """Read current using DAQ hardware timing with compression
         
         Uses NI-DAQmx API to read voltage drop across external shunt resistor.
@@ -828,18 +828,18 @@ class NIDAQService(QObject):
         
         Args:
             channels: List of channel names (e.g., ['ai0', 'ai1'])
-            sample_rate: Sampling rate in Hz (default: 100000.0 = 100kHz, 100 samples per ms)
-            compress_ratio: Compression ratio (default: 100, meaning 100:1 compression)
+            sample_rate: Sampling rate in Hz (default: 20000.0 = 20kHz, 20 samples per ms)
+            compress_ratio: Compression ratio (default: 20, meaning 20:1 compression)
             duration_seconds: Duration of data collection (default: 10.0 seconds)
             
         Returns:
             dict: {channel: {'current_data': [mA], 'sample_count': int}}
             
         Example:
-            - Sampling: 100kHz = 100,000 samples/sec (100 samples per ms)
+            - Sampling: 20kHz = 20,000 samples/sec (20 samples per ms)
             - Duration: 10 seconds
-            - Raw samples: 1,000,000 (1M)
-            - Compress: 100:1 (average 100 samples → 1 per ms)
+            - Raw samples: 200,000
+            - Compress: 20:1 (average 20 samples → 1 per ms)
             - Final samples: 10,000 (one per ms, 0-9999ms)
         """
         if not NI_AVAILABLE or not self.connected:
@@ -848,15 +848,15 @@ class NIDAQService(QObject):
             
         try:
             # Calculate total samples to collect
-            total_samples = int(sample_rate * duration_seconds)  # 100,000 * 10 = 1,000,000
-            compressed_samples = total_samples // compress_ratio  # 1,000,000 / 100 = 10,000
+            total_samples = int(sample_rate * duration_seconds)  # 20,000 * 10 = 200,000
+            compressed_samples = total_samples // compress_ratio  # 200,000 / 20 = 10,000
             
             print(f"=== Hardware-Timed VOLTAGE Collection (with Compression) ===")
             print(f"Channels: {channels}")
             print(f"Voltage range: ±{voltage_range}V")
             print(f"Sampling rate: {sample_rate} Hz ({sample_rate/1000:.0f}kHz)")
             print(f"Duration: {duration_seconds} seconds")
-            print(f"Raw samples: {total_samples} ({total_samples/1000000:.1f}M)")
+            print(f"Raw samples: {total_samples} ({total_samples/1000:.0f}k)")
             print(f"Compress ratio: {compress_ratio}:1 (avg {compress_ratio} samples → 1 per ms)")
             print(f"Final samples: {compressed_samples} (1ms interval: 0-{compressed_samples-1}ms)")
             print(f"Mode: VOLTAGE measurement (external shunt)")
@@ -973,11 +973,11 @@ class NIDAQService(QObject):
                 
                 # Configure hardware timing - FINITE mode for exact sample count
                 # FINITE mode ensures we get exactly the number of samples needed for 1ms intervals
-                # 100kHz sampling rate is safe for USB bandwidth (300kHz caused USB transfer errors)
+                # 20kHz sampling rate is safe for USB bandwidth and matches requirements
                 task.timing.cfg_samp_clk_timing(
-                    rate=sample_rate,  # 100kHz sampling rate (100 samples per ms, USB-safe)
+                    rate=sample_rate,  # 20kHz sampling rate (20 samples per ms, USB-safe)
                     sample_mode=nidaqmx.constants.AcquisitionType.FINITE,  # FINITE mode (exact sample count)
-                    samps_per_chan=total_samples,  # Exact number of samples (1,000,000)
+                    samps_per_chan=total_samples,  # Exact number of samples (200,000)
                     active_edge=nidaqmx.constants.Edge.RISING  # Sample on rising edge
                 )
                 
@@ -986,12 +986,12 @@ class NIDAQService(QObject):
                 
                 # Read samples (FINITE mode - exact sample count)
                 timeout = duration_seconds + 5.0  # Add buffer
-                print(f"Reading {total_samples} raw samples per channel ({total_samples/1000000:.1f}M)...")
+                print(f"Reading {total_samples} raw samples per channel ({total_samples/1000:.0f}k)...")
                 data = task.read(number_of_samples_per_channel=total_samples, timeout=timeout)
                 
                 task.stop()
                 print(f"Hardware VOLTAGE acquisition completed ({len(data) if isinstance(data, list) else len(data[0])} samples)")
-                print(f"Starting compression (100:1 → 10,000 samples at 1ms intervals)...")
+                print(f"Starting compression (20:1 → 10,000 samples at 1ms intervals)...")
                 
                 # Process and compress voltage data, then convert to current
                 result = {}
