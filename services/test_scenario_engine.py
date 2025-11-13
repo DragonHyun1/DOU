@@ -163,11 +163,13 @@ class TestScenarioEngine(QObject):
             TestStep("init_screen_timeout", 3.0, "set_screen_timeout_10min"),
             TestStep("init_unlock_clear", 10.0, "lcd_on_unlock_home_clear_apps"),
             
-            # Press Home button before stabilization (ensure clean state)
-            TestStep("press_home_before_stabilize", 2.0, "go_to_home"),
+            # LCD OFF → ON → Unlock before stabilization (reset display state)
+            TestStep("lcd_off", 2.0, "turn_screen_off"),
+            TestStep("lcd_on", 2.0, "turn_screen_on"),
+            TestStep("unlock_after_lcd", 2.0, "unlock_screen"),
             
-            # Stabilization - INCREASED to 120 seconds (2 minutes for complete WiFi/Bluetooth stabilization)
-            TestStep("stabilize", 120.0, "wait_stabilization"),
+            # Stabilization - 60 seconds (1 minute for WiFi/Bluetooth stabilization)
+            TestStep("stabilize", 60.0, "wait_stabilization"),
             
             # DAQ Start + Phone App Test + DAQ Stop (separated)
             TestStep("start_daq", 2.0, "start_daq_monitoring"),
@@ -736,6 +738,12 @@ class TestScenarioEngine(QObject):
                 return self._step_phone_app_test_with_daq_optimized()
             elif step.action == "stop_daq_monitoring":
                 return self._step_stop_daq_monitoring()
+            elif step.action == "turn_screen_off":
+                return self._step_turn_screen_off()
+            elif step.action == "turn_screen_on":
+                return self._step_turn_screen_on()
+            elif step.action == "unlock_screen":
+                return self._step_unlock_screen()
             else:
                 self.log_callback(f"Unknown step action: {step.action}", "error")
                 return False
@@ -829,6 +837,63 @@ class TestScenarioEngine(QObject):
             return success
         except Exception as e:
             self.log_callback(f"Error going to home screen: {e}", "error")
+            return False
+    
+    def _step_turn_screen_off(self) -> bool:
+        """Turn screen OFF"""
+        try:
+            self.log_callback("Turning screen OFF", "info")
+            if not self.adb_service:
+                self.log_callback("ADB service not available", "error")
+                return False
+            
+            success = self.adb_service.turn_screen_off()
+            if success:
+                self.log_callback("Screen OFF completed", "info")
+                return True
+            else:
+                self.log_callback("Failed to turn screen off", "error")
+                return False
+        except Exception as e:
+            self.log_callback(f"Error turning screen off: {e}", "error")
+            return False
+    
+    def _step_turn_screen_on(self) -> bool:
+        """Turn screen ON"""
+        try:
+            self.log_callback("Turning screen ON", "info")
+            if not self.adb_service:
+                self.log_callback("ADB service not available", "error")
+                return False
+            
+            success = self.adb_service.turn_screen_on()
+            if success:
+                self.log_callback("Screen ON completed", "info")
+                return True
+            else:
+                self.log_callback("Failed to turn screen on", "error")
+                return False
+        except Exception as e:
+            self.log_callback(f"Error turning screen on: {e}", "error")
+            return False
+    
+    def _step_unlock_screen(self) -> bool:
+        """Unlock screen"""
+        try:
+            self.log_callback("Unlocking screen", "info")
+            if not self.adb_service:
+                self.log_callback("ADB service not available", "error")
+                return False
+            
+            success = self.adb_service.unlock_screen()
+            if success:
+                self.log_callback("Screen unlocked", "info")
+                return True
+            else:
+                self.log_callback("Failed to unlock screen", "error")
+                return False
+        except Exception as e:
+            self.log_callback(f"Error unlocking screen: {e}", "error")
             return False
     
     def _step_wait_stabilization(self) -> bool:
