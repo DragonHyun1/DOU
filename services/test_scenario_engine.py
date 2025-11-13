@@ -1525,10 +1525,10 @@ class TestScenarioEngine(QObject):
             return False
     
     def _get_excel_filename_with_repeat(self, base_name: str = "test_results") -> str:
-        """Generate Excel filename with repeat iteration number"""
+        """Generate CSV filename with repeat iteration number"""
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         repeat_suffix = f"_iter{self.current_repeat:02d}" if hasattr(self, 'current_repeat') and self.current_repeat > 0 else ""
-        return f"{base_name}_{timestamp}{repeat_suffix}.xlsx"
+        return f"{base_name}_{timestamp}{repeat_suffix}.csv"
     
     def _step_export_to_csv(self) -> bool:
         """Export DAQ data to Excel (with scenario-based filename)"""
@@ -1569,7 +1569,7 @@ class TestScenarioEngine(QObject):
             # Add iteration number to filename
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             repeat_suffix = f"_iter{self.current_repeat:02d}" if hasattr(self, 'current_repeat') and self.current_repeat > 0 else ""
-            csv_filename = f"{results_dir}/{safe_name}_{timestamp}{repeat_suffix}.xlsx"
+            csv_filename = f"{results_dir}/{safe_name}_{timestamp}{repeat_suffix}.csv"
             
             self.log_callback(f"Exporting to CSV file: {csv_filename}", "info")
             
