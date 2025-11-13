@@ -1,10 +1,21 @@
-Starting hardware-timed VOLTAGE acquisition (100kHz, CONTINUOUS mode)...
-D:\PCT\Tool\DOU_0926\.venv\lib\site-packages\nidaqmx\_library_interpreter.py:6484: DaqWarning: 
-Warning 200011 occurred.
+Hardware-timed collection error: A USB transfer failed due to a transaction error reported by the USB host controller.  This may be due to a fault in the system's USB host controller, a USB cable, or a USB device.
 
-Clock rate specified is so high that it violates the settling time requirements for the acquisition.
+Task Name: _unnamedTask<1>
 
-Reduce the clock rate, or the accuracy of the measurement might be compromised.
-  warnings.warn(DaqWarning(error_string, error_code))
-Reading 1000000 raw samples per channel...
-Hardware VOLTAGE acquisition completed, starting compression...
+Status Code: -50808
+Traceback (most recent call last):
+  File "d:\PCT\Tool\DOU_0926\services\ni_daq.py", line 984, in read_current_channels_hardware_timed
+    task.start()
+  File "D:\PCT\Tool\DOU_0926\.venv\lib\site-packages\nidaqmx\task\_task.py", line 1014, in start
+    self._interpreter.start_task(self._handle)
+  File "D:\PCT\Tool\DOU_0926\.venv\lib\site-packages\nidaqmx\_library_interpreter.py", line 5793, in start_task
+    self.check_for_error(error_code)
+  File "D:\PCT\Tool\DOU_0926\.venv\lib\site-packages\nidaqmx\_library_interpreter.py", line 6479, in check_for_error
+    raise DaqError(extended_error_info, error_code)
+nidaqmx.errors.DaqError: A USB transfer failed due to a transaction error reported by the USB host controller.  This may be due to a fault in the system's USB host controller, a USB cable, or a USB device.
+
+Task Name: _unnamedTask<1>
+
+Status Code: -50808
+ERROR: DAQ collection returned no data
+=== DAQ Hardware-Timed Collection Ended ===
