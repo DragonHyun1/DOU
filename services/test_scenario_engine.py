@@ -3706,41 +3706,39 @@ class TestScenarioEngine(QObject):
             else:
                 self.log_callback("⚠️ Warning: _screen_test_started event not found", "warn")
             
-            # 테스트 시작 (Init에서 LCD OFF 상태이므로 OFF 상태에서 시작)
-            # 0초부터 2초마다 ON → OFF 반복
-            # 0s: ON -> 2s: OFF→ON -> 4s: OFF→ON -> ... -> 18s: OFF→ON -> 20s: 종료
+            # 테스트 시작 - 2초마다 ON/OFF 토글
+            # 0s: ON -> 2s: OFF -> 4s: ON -> 6s: OFF -> ... -> 18s: OFF -> 20s: 종료
+            # 총 10번의 동작 (ON 5번, OFF 5번)
             test_duration = 20  # 20초
-            cycle_interval = 2  # 2초마다
+            toggle_interval = 2  # 2초마다
             
-            elapsed = 0
-            cycle_count = 0
+            screen_on = True  # 첫 동작은 ON
+            action_count = 0
             
-            while elapsed < test_duration:
+            for elapsed in range(0, test_duration, toggle_interval):
                 if self.stop_requested:
                     self.log_callback("Screen On/Off test stopped by user request", "warn")
                     return False
                 
-                cycle_count += 1
+                action_count += 1
                 
-                # OFF → ON 사이클 실행
-                self.log_callback(f"{elapsed}s: Cycle {cycle_count} - Turning LCD ON", "info")
-                if not self.adb_service.turn_screen_on():
-                    self.log_callback(f"Failed to turn screen on at {elapsed}s", "error")
-                    return False
+                if screen_on:
+                    self.log_callback(f"{elapsed}s: Action {action_count}/10 - Turning LCD ON", "info")
+                    if not self.adb_service.turn_screen_on():
+                        self.log_callback(f"Failed to turn screen on at {elapsed}s", "error")
+                        return False
+                else:
+                    self.log_callback(f"{elapsed}s: Action {action_count}/10 - Turning LCD OFF", "info")
+                    if not self.adb_service.turn_screen_off():
+                        self.log_callback(f"Failed to turn screen off at {elapsed}s", "error")
+                        return False
                 
-                time.sleep(0.1)  # ON과 OFF 사이에 짧은 대기
+                # 다음 동작을 위해 토글
+                screen_on = not screen_on
                 
-                self.log_callback(f"{elapsed}s: Cycle {cycle_count} - Turning LCD OFF", "info")
-                if not self.adb_service.turn_screen_off():
-                    self.log_callback(f"Failed to turn screen off at {elapsed}s", "error")
-                    return False
-                
-                # 2초 대기
-                time.sleep(cycle_interval - 0.1)
-                elapsed += cycle_interval
-                
-                if elapsed >= test_duration:
-                    break
+                # 마지막 동작이 아니면 2초 대기
+                if elapsed + toggle_interval < test_duration:
+                    time.sleep(toggle_interval)
             
             # 20초: 테스트 끝
             self.log_callback("20s: Screen On/Off test completed", "info")
