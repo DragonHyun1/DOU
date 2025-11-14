@@ -217,6 +217,43 @@ class TestScenarioEngine(QObject):
         
         self.scenarios["idle_wait_test"] = idle_wait_config
         self.log_callback(f"Registered scenario: {idle_wait_config.name} (key: idle_wait_test)", "info")
+        
+        # Screen On/Off Test Scenario (LCD를 2초마다 켜고 끄는 전력 소비 테스트)
+        screen_onoff_config = TestConfig(
+            name="Screen On/Off Test",
+            description="LCD를 2초마다 켜고 끄는 전력 소비 테스트",
+            test_duration=20.0,  # 20초 테스트
+            stabilization_time=60.0  # 1분 안정화
+        )
+        
+        screen_onoff_config.steps = [
+            # Init Mode Setup - ADB connection first
+            TestStep("init_adb", 3.0, "setup_adb_device"),
+            
+            # Default Settings (after ADB connection)
+            TestStep("default_settings", 5.0, "apply_default_settings"),
+            
+            # Init Mode Setup
+            TestStep("lcd_on_unlock", 3.0, "lcd_on_and_unlock"),
+            TestStep("flight_mode", 2.0, "enable_flight_mode"),
+            TestStep("bluetooth_on", 3.0, "enable_bluetooth"),
+            TestStep("clear_apps", 8.0, "clear_recent_apps"),
+            TestStep("lcd_off", 2.0, "lcd_off"),
+            
+            # 전류 안정화 1분
+            TestStep("stabilize", 60.0, "wait_stabilization"),
+            
+            # DAQ Start + Screen On/Off Test + DAQ Stop
+            TestStep("start_daq", 2.0, "start_daq_monitoring"),
+            TestStep("screen_onoff_test", 20.0, "screen_onoff_test"),
+            TestStep("stop_daq", 2.0, "stop_daq_monitoring"),
+            
+            # Export results
+            TestStep("save_data", 2.0, "export_to_excel")
+        ]
+        
+        self.scenarios["screen_onoff_test"] = screen_onoff_config
+        self.log_callback(f"Registered scenario: {screen_onoff_config.name} (key: screen_onoff_test)", "info")
         self.log_callback(f"Total scenarios registered: {len(self.scenarios)}", "info")
     
     def get_available_scenarios(self) -> Dict[str, TestConfig]:
@@ -253,6 +290,7 @@ class TestScenarioEngine(QObject):
             self.log_callback(f"Warning: Error resetting test state: {e}", "warn")
         
         scenario = self.scenarios[scenario_name]
+        self.current_scenario = scenario_name  # Store current scenario name for DAQ duration
         self.current_test = TestResult(
             scenario_name=scenario_name,
             start_time=datetime.now(),
@@ -799,6 +837,10 @@ class TestScenarioEngine(QObject):
                 return self._step_phone_app_scenario_test()
             elif step.action == "idle_wait_test":
                 return self._step_idle_wait_test()
+            elif step.action == "screen_onoff_test":
+                return self._step_screen_onoff_test()
+            elif step.action == "lcd_off":
+                return self._step_lcd_off()
             elif step.action == "screen_on_app_clear_screen_off":
                 return self._step_screen_on_app_clear_screen_off()
             elif step.action == "phone_app_test_with_daq_optimized":
@@ -1044,10 +1086,21 @@ class TestScenarioEngine(QObject):
             self._screen_test_started = threading.Event()
             self._screen_test_start_time = None
             
-            # Set a reasonable timeout (25 seconds: 10s test + 15s buffer)
-            self._monitoring_timeout = time.time() + 25.0
+            # Get test duration from current scenario (default 10s for backward compatibility)
+            test_duration = 10.0  # Default
+            if hasattr(self, 'current_scenario') and self.current_scenario:
+                scenario_config = self.scenarios.get(self.current_scenario)
+                if scenario_config and hasattr(scenario_config, 'test_duration'):
+                    test_duration = scenario_config.test_duration
+                    self.log_callback(f"Using scenario test duration: {test_duration}s", "info")
             
-            self.log_callback("DAQ monitoring initialized with 25s timeout", "info")
+            # Store test duration for DAQ monitoring thread
+            self._test_duration = test_duration
+            
+            # Set a reasonable timeout (test duration + 15s buffer)
+            self._monitoring_timeout = time.time() + test_duration + 15.0
+            
+            self.log_callback(f"DAQ monitoring initialized with {test_duration}s test duration", "info")
             
             # Check DAQ service connection
             if hasattr(self.daq_service, 'is_connected') and not self.daq_service.is_connected():
@@ -1960,16 +2013,21 @@ class TestScenarioEngine(QObject):
             print(f"Collecting from {len(enabled_channels)} channels: {enabled_channels}")
             print(f"Mode: {measurement_mode}")
             
-            # Use DAQ hardware timing: 1kHz for 10 seconds = 10,000 samples
+            # Get test duration from engine (configured per scenario)
+            test_duration = getattr(self, '_test_duration', 10.0)
+            expected_samples = int(test_duration * 1000)  # 1ms intervals
+            
+            # Use DAQ hardware timing: 1kHz for specified duration
             # Use CURRENT measurement mode (same as Multi-Channel Monitor)
             if hasattr(self, 'daq_service') and self.daq_service:
-                print("Starting DAQ hardware-timed CURRENT collection (1ms interval, 10 samples avg, 10 seconds)...")
+                print(f"Starting DAQ hardware-timed CURRENT collection (1ms interval, 10 samples avg, {test_duration} seconds)...")
+                print(f"Expected samples: {expected_samples} (0 to {expected_samples-1} ms)")
                 
                 daq_result = self.daq_service.read_current_channels_hardware_timed(
                     channels=enabled_channels,
                     sample_rate=10000.0,  # 10kHz (10 samples per ms, USB-safe)
                     compress_ratio=10,  # 10:1 compression (average 10 samples → 1 per ms)
-                    duration_seconds=10.0  # 10 seconds → 100k raw → 10k compressed (1ms intervals)
+                    duration_seconds=test_duration  # Duration from scenario config
                 )
                 
                 if daq_result:
@@ -1979,17 +2037,17 @@ class TestScenarioEngine(QObject):
                     if hasattr(self, 'daq_data'):
                         self.daq_data = []
                         
-                        # Get sample count (should be 10,000 for all channels)
+                        # Get sample count (depends on test duration: 10s=10000, 20s=20000, etc.)
                         first_channel = list(daq_result.keys())[0]
                         sample_count = daq_result[first_channel]['sample_count']
                         
-                        print(f"Processing {sample_count} samples...")
+                        print(f"Processing {sample_count} samples (0 to {sample_count-1} ms)...")
                         
                         # Create data points for each sample
                         for i in range(sample_count):
                             data_point = {
                                 'timestamp': datetime.now(),
-                                'time_elapsed': i,  # Time in ms: 0, 1, 2, ..., 9999
+                                'time_elapsed': i,  # Time in ms: 0, 1, 2, ..., (sample_count-1)
                                 'screen_test_time': i
                             }
                             
@@ -2029,10 +2087,14 @@ class TestScenarioEngine(QObject):
         import random
         
         enabled_channels = getattr(self, '_monitoring_channels', ['ai0', 'ai1'])
+        test_duration = getattr(self, '_test_duration', 10.0)
+        expected_samples = int(test_duration * 1000)
+        
+        print(f"Simulating {expected_samples} samples for {test_duration}s test")
         
         if hasattr(self, 'daq_data'):
             self.daq_data = []
-            for i in range(10000):
+            for i in range(expected_samples):
                 data_point = {
                     'timestamp': datetime.now(),
                     'time_elapsed': i,
@@ -3616,6 +3678,110 @@ class TestScenarioEngine(QObject):
             
         except Exception as e:
             self.log_callback(f"Error during idle wait: {e}", "error")
+            import traceback
+            traceback.print_exc()
+            return False
+    
+    def _step_screen_onoff_test(self) -> bool:
+        """Execute Screen On/Off test (20 seconds)
+        0초: LCD on
+        2초마다 LCD 끄고 키고 반복
+        20초: 테스트 끝
+        """
+        try:
+            self.log_callback("=== Executing Screen On/Off Test (20 seconds) ===", "info")
+            
+            if not self.adb_service:
+                self.log_callback("ADB service not available", "error")
+                return False
+            
+            # Initialize screen test timing for DAQ data collection
+            test_start_time = time.time()
+            self._screen_test_start_time = test_start_time
+            
+            # Signal DAQ monitoring that test has started
+            if hasattr(self, '_screen_test_started'):
+                self._screen_test_started.set()
+                self.log_callback("✅ Screen test start signal sent to DAQ monitoring", "info")
+            else:
+                self.log_callback("⚠️ Warning: _screen_test_started event not found", "warn")
+            
+            # 테스트 시작 - 2초마다 ON/OFF 토글
+            # 0s: ON -> 2s: OFF -> 4s: ON -> 6s: OFF -> ... -> 18s: OFF -> 20s: 종료
+            # 총 10번의 동작 (ON 5번, OFF 5번)
+            test_duration = 20  # 20초
+            toggle_interval = 2  # 2초마다
+            
+            screen_on = True  # 첫 동작은 ON
+            action_count = 0
+            
+            for elapsed in range(0, test_duration, toggle_interval):
+                if self.stop_requested:
+                    self.log_callback("Screen On/Off test stopped by user request", "warn")
+                    return False
+                
+                action_count += 1
+                
+                if screen_on:
+                    self.log_callback(f"{elapsed}s: Action {action_count}/10 - Turning LCD ON", "info")
+                    if not self.adb_service.turn_screen_on():
+                        self.log_callback(f"Failed to turn screen on at {elapsed}s", "error")
+                        return False
+                else:
+                    self.log_callback(f"{elapsed}s: Action {action_count}/10 - Turning LCD OFF", "info")
+                    if not self.adb_service.turn_screen_off():
+                        self.log_callback(f"Failed to turn screen off at {elapsed}s", "error")
+                        return False
+                
+                # 다음 동작을 위해 토글
+                screen_on = not screen_on
+                
+                # 마지막 동작이 아니면 2초 대기
+                if elapsed + toggle_interval < test_duration:
+                    time.sleep(toggle_interval)
+            
+            # 20초: 테스트 끝
+            self.log_callback("20s: Screen On/Off test completed", "info")
+            
+            # Log data collection status
+            data_count = len(self.daq_data) if hasattr(self, 'daq_data') else 0
+            self.log_callback(f"✅ Screen On/Off test completed. Collected {data_count} data points", "info")
+            
+            if data_count == 0:
+                self.log_callback("⚠️ WARNING: No data was collected during Screen On/Off test!", "warn")
+            elif data_count < 20000:
+                self.log_callback(f"⚠️ WARNING: Expected 20,000 samples but got {data_count}", "warn")
+            else:
+                self.log_callback(f"✅ Successfully collected {data_count} data points (0-{data_count-1} ms)", "info")
+            
+            return True
+            
+        except Exception as e:
+            self.log_callback(f"Error executing Screen On/Off test: {e}", "error")
+            import traceback
+            traceback.print_exc()
+            return False
+    
+    def _step_lcd_off(self) -> bool:
+        """LCD off"""
+        try:
+            self.log_callback("=== Turning LCD OFF ===", "info")
+            
+            if not self.adb_service:
+                self.log_callback("ADB service not available", "error")
+                return False
+            
+            # Turn screen off
+            if not self.adb_service.turn_screen_off():
+                self.log_callback("Failed to turn screen off", "error")
+                return False
+            
+            time.sleep(1.0)
+            self.log_callback("✅ LCD turned OFF", "info")
+            return True
+            
+        except Exception as e:
+            self.log_callback(f"Error turning LCD off: {e}", "error")
             import traceback
             traceback.print_exc()
             return False

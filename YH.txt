@@ -1,21 +1,15 @@
-Hardware-timed collection error: A USB transfer failed due to a transaction error reported by the USB host controller.  This may be due to a fault in the system's USB host controller, a USB cable, or a USB device.
-
-Task Name: _unnamedTask<1>
-
-Status Code: -50808
-Traceback (most recent call last):
-  File "d:\PCT\Tool\DOU_0926\services\ni_daq.py", line 984, in read_current_channels_hardware_timed
-    task.start()
-  File "D:\PCT\Tool\DOU_0926\.venv\lib\site-packages\nidaqmx\task\_task.py", line 1014, in start
-    self._interpreter.start_task(self._handle)
-  File "D:\PCT\Tool\DOU_0926\.venv\lib\site-packages\nidaqmx\_library_interpreter.py", line 5793, in start_task
-    self.check_for_error(error_code)
-  File "D:\PCT\Tool\DOU_0926\.venv\lib\site-packages\nidaqmx\_library_interpreter.py", line 6479, in check_for_error
-    raise DaqError(extended_error_info, error_code)
-nidaqmx.errors.DaqError: A USB transfer failed due to a transaction error reported by the USB host controller.  This may be due to a fault in the system's USB host controller, a USB cable, or a USB device.
-
-Task Name: _unnamedTask<1>
-
-Status Code: -50808
-ERROR: DAQ collection returned no data
-=== DAQ Hardware-Timed Collection Ended ===
+UI 변경점에 따라 수정해야할 것들
+1) 기존에 GroupBox로 Text로 넣었던 HVPM Control,NI DAQ Control, Auto Test를
+라벨로 구분하여 넣었음. 그로인해 hvpm_LB, nidaq_LB, autoTest_LB를 새로 생성함
+기존에 연결 상태에 따라 이벤트가 있던 점을 위 LB로 수정이 필요함
+2) UI layout을 배치하기 쉽도록 새로 전체적으로 라인을 맞추기 위해 layout 관련 수정이 많음.
+Layout을 바꿈으로써 생길 수 있는 동작 문제가 있는지 체크 필요함.
+3) testScenarioLabel, testScenario_CB를 없애고 testScenario_PB를 새로 생성함
+이유는 Scenario config에 test scenario 관련 셋팅들을 추가하기 위함.
+Scenario config에 들어갈 내용으로는 반복 Test count를 설정할 수 있도록 할거고
+전체중에 선택한 시나리오를 위의 Test count에 맞춰서 각각 시나리오 별로 돌아가도록 하는 컨셉으로 만들어야함
+시나리오는 현재 3개 밖에 없지만 앞으로 30개 정도로 늘어날 수 있음
+시나리오 enable을 All or manual 두 가지로 나누고 싶음
+All을 누르면 전체 테스트를 돌리는 거고 manual 모드면 enable한 테스트만 동작하도록 하려는게 목적.
+처음에는 ALL로 default 설정해야함.
+4) Scenario config에 있는 셋팅으로 Auto test가 동작해야함.
