@@ -163,14 +163,6 @@ class TestScenarioEngine(QObject):
             TestStep("init_screen_timeout", 3.0, "set_screen_timeout_10min"),
             TestStep("init_unlock_clear", 10.0, "lcd_on_unlock_home_clear_apps"),
             
-            # LCD OFF → ON → Unlock before stabilization (reset display state)
-            TestStep("lcd_off", 2.0, "turn_screen_off"),
-            TestStep("lcd_on", 2.0, "turn_screen_on"),
-            TestStep("unlock_after_lcd", 2.0, "unlock_screen"),
-            
-            # Device idle optimization before stabilization
-            TestStep("deviceidle_step", 2.0, "deviceidle_step"),
-            
             # Stabilization - 60 seconds (1 minute for WiFi/Bluetooth stabilization)
             TestStep("stabilize", 60.0, "wait_stabilization"),
             
