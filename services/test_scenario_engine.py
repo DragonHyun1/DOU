@@ -154,7 +154,10 @@ class TestScenarioEngine(QObject):
         )
         
         phone_app_config.steps = [
-            # Init Mode Setup
+            # Default Settings - Clean state for scenario switching (only first iteration)
+            TestStep("default_settings", 5.0, "apply_default_settings"),
+            
+            # Init Mode Setup - Scenario-specific settings
             TestStep("init_hvpm", 2.0, "set_hvpm_voltage", {"voltage": 4.0}),
             TestStep("init_adb", 3.0, "setup_adb_device"),
             TestStep("lcd_on_unlock_early", 3.0, "lcd_on_and_unlock"),  # LCD ON + Unlock first
