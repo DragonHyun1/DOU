@@ -3694,6 +3694,17 @@ class TestScenarioEngine(QObject):
                 self.log_callback("ADB service not available", "error")
                 return False
             
+            # Initialize screen test timing for DAQ data collection
+            test_start_time = time.time()
+            self._screen_test_start_time = test_start_time
+            
+            # Signal DAQ monitoring that test has started
+            if hasattr(self, '_screen_test_started'):
+                self._screen_test_started.set()
+                self.log_callback("✅ Screen test start signal sent to DAQ monitoring", "info")
+            else:
+                self.log_callback("⚠️ Warning: _screen_test_started event not found", "warn")
+            
             # 0초: LCD on
             self.log_callback("0s: Turning LCD ON", "info")
             if not self.adb_service.turn_screen_on():
@@ -3735,6 +3746,18 @@ class TestScenarioEngine(QObject):
             
             # 20초: 테스트 끝
             self.log_callback("20s: Screen On/Off test completed", "info")
+            
+            # Log data collection status
+            data_count = len(self.daq_data) if hasattr(self, 'daq_data') else 0
+            self.log_callback(f"✅ Screen On/Off test completed. Collected {data_count} data points", "info")
+            
+            if data_count == 0:
+                self.log_callback("⚠️ WARNING: No data was collected during Screen On/Off test!", "warn")
+            elif data_count < 20000:
+                self.log_callback(f"⚠️ WARNING: Expected 20,000 samples but got {data_count}", "warn")
+            else:
+                self.log_callback(f"✅ Successfully collected {data_count} data points (0-{data_count-1} ms)", "info")
+            
             return True
             
         except Exception as e:
