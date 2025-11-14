@@ -168,6 +168,9 @@ class TestScenarioEngine(QObject):
             TestStep("lcd_on", 2.0, "turn_screen_on"),
             TestStep("unlock_after_lcd", 2.0, "unlock_screen"),
             
+            # Device idle optimization before stabilization
+            TestStep("deviceidle_step", 2.0, "deviceidle_step"),
+            
             # Stabilization - 60 seconds (1 minute for WiFi/Bluetooth stabilization)
             TestStep("stabilize", 60.0, "wait_stabilization"),
             
@@ -224,12 +227,12 @@ class TestScenarioEngine(QObject):
             self.log_callback(f"  Available: {key} -> {config.name}", "info")
         return self.scenarios.copy()
     
-    def start_test(self, scenario_name: str, repeat_count: int = 10) -> bool:
+    def start_test(self, scenario_name: str, repeat_count: int = 1) -> bool:
         """Start test scenario execution with repeat
         
         Args:
             scenario_name: Scenario to execute
-            repeat_count: Number of times to repeat (default: 10)
+            repeat_count: Number of times to repeat (default: 1)
         """
         if self.status != TestStatus.IDLE:
             self.log_callback("Test already running or not idle", "error")
@@ -391,8 +394,11 @@ class TestScenarioEngine(QObject):
             self.status = TestStatus.FAILED
             self._emit_signal_safe(self.test_completed, False, f"Test failed: {e}")
         finally:
+            # CRITICAL: Reset to IDLE state to allow re-running tests
             self.running = False
             self.monitoring_active = False
+            self.status = TestStatus.IDLE
+            self.log_callback("Test execution completed, status reset to IDLE", "info")
     
     def _execute_test_unified(self, scenario: TestConfig, is_first_iteration: bool = True):
         """Execute test scenario in single thread (unified approach)"""
@@ -808,6 +814,8 @@ class TestScenarioEngine(QObject):
                 return self._step_unlock_screen()
             elif step.action == "quick_reset_before_test":
                 return self._step_quick_reset_before_test()
+            elif step.action == "deviceidle_step":
+                return self._step_deviceidle_step()
             else:
                 self.log_callback(f"Unknown step action: {step.action}", "error")
                 return False
@@ -959,6 +967,31 @@ class TestScenarioEngine(QObject):
         except Exception as e:
             self.log_callback(f"Error unlocking screen: {e}", "error")
             return False
+    
+    def _step_deviceidle_step(self) -> bool:
+        """Execute deviceidle step command for power optimization"""
+        try:
+            self.log_callback("=== Device Idle Optimization ===", "info")
+            
+            if not self.adb_service:
+                self.log_callback("ADB service not available", "error")
+                return False
+            
+            # Execute: adb shell dumpsys deviceidle step
+            self.log_callback("Running: adb shell dumpsys deviceidle step", "info")
+            result = self.adb_service._run_adb_command(['shell', 'dumpsys', 'deviceidle', 'step'])
+            
+            if result is not None:
+                self.log_callback("✅ Device idle step executed", "info")
+                self.log_callback(f"Output: {result.strip()}", "info")
+                return True
+            else:
+                self.log_callback("⚠️ Device idle step failed, continuing anyway", "warn")
+                return True  # Continue even if command fails
+                
+        except Exception as e:
+            self.log_callback(f"Error executing deviceidle step: {e}", "error")
+            return True  # Don't fail test for this optimization step
     
     def _step_quick_reset_before_test(self) -> bool:
         """Quick reset between test iterations (clear apps only)"""
