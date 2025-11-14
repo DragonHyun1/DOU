@@ -289,6 +289,7 @@ class TestScenarioEngine(QObject):
             self.log_callback(f"Warning: Error resetting test state: {e}", "warn")
         
         scenario = self.scenarios[scenario_name]
+        self.current_scenario = scenario_name  # Store current scenario name for DAQ duration
         self.current_test = TestResult(
             scenario_name=scenario_name,
             start_time=datetime.now(),
@@ -1084,10 +1085,21 @@ class TestScenarioEngine(QObject):
             self._screen_test_started = threading.Event()
             self._screen_test_start_time = None
             
-            # Set a reasonable timeout (25 seconds: 10s test + 15s buffer)
-            self._monitoring_timeout = time.time() + 25.0
+            # Get test duration from current scenario (default 10s for backward compatibility)
+            test_duration = 10.0  # Default
+            if hasattr(self, 'current_scenario') and self.current_scenario:
+                scenario_config = self.scenarios.get(self.current_scenario)
+                if scenario_config and hasattr(scenario_config, 'test_duration'):
+                    test_duration = scenario_config.test_duration
+                    self.log_callback(f"Using scenario test duration: {test_duration}s", "info")
             
-            self.log_callback("DAQ monitoring initialized with 25s timeout", "info")
+            # Store test duration for DAQ monitoring thread
+            self._test_duration = test_duration
+            
+            # Set a reasonable timeout (test duration + 15s buffer)
+            self._monitoring_timeout = time.time() + test_duration + 15.0
+            
+            self.log_callback(f"DAQ monitoring initialized with {test_duration}s test duration", "info")
             
             # Check DAQ service connection
             if hasattr(self.daq_service, 'is_connected') and not self.daq_service.is_connected():
@@ -2000,16 +2012,21 @@ class TestScenarioEngine(QObject):
             print(f"Collecting from {len(enabled_channels)} channels: {enabled_channels}")
             print(f"Mode: {measurement_mode}")
             
-            # Use DAQ hardware timing: 1kHz for 10 seconds = 10,000 samples
+            # Get test duration from engine (configured per scenario)
+            test_duration = getattr(self, '_test_duration', 10.0)
+            expected_samples = int(test_duration * 1000)  # 1ms intervals
+            
+            # Use DAQ hardware timing: 1kHz for specified duration
             # Use CURRENT measurement mode (same as Multi-Channel Monitor)
             if hasattr(self, 'daq_service') and self.daq_service:
-                print("Starting DAQ hardware-timed CURRENT collection (1ms interval, 10 samples avg, 10 seconds)...")
+                print(f"Starting DAQ hardware-timed CURRENT collection (1ms interval, 10 samples avg, {test_duration} seconds)...")
+                print(f"Expected samples: {expected_samples} (0 to {expected_samples-1} ms)")
                 
                 daq_result = self.daq_service.read_current_channels_hardware_timed(
                     channels=enabled_channels,
                     sample_rate=10000.0,  # 10kHz (10 samples per ms, USB-safe)
                     compress_ratio=10,  # 10:1 compression (average 10 samples → 1 per ms)
-                    duration_seconds=10.0  # 10 seconds → 100k raw → 10k compressed (1ms intervals)
+                    duration_seconds=test_duration  # Duration from scenario config
                 )
                 
                 if daq_result:
@@ -2019,17 +2036,17 @@ class TestScenarioEngine(QObject):
                     if hasattr(self, 'daq_data'):
                         self.daq_data = []
                         
-                        # Get sample count (should be 10,000 for all channels)
+                        # Get sample count (depends on test duration: 10s=10000, 20s=20000, etc.)
                         first_channel = list(daq_result.keys())[0]
                         sample_count = daq_result[first_channel]['sample_count']
                         
-                        print(f"Processing {sample_count} samples...")
+                        print(f"Processing {sample_count} samples (0 to {sample_count-1} ms)...")
                         
                         # Create data points for each sample
                         for i in range(sample_count):
                             data_point = {
                                 'timestamp': datetime.now(),
-                                'time_elapsed': i,  # Time in ms: 0, 1, 2, ..., 9999
+                                'time_elapsed': i,  # Time in ms: 0, 1, 2, ..., (sample_count-1)
                                 'screen_test_time': i
                             }
                             
@@ -2069,10 +2086,14 @@ class TestScenarioEngine(QObject):
         import random
         
         enabled_channels = getattr(self, '_monitoring_channels', ['ai0', 'ai1'])
+        test_duration = getattr(self, '_test_duration', 10.0)
+        expected_samples = int(test_duration * 1000)
+        
+        print(f"Simulating {expected_samples} samples for {test_duration}s test")
         
         if hasattr(self, 'daq_data'):
             self.daq_data = []
-            for i in range(10000):
+            for i in range(expected_samples):
                 data_point = {
                     'timestamp': datetime.now(),
                     'time_elapsed': i,
