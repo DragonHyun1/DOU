@@ -745,15 +745,9 @@ class MainWindow(QtWidgets.QMainWindow):
             if hasattr(self.ui, 'nidaq_LB') and self.ui.nidaq_LB:
                 ni_color = "#4CAF50" if ni_connected else "#ff6b6b"  # Green if connected, red if not
                 self.ui.nidaq_LB.setStyleSheet(f"font-weight: bold; font-size: 11pt; color: {ni_color};")
-                    QGroupBox::title {{
-                        color: {ni_color};
-                        font-weight: bold;
-                        font-size: 9pt;
-                    }}
-                """)
                 
         except Exception as e:
-            self._log(f"Error updating groupbox colors: {e}", "error")
+            self._log(f"Error updating label colors: {e}", "error")
 
     def refresh_connections(self):
         """Enhanced connection refresh with better feedback"""
@@ -1728,10 +1722,6 @@ class MainWindow(QtWidgets.QMainWindow):
             # Skip to next scenario
             self._current_scenario_index += 1
             self._start_next_scenario()
-            
-        except Exception as e:
-            self._log(f"Failed to start test scenario: {e}", "error")
-            QtWidgets.QMessageBox.critical(self, "Test Error", f"Failed to start test:\n{e}")
 
     def stop_auto_test(self):
         """Stop automated test"""
