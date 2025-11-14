@@ -689,14 +689,6 @@ class MainWindow(QtWidgets.QMainWindow):
                 self._log("✅ 'Open Results Folder' button connected", "info")
         except Exception as e:
             self._log(f"Error connecting Open Results button: {e}", "error")
-        
-        # Debug: Check combo box contents
-        combo_count = combo_box.count()
-        self._log(f"Final combo box item count: {combo_count}", "info")
-        for i in range(combo_count):
-            item_text = combo_box.itemText(i)
-            item_data = combo_box.itemData(i)
-            self._log(f"  [{i}] Text: '{item_text}', Data: {item_data}", "info")
 
     def _open_results_folder(self):
         """Open test_results folder in file explorer"""
