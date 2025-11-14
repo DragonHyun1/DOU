@@ -227,7 +227,10 @@ class TestScenarioEngine(QObject):
         )
         
         screen_onoff_config.steps = [
-            # Default Settings
+            # Init Mode Setup - ADB connection first
+            TestStep("init_adb", 3.0, "setup_adb_device"),
+            
+            # Default Settings (after ADB connection)
             TestStep("default_settings", 5.0, "apply_default_settings"),
             
             # Init Mode Setup
