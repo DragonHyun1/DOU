@@ -236,6 +236,7 @@ class TestScenarioEngine(QObject):
             # Init Mode Setup
             TestStep("lcd_on_unlock", 3.0, "lcd_on_and_unlock"),
             TestStep("flight_mode", 2.0, "enable_flight_mode"),
+            TestStep("bluetooth_on", 3.0, "enable_bluetooth"),
             TestStep("clear_apps", 8.0, "clear_recent_apps"),
             TestStep("lcd_off", 2.0, "lcd_off"),
             
