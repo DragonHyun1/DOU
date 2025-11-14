@@ -157,14 +157,14 @@ class TestScenarioEngine(QObject):
             # Init Mode Setup
             TestStep("init_hvpm", 2.0, "set_hvpm_voltage", {"voltage": 4.0}),
             TestStep("init_adb", 3.0, "setup_adb_device"),
-            TestStep("lcd_on_early", 2.0, "turn_screen_on"),  # LCD ON first
+            TestStep("lcd_on_unlock_early", 3.0, "lcd_on_and_unlock"),  # LCD ON + Unlock first
             TestStep("init_flight_mode", 2.0, "enable_flight_mode"),
             TestStep("init_wifi_2g", 8.0, "connect_wifi_2g"),
             TestStep("home_after_wifi", 2.0, "go_to_home"),  # Home after WiFi
             TestStep("init_bluetooth", 3.0, "enable_bluetooth"),
             TestStep("home_after_bluetooth", 2.0, "go_to_home"),  # Home after Bluetooth
             TestStep("init_screen_timeout", 3.0, "set_screen_timeout_10min"),
-            TestStep("init_unlock_clear", 10.0, "unlock_and_clear_apps"),  # No LCD ON (already done)
+            TestStep("init_clear_apps", 8.0, "home_and_clear_apps_only"),  # No unlock (already done)
             
             # Stabilization - 60 seconds (1 minute for WiFi/Bluetooth stabilization)
             TestStep("stabilize", 60.0, "wait_stabilization"),
@@ -813,6 +813,10 @@ class TestScenarioEngine(QObject):
                 return self._step_deviceidle_step()
             elif step.action == "unlock_and_clear_apps":
                 return self._step_unlock_and_clear_apps()
+            elif step.action == "lcd_on_and_unlock":
+                return self._step_lcd_on_and_unlock()
+            elif step.action == "home_and_clear_apps_only":
+                return self._step_home_and_clear_apps_only()
             else:
                 self.log_callback(f"Unknown step action: {step.action}", "error")
                 return False
@@ -1955,13 +1959,13 @@ class TestScenarioEngine(QObject):
             # Use DAQ hardware timing: 1kHz for 10 seconds = 10,000 samples
             # Use CURRENT measurement mode (same as Multi-Channel Monitor)
             if hasattr(self, 'daq_service') and self.daq_service:
-                print("Starting DAQ hardware-timed CURRENT collection (1ms interval, 20 samples avg, 10 seconds)...")
+                print("Starting DAQ hardware-timed CURRENT collection (1ms interval, 10 samples avg, 10 seconds)...")
                 
                 daq_result = self.daq_service.read_current_channels_hardware_timed(
                     channels=enabled_channels,
-                    sample_rate=20000.0,  # 20kHz (20 samples per ms, USB-safe)
-                    compress_ratio=20,  # 20:1 compression (average 20 samples → 1 per ms)
-                    duration_seconds=10.0  # 10 seconds → 200k raw → 10k compressed (1ms intervals)
+                    sample_rate=10000.0,  # 10kHz (10 samples per ms, USB-safe)
+                    compress_ratio=10,  # 10:1 compression (average 10 samples → 1 per ms)
+                    duration_seconds=10.0  # 10 seconds → 100k raw → 10k compressed (1ms intervals)
                 )
                 
                 if daq_result:
@@ -3419,6 +3423,66 @@ class TestScenarioEngine(QObject):
             
         except Exception as e:
             self.log_callback(f"Error setting screen timeout: {e}", "error")
+            return False
+    
+    def _step_lcd_on_and_unlock(self) -> bool:
+        """LCD ON + Unlock (at the beginning)"""
+        try:
+            self.log_callback("=== LCD ON + Unlock ===", "info")
+            
+            if not self.adb_service:
+                self.log_callback("ADB service not available", "error")
+                return False
+            
+            # 1. LCD ON
+            self.log_callback("Step 1: Turn LCD ON", "info")
+            if not self.adb_service.turn_screen_on():
+                self.log_callback("Failed to turn screen on", "error")
+            if not self._interruptible_sleep(1):
+                return False
+            
+            # 2. Unlock screen
+            self.log_callback("Step 2: Unlock screen", "info")
+            if not self.adb_service.unlock_screen():
+                self.log_callback("Failed to unlock screen", "error")
+            if not self._interruptible_sleep(1):
+                return False
+            
+            self.log_callback("LCD ON + Unlock completed", "info")
+            return True
+            
+        except Exception as e:
+            self.log_callback(f"Error in LCD ON + unlock: {e}", "error")
+            return False
+    
+    def _step_home_and_clear_apps_only(self) -> bool:
+        """Home -> Clear Apps (without unlock)"""
+        try:
+            self.log_callback("=== Home + Clear Apps ===", "info")
+            
+            if not self.adb_service:
+                self.log_callback("ADB service not available", "error")
+                return False
+            
+            # 1. Press Home button
+            self.log_callback("Step 1: Press Home button", "info")
+            if not self.adb_service.press_home_key():
+                self.log_callback("Failed to press home key", "error")
+            if not self._interruptible_sleep(1):
+                return False
+            
+            # 2. Clear all recent apps
+            self.log_callback("Step 2: Clear all recent apps", "info")
+            if not self.adb_service.clear_recent_apps():
+                self.log_callback("Failed to clear recent apps", "error")
+            if not self._interruptible_sleep(2):
+                return False
+            
+            self.log_callback("Home + Clear Apps completed", "info")
+            return True
+            
+        except Exception as e:
+            self.log_callback(f"Error in home + clear apps: {e}", "error")
             return False
     
     def _step_unlock_and_clear_apps(self) -> bool:
