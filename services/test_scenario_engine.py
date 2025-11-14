@@ -217,6 +217,39 @@ class TestScenarioEngine(QObject):
         
         self.scenarios["idle_wait_test"] = idle_wait_config
         self.log_callback(f"Registered scenario: {idle_wait_config.name} (key: idle_wait_test)", "info")
+        
+        # Screen On/Off Test Scenario (LCD를 2초마다 켜고 끄는 전력 소비 테스트)
+        screen_onoff_config = TestConfig(
+            name="Screen On/Off Test",
+            description="LCD를 2초마다 켜고 끄는 전력 소비 테스트",
+            test_duration=20.0,  # 20초 테스트
+            stabilization_time=60.0  # 1분 안정화
+        )
+        
+        screen_onoff_config.steps = [
+            # Default Settings
+            TestStep("default_settings", 5.0, "apply_default_settings"),
+            
+            # Init Mode Setup
+            TestStep("lcd_on_unlock", 3.0, "lcd_on_and_unlock"),
+            TestStep("flight_mode", 2.0, "enable_flight_mode"),
+            TestStep("clear_apps", 8.0, "clear_recent_apps"),
+            TestStep("lcd_off", 2.0, "lcd_off"),
+            
+            # 전류 안정화 1분
+            TestStep("stabilize", 60.0, "wait_stabilization"),
+            
+            # DAQ Start + Screen On/Off Test + DAQ Stop
+            TestStep("start_daq", 2.0, "start_daq_monitoring"),
+            TestStep("screen_onoff_test", 20.0, "screen_onoff_test"),
+            TestStep("stop_daq", 2.0, "stop_daq_monitoring"),
+            
+            # Export results
+            TestStep("save_data", 2.0, "export_to_excel")
+        ]
+        
+        self.scenarios["screen_onoff_test"] = screen_onoff_config
+        self.log_callback(f"Registered scenario: {screen_onoff_config.name} (key: screen_onoff_test)", "info")
         self.log_callback(f"Total scenarios registered: {len(self.scenarios)}", "info")
     
     def get_available_scenarios(self) -> Dict[str, TestConfig]:
@@ -799,6 +832,10 @@ class TestScenarioEngine(QObject):
                 return self._step_phone_app_scenario_test()
             elif step.action == "idle_wait_test":
                 return self._step_idle_wait_test()
+            elif step.action == "screen_onoff_test":
+                return self._step_screen_onoff_test()
+            elif step.action == "lcd_off":
+                return self._step_lcd_off()
             elif step.action == "screen_on_app_clear_screen_off":
                 return self._step_screen_on_app_clear_screen_off()
             elif step.action == "phone_app_test_with_daq_optimized":
@@ -3616,6 +3653,92 @@ class TestScenarioEngine(QObject):
             
         except Exception as e:
             self.log_callback(f"Error during idle wait: {e}", "error")
+            import traceback
+            traceback.print_exc()
+            return False
+    
+    def _step_screen_onoff_test(self) -> bool:
+        """Execute Screen On/Off test (20 seconds)
+        0초: LCD on
+        2초마다 LCD 끄고 키고 반복
+        20초: 테스트 끝
+        """
+        try:
+            self.log_callback("=== Executing Screen On/Off Test (20 seconds) ===", "info")
+            
+            if not self.adb_service:
+                self.log_callback("ADB service not available", "error")
+                return False
+            
+            # 0초: LCD on
+            self.log_callback("0s: Turning LCD ON", "info")
+            if not self.adb_service.turn_screen_on():
+                self.log_callback("Failed to turn screen on at 0s", "error")
+                return False
+            
+            # 2초마다 LCD 끄고 키고 반복 (20초 동안)
+            # 0s: ON -> 2s: OFF -> 4s: ON -> 6s: OFF -> ... -> 18s: OFF -> 20s: 종료
+            test_duration = 20  # 20초
+            toggle_interval = 2  # 2초마다
+            
+            screen_state = True  # 현재 ON 상태에서 시작 (0초에 ON 했으므로)
+            elapsed = 0
+            
+            while elapsed < test_duration:
+                if self.stop_requested:
+                    self.log_callback("Screen On/Off test stopped by user request", "warn")
+                    return False
+                
+                time.sleep(toggle_interval)
+                elapsed += toggle_interval
+                
+                if elapsed >= test_duration:
+                    break
+                
+                # 화면 토글
+                screen_state = not screen_state
+                
+                if screen_state:
+                    self.log_callback(f"{elapsed}s: Turning LCD ON", "info")
+                    if not self.adb_service.turn_screen_on():
+                        self.log_callback(f"Failed to turn screen on at {elapsed}s", "error")
+                        return False
+                else:
+                    self.log_callback(f"{elapsed}s: Turning LCD OFF", "info")
+                    if not self.adb_service.turn_screen_off():
+                        self.log_callback(f"Failed to turn screen off at {elapsed}s", "error")
+                        return False
+            
+            # 20초: 테스트 끝
+            self.log_callback("20s: Screen On/Off test completed", "info")
+            return True
+            
+        except Exception as e:
+            self.log_callback(f"Error executing Screen On/Off test: {e}", "error")
+            import traceback
+            traceback.print_exc()
+            return False
+    
+    def _step_lcd_off(self) -> bool:
+        """LCD off"""
+        try:
+            self.log_callback("=== Turning LCD OFF ===", "info")
+            
+            if not self.adb_service:
+                self.log_callback("ADB service not available", "error")
+                return False
+            
+            # Turn screen off
+            if not self.adb_service.turn_screen_off():
+                self.log_callback("Failed to turn screen off", "error")
+                return False
+            
+            time.sleep(1.0)
+            self.log_callback("✅ LCD turned OFF", "info")
+            return True
+            
+        except Exception as e:
+            self.log_callback(f"Error turning LCD off: {e}", "error")
             import traceback
             traceback.print_exc()
             return False
