@@ -28,8 +28,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui = main_ui.Ui_MainWindow()
         self.ui.setupUi(self)
         
-        # Apply adaptive window sizing
-        self._apply_adaptive_window_sizing()
+        # Apply adaptive window sizing - DISABLED: Use Qt Designer settings
+        # self._apply_adaptive_window_sizing()
 
         # Apply modern theme with adaptive sizing
         theme.apply_theme(self)
