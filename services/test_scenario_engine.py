@@ -457,14 +457,25 @@ class TestScenarioEngine(QObject):
                 # Duration is 0 because waiting is handled inside the step itself
                 quick_reset_step = TestStep("quick_reset", 0.0, "quick_reset_before_test")
                 
-                # Find DAQ and test steps (skip all init steps)
-                daq_test_steps = [step for step in scenario.steps 
-                                 if step.action in ['start_daq_monitoring', 'phone_app_scenario_test', 
-                                                    'screen_on_off_with_daq_monitoring', 'screen_on_off_cycle',
-                                                    'stop_daq_monitoring', 'export_to_excel']]
+                # Find DAQ and test steps (skip all init/default/stabilization steps)
+                # We want to keep: start_daq, test, stop_daq, export
+                daq_test_steps = []
+                for step in scenario.steps:
+                    # Skip init, default, stabilization steps
+                    if any(keyword in step.name.lower() for keyword in ['init', 'default', 'stabilize']):
+                        self.log_callback(f"  Skipping step: {step.name} (action: {step.action})", "debug")
+                        continue
+                    # Include DAQ, test, and export steps
+                    if step.action in ['start_daq_monitoring', 'phone_app_scenario_test', 
+                                       'screen_on_off_with_daq_monitoring', 'screen_on_off_cycle',
+                                       'stop_daq_monitoring', 'export_to_excel', 'idle_wait_test']:
+                        self.log_callback(f"  Including step: {step.name} (action: {step.action})", "debug")
+                        daq_test_steps.append(step)
                 
                 steps_to_execute = [quick_reset_step] + daq_test_steps
-                self.log_callback(f"Starting {len(steps_to_execute)} test steps (quick reset)", "info")
+                self.log_callback(f"2nd+ iteration: {len(steps_to_execute)} steps (1 quick_reset + {len(daq_test_steps)} test steps)", "info")
+                for i, step in enumerate(steps_to_execute):
+                    self.log_callback(f"  Step {i+1}: {step.name} (action: {step.action})", "info")
             
             # Execute each step in single thread
             for i, step in enumerate(steps_to_execute):
