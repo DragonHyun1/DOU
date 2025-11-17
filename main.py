@@ -57,6 +57,9 @@ class MainWindow(QtWidgets.QMainWindow):
         # Multi-channel monitoring
         self.multi_channel_dialog = None
         
+        # Scenario config dialog
+        self.scenario_config_dialog = None
+        
         # Initialize test scenario engine after ni_service is created
         self.test_scenario_engine = TestScenarioEngine(
             hvpm_service=self.hvpm_service,
@@ -1561,14 +1564,21 @@ class MainWindow(QtWidgets.QMainWindow):
                 )
                 return
             
-            # Create and show dialog
-            dialog = ScenarioConfigDialog(available_scenarios, self)
+            # Create dialog only once (first time)
+            if self.scenario_config_dialog is None:
+                self._log("Creating scenario config dialog for the first time", "info")
+                self.scenario_config_dialog = ScenarioConfigDialog(available_scenarios, self)
+            else:
+                # Dialog already exists, just restore settings from saved config
+                self._log("Reusing existing scenario config dialog", "info")
+                self._restore_scenario_config_to_dialog()
             
-            if dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+            # Show dialog
+            if self.scenario_config_dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted:
                 # Get configuration from dialog
-                selected_scenarios = dialog.get_selected_scenarios()
-                repeat_count = dialog.get_repeat_count()
-                mode = dialog.get_mode()
+                selected_scenarios = self.scenario_config_dialog.get_selected_scenarios()
+                repeat_count = self.scenario_config_dialog.get_repeat_count()
+                mode = self.scenario_config_dialog.get_mode()
                 
                 # Save configuration
                 self.scenario_config['selected_scenarios'] = selected_scenarios
@@ -1590,6 +1600,34 @@ class MainWindow(QtWidgets.QMainWindow):
                 "Error",
                 f"Failed to open scenario configuration:\n{e}"
             )
+    
+    def _restore_scenario_config_to_dialog(self):
+        """Restore saved scenario config to dialog"""
+        if self.scenario_config_dialog is None:
+            return
+            
+        try:
+            # Restore mode
+            mode = self.scenario_config.get('mode', 'all')
+            if mode == 'all':
+                self.scenario_config_dialog.all_radio.setChecked(True)
+            else:
+                self.scenario_config_dialog.manual_radio.setChecked(True)
+            
+            # Restore repeat count
+            repeat_count = self.scenario_config.get('repeat_count', 1)
+            self.scenario_config_dialog.repeat_spinbox.setValue(repeat_count)
+            
+            # Restore selected scenarios (only in manual mode)
+            if mode == 'manual':
+                selected_scenarios = self.scenario_config.get('selected_scenarios', [])
+                for scenario_key, checkbox in self.scenario_config_dialog.scenario_checkboxes.items():
+                    checkbox.setChecked(scenario_key in selected_scenarios)
+            
+            self._log(f"Restored scenario config: mode={mode}, repeat={repeat_count}", "info")
+            
+        except Exception as e:
+            self._log(f"Error restoring scenario config: {e}", "error")
     
     def _on_start_test_button_clicked(self):
         """Handle start test button click with additional logging"""
