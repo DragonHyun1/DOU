@@ -1,4 +1,7 @@
+cursor/screen-on-off-test-scenario-with-power-measurement-0aba 
+위에 브랜치 내용 원격 DEV branch에 반영해주고
 
+그 DEV branch 코드 베이스 기준에서 아래 내용 처리해줘
 
 1. hvpm_LB, nidaq_LB, autoTest_LB connection setting에 따라 이벤트 발생하도록 수정 필요
 2. 전체적으로 위젯 배치들을 위해 전체적으로 변경함
