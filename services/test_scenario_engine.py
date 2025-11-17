@@ -400,8 +400,8 @@ class TestScenarioEngine(QObject):
                     self.log_callback("📌 First iteration: Running full initialization", "info")
                     success = self._execute_test_unified(scenario, is_first_iteration=True)
                 else:
-                    # Subsequent iterations: Quick reset only
-                    self.log_callback(f"📌 Iteration {self.current_repeat}: Quick reset (clear apps + 10s wait + home)", "info")
+                    # Subsequent iterations: Quick reset only (no default/init)
+                    self.log_callback(f"📌 Iteration {self.current_repeat}: Skip default+init, quick reset only", "info")
                     success = self._execute_test_unified(scenario, is_first_iteration=False)
                 
                 if not success and not self.stop_requested:
@@ -1043,15 +1043,16 @@ class TestScenarioEngine(QObject):
             return True  # Don't fail test for this optimization step
     
     def _step_quick_reset_before_test(self) -> bool:
-        """Quick reset between test iterations (clear apps + 10s wait + home)"""
+        """Quick reset between test iterations (clear apps + 10s stabilization)"""
         try:
-            self.log_callback("=== Quick Reset (Clear Apps + 10s wait + Home) ===", "info")
+            self.log_callback("=== Quick Reset for 2nd+ iteration ===", "info")
+            self.log_callback("Sequence: Clear apps → 10s stabilization → Test start", "info")
             
             if not self.adb_service:
                 self.log_callback("ADB service not available", "error")
                 return False
             
-            # Step 1: Clear all apps
+            # Step 1: Clear all recent apps
             self.log_callback("Step 1: Clearing all recent apps...", "info")
             success = self.adb_service.clear_recent_apps()
             
@@ -1060,37 +1061,29 @@ class TestScenarioEngine(QObject):
             else:
                 self.log_callback("✅ Recent apps cleared", "info")
             
-            # Step 2: Wait 10 seconds for stabilization
-            self.log_callback("Step 2: Waiting 10 seconds for stabilization...", "info")
-            if not self._interruptible_sleep(10):
-                return False
-            
-            # Step 3: Press home key
-            self.log_callback("Step 3: Pressing home key...", "info")
-            home_success = self.adb_service.press_home_key()
-            if not home_success:
-                self.log_callback("⚠️ Failed to press home key, continuing anyway", "warn")
-            else:
-                self.log_callback("✅ Home key pressed", "info")
-            
-            # Step 4: Check if this is Screen On/Off scenario
+            # Step 2: Check if this is Screen On/Off scenario and turn screen off if needed
             is_screen_onoff = False
             if hasattr(self, 'current_test') and self.current_test:
                 scenario_name = self.current_test.scenario_name.lower()
                 if 'screen' in scenario_name and ('on' in scenario_name or 'off' in scenario_name):
                     is_screen_onoff = True
-                    self.log_callback("Detected Screen On/Off scenario", "info")
+                    self.log_callback("🔍 Detected Screen On/Off scenario", "info")
             
-            # Step 5: If Screen On/Off scenario, turn screen off
+            # For Screen On/Off scenario, turn screen off after clearing apps
             if is_screen_onoff:
-                self.log_callback("Step 4: Turning screen OFF for Screen On/Off scenario...", "info")
+                self.log_callback("Step 2: Turning screen OFF for Screen On/Off scenario...", "info")
                 screen_off_success = self.adb_service.turn_screen_off()
                 if not screen_off_success:
                     self.log_callback("⚠️ Failed to turn screen off, continuing anyway", "warn")
                 else:
                     self.log_callback("✅ Screen turned OFF", "info")
             
-            self.log_callback("✅ Quick reset completed", "info")
+            # Step 3: Wait 10 seconds for current stabilization
+            self.log_callback(f"Step {3 if is_screen_onoff else 2}: Waiting 10 seconds for current stabilization...", "info")
+            if not self._interruptible_sleep(10):
+                return False
+            
+            self.log_callback("✅ Quick reset completed, starting test...", "info")
             return True
                 
         except Exception as e:
