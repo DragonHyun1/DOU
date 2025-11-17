@@ -6,76 +6,67 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1113</width>
-    <height>806</height>
+    <width>1159</width>
+    <height>790</height>
    </rect>
-  </property>
-  <property name="sizePolicy">
-   <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-    <horstretch>5</horstretch>
-    <verstretch>5</verstretch>
-   </sizepolicy>
   </property>
   <property name="minimumSize">
    <size>
-    <width>1100</width>
-    <height>806</height>
-   </size>
-  </property>
-  <property name="maximumSize">
-   <size>
-    <width>1113</width>
-    <height>806</height>
+    <width>1000</width>
+    <height>500</height>
    </size>
   </property>
   <property name="windowTitle">
    <string>DoU Auto Test Toolkit</string>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <property name="contextMenuPolicy">
-    <enum>Qt::DefaultContextMenu</enum>
-   </property>
-   <layout class="QVBoxLayout" name="verticalLayout_19">
+   <layout class="QVBoxLayout" name="mainVerticalLayout">
+    <property name="spacing">
+     <number>10</number>
+    </property>
     <property name="leftMargin">
-     <number>0</number>
+     <number>15</number>
     </property>
     <property name="topMargin">
-     <number>0</number>
+     <number>15</number>
     </property>
     <property name="rightMargin">
-     <number>0</number>
+     <number>15</number>
     </property>
     <property name="bottomMargin">
-     <number>0</number>
+     <number>15</number>
     </property>
     <item>
      <widget class="QGroupBox" name="connectionGroupBox">
       <property name="sizePolicy">
-       <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+       <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
         <horstretch>0</horstretch>
         <verstretch>0</verstretch>
        </sizepolicy>
       </property>
       <property name="minimumSize">
        <size>
-        <width>874</width>
+        <width>0</width>
         <height>60</height>
        </size>
       </property>
       <property name="maximumSize">
        <size>
-        <width>874</width>
+        <width>16777215</width>
         <height>60</height>
        </size>
       </property>
       <property name="title">
        <string>Connection Settings</string>
       </property>
-      <layout class="QHBoxLayout" name="horizontalLayout_2">
+      <layout class="QHBoxLayout" name="connectionLayout">
+       <property name="spacing">
+        <number>15</number>
+       </property>
        <item>
         <widget class="QLabel" name="PM_LB">
          <property name="sizePolicy">
-          <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+          <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
            <horstretch>0</horstretch>
            <verstretch>0</verstretch>
           </sizepolicy>
@@ -83,13 +74,7 @@
          <property name="minimumSize">
           <size>
            <width>80</width>
-           <height>24</height>
-          </size>
-         </property>
-         <property name="maximumSize">
-          <size>
-           <width>100</width>
-           <height>16777215</height>
+           <height>0</height>
           </size>
          </property>
          <property name="text">
@@ -100,21 +85,15 @@
        <item>
         <widget class="QComboBox" name="hvpm_CB">
          <property name="sizePolicy">
-          <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+          <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
            <horstretch>0</horstretch>
            <verstretch>0</verstretch>
           </sizepolicy>
          </property>
          <property name="minimumSize">
           <size>
-           <width>100</width>
-           <height>24</height>
-          </size>
-         </property>
-         <property name="maximumSize">
-          <size>
-           <width>100</width>
-           <height>16777215</height>
+           <width>120</width>
+           <height>0</height>
           </size>
          </property>
         </widget>
@@ -129,7 +108,7 @@
        <item>
         <widget class="QLabel" name="comport_LB">
          <property name="sizePolicy">
-          <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+          <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
            <horstretch>0</horstretch>
            <verstretch>0</verstretch>
           </sizepolicy>
@@ -137,13 +116,7 @@
          <property name="minimumSize">
           <size>
            <width>80</width>
-           <height>24</height>
-          </size>
-         </property>
-         <property name="maximumSize">
-          <size>
-           <width>80</width>
-           <height>16777215</height>
+           <height>0</height>
           </size>
          </property>
          <property name="text">
@@ -154,21 +127,15 @@
        <item>
         <widget class="QComboBox" name="comport_CB">
          <property name="sizePolicy">
-          <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+          <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
            <horstretch>0</horstretch>
            <verstretch>0</verstretch>
           </sizepolicy>
          </property>
          <property name="minimumSize">
           <size>
-           <width>120</width>
-           <height>24</height>
-          </size>
-         </property>
-         <property name="maximumSize">
-          <size>
-           <width>120</width>
-           <height>16777215</height>
+           <width>150</width>
+           <height>0</height>
           </size>
          </property>
         </widget>
@@ -183,7 +150,7 @@
        <item>
         <widget class="QLabel" name="daqLabel">
          <property name="sizePolicy">
-          <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+          <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
            <horstretch>0</horstretch>
            <verstretch>0</verstretch>
           </sizepolicy>
@@ -191,7 +158,7 @@
          <property name="minimumSize">
           <size>
            <width>60</width>
-           <height>24</height>
+           <height>0</height>
           </size>
          </property>
          <property name="text">
@@ -202,7 +169,7 @@
        <item>
         <widget class="QComboBox" name="daqDevice_CB">
          <property name="sizePolicy">
-          <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+          <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
            <horstretch>0</horstretch>
            <verstretch>0</verstretch>
           </sizepolicy>
@@ -210,7 +177,7 @@
          <property name="minimumSize">
           <size>
            <width>120</width>
-           <height>22</height>
+           <height>0</height>
           </size>
          </property>
         </widget>
@@ -218,14 +185,14 @@
        <item>
         <widget class="QPushButton" name="daqConnect_PB">
          <property name="sizePolicy">
-          <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+          <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
            <horstretch>0</horstretch>
            <verstretch>0</verstretch>
           </sizepolicy>
          </property>
          <property name="minimumSize">
           <size>
-           <width>115</width>
+           <width>60</width>
            <height>28</height>
           </size>
          </property>
@@ -246,17 +213,17 @@
          </property>
         </widget>
        </item>
-       <item>
+       <item alignment="Qt::AlignTop">
         <widget class="QPushButton" name="port_PB">
          <property name="sizePolicy">
-          <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+          <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
            <horstretch>0</horstretch>
            <verstretch>0</verstretch>
           </sizepolicy>
          </property>
          <property name="minimumSize">
           <size>
-           <width>116</width>
+           <width>70</width>
            <height>28</height>
           </size>
          </property>
@@ -268,79 +235,44 @@
          </property>
         </widget>
        </item>
-       <item>
-        <spacer name="horizontalSpacer">
-         <property name="orientation">
-          <enum>Qt::Horizontal</enum>
-         </property>
-         <property name="sizeHint" stdset="0">
-          <size>
-           <width>40</width>
-           <height>20</height>
-          </size>
-         </property>
-        </spacer>
-       </item>
       </layout>
      </widget>
     </item>
     <item>
-     <layout class="QHBoxLayout" name="horizontalLayout_14" stretch="0,0,0,0">
-      <property name="topMargin">
-       <number>9</number>
+     <layout class="QHBoxLayout" name="mainContentLayout">
+      <property name="spacing">
+       <number>15</number>
       </property>
       <item>
-       <layout class="QVBoxLayout" name="verticalLayout_20">
-        <property name="rightMargin">
-         <number>5</number>
-        </property>
-        <item alignment="Qt::AlignLeft|Qt::AlignTop">
-         <widget class="QGroupBox" name="EQControlGroupBox">
+       <layout class="QVBoxLayout" name="verticalLayout_3">
+        <item>
+         <widget class="QGroupBox" name="controlGroupBox">
           <property name="sizePolicy">
-           <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+           <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
             <horstretch>2</horstretch>
             <verstretch>0</verstretch>
            </sizepolicy>
           </property>
           <property name="minimumSize">
            <size>
-            <width>377</width>
-            <height>400</height>
-           </size>
-          </property>
-          <property name="maximumSize">
-           <size>
-            <width>377</width>
-            <height>1000</height>
+            <width>350</width>
+            <height>0</height>
            </size>
           </property>
           <property name="title">
-           <string/>
+           <string>HVPM Control</string>
           </property>
-          <layout class="QVBoxLayout" name="verticalLayout_8">
+          <layout class="QVBoxLayout" name="controlVerticalLayout">
+           <property name="spacing">
+            <number>12</number>
+           </property>
            <item>
-            <widget class="QLabel" name="hvpm_LB">
-             <property name="text">
-              <string>HVPM</string>
+            <layout class="QHBoxLayout" name="monitoringLayout">
+             <property name="spacing">
+              <number>10</number>
              </property>
-            </widget>
-           </item>
-           <item>
-            <layout class="QHBoxLayout" name="horizontalLayout_5">
-             <item alignment="Qt::AlignLeft|Qt::AlignTop">
+             <item>
               <widget class="QFrame" name="currentVoltageFrame">
-               <property name="minimumSize">
-                <size>
-                 <width>117</width>
-                 <height>128</height>
-                </size>
-               </property>
-               <property name="maximumSize">
-                <size>
-                 <width>117</width>
-                 <height>128</height>
-                </size>
-               </property>
                <property name="styleSheet">
                 <string>QFrame { 
                 background-color: #3a3a3a; 
@@ -354,7 +286,7 @@
                <property name="frameShadow">
                 <enum>QFrame::Raised</enum>
                </property>
-               <layout class="QVBoxLayout" name="verticalLayout_15">
+               <layout class="QVBoxLayout" name="currentVoltageLayout">
                 <item>
                  <widget class="QLabel" name="currentVoltageTitle">
                   <property name="sizePolicy">
@@ -376,12 +308,6 @@
                 </item>
                 <item>
                  <widget class="QLabel" name="hvpmVolt_LB">
-                  <property name="minimumSize">
-                   <size>
-                    <width>78</width>
-                    <height>0</height>
-                   </size>
-                  </property>
                   <property name="styleSheet">
                    <string>font-size: 16pt; font-weight: bold; color: #4CAF50; background-color: #2a2a2a; border-radius: 5px; padding: 8px;</string>
                   </property>
@@ -398,18 +324,6 @@
              </item>
              <item>
               <widget class="QFrame" name="currentCurrentFrame">
-               <property name="minimumSize">
-                <size>
-                 <width>117</width>
-                 <height>128</height>
-                </size>
-               </property>
-               <property name="maximumSize">
-                <size>
-                 <width>117</width>
-                 <height>128</height>
-                </size>
-               </property>
                <property name="styleSheet">
                 <string>QFrame { 
                 background-color: #3a3a3a; 
@@ -423,7 +337,7 @@
                <property name="frameShadow">
                 <enum>QFrame::Raised</enum>
                </property>
-               <layout class="QVBoxLayout" name="verticalLayout_14">
+               <layout class="QVBoxLayout" name="currentCurrentLayout">
                 <item>
                  <widget class="QLabel" name="currentCurrentTitle">
                   <property name="sizePolicy">
@@ -445,12 +359,6 @@
                 </item>
                 <item>
                  <widget class="QLabel" name="hvpmCurrent_LB">
-                  <property name="minimumSize">
-                   <size>
-                    <width>79</width>
-                    <height>0</height>
-                   </size>
-                  </property>
                   <property name="styleSheet">
                    <string>font-size: 16pt; font-weight: bold; color: #FF9800; background-color: #2a2a2a; border-radius: 5px; padding: 8px;</string>
                   </property>
@@ -465,20 +373,8 @@
                </layout>
               </widget>
              </item>
-             <item alignment="Qt::AlignLeft|Qt::AlignTop">
+             <item>
               <widget class="QFrame" name="powerFrame">
-               <property name="minimumSize">
-                <size>
-                 <width>121</width>
-                 <height>128</height>
-                </size>
-               </property>
-               <property name="maximumSize">
-                <size>
-                 <width>121</width>
-                 <height>128</height>
-                </size>
-               </property>
                <property name="styleSheet">
                 <string>QFrame { 
                 background-color: #3a3a3a; 
@@ -492,7 +388,7 @@
                <property name="frameShadow">
                 <enum>QFrame::Raised</enum>
                </property>
-               <layout class="QVBoxLayout" name="verticalLayout_16">
+               <layout class="QVBoxLayout" name="powerLayout">
                 <item>
                  <widget class="QLabel" name="powerTitle">
                   <property name="sizePolicy">
@@ -514,12 +410,6 @@
                 </item>
                 <item>
                  <widget class="QLabel" name="hvpmPower_LB">
-                  <property name="minimumSize">
-                   <size>
-                    <width>80</width>
-                    <height>0</height>
-                   </size>
-                  </property>
                   <property name="styleSheet">
                    <string>font-size: 16pt; font-weight: bold; color: #E91E63; background-color: #2a2a2a; border-radius: 5px; padding: 8px;</string>
                   </property>
@@ -537,88 +427,68 @@
             </layout>
            </item>
            <item>
-            <layout class="QHBoxLayout" name="horizontalLayout_15">
-             <item>
-              <widget class="QFrame" name="voltageInputFrame">
-               <property name="sizePolicy">
-                <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-                 <horstretch>0</horstretch>
-                 <verstretch>0</verstretch>
-                </sizepolicy>
-               </property>
-               <property name="minimumSize">
-                <size>
-                 <width>340</width>
-                 <height>140</height>
-                </size>
-               </property>
-               <property name="maximumSize">
-                <size>
-                 <width>340</width>
-                 <height>140</height>
-                </size>
-               </property>
-               <property name="styleSheet">
-                <string>QFrame { 
+            <widget class="QFrame" name="voltageInputFrame">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="minimumSize">
+              <size>
+               <width>100</width>
+               <height>0</height>
+              </size>
+             </property>
+             <property name="maximumSize">
+              <size>
+               <width>500</width>
+               <height>200</height>
+              </size>
+             </property>
+             <property name="styleSheet">
+              <string>QFrame { 
               background-color: #3a3a3a; 
               border-radius: 8px; 
               padding: 10px;
             }</string>
-               </property>
-               <property name="frameShape">
-                <enum>QFrame::StyledPanel</enum>
-               </property>
-               <property name="frameShadow">
-                <enum>QFrame::Raised</enum>
-               </property>
-               <layout class="QVBoxLayout" name="verticalLayout_11">
-                <item>
-                 <widget class="QLabel" name="setVoltageTitle">
-                  <property name="sizePolicy">
-                   <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-                    <horstretch>0</horstretch>
-                    <verstretch>0</verstretch>
-                   </sizepolicy>
-                  </property>
-                  <property name="minimumSize">
-                   <size>
-                    <width>0</width>
-                    <height>37</height>
-                   </size>
-                  </property>
-                  <property name="font">
-                   <font>
-                    <pointsize>12</pointsize>
-                    <bold>true</bold>
-                   </font>
-                  </property>
-                  <property name="styleSheet">
-                   <string>font-weight: bold; font-size: 12pt; color: #dcdcdc;</string>
-                  </property>
-                  <property name="text">
-                   <string>Set Target Voltage</string>
-                  </property>
-                  <property name="alignment">
-                   <set>Qt::AlignCenter</set>
-                  </property>
-                 </widget>
-                </item>
-                <item>
-                 <widget class="QLineEdit" name="hvpmVolt_LE">
-                  <property name="sizePolicy">
-                   <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-                    <horstretch>0</horstretch>
-                    <verstretch>0</verstretch>
-                   </sizepolicy>
-                  </property>
-                  <property name="minimumSize">
-                   <size>
-                    <width>0</width>
-                    <height>36</height>
-                   </size>
-                  </property>
-                  <property name="styleSheet">
-                   <string>QLineEdit { 
+             </property>
+             <property name="frameShape">
+              <enum>QFrame::StyledPanel</enum>
+             </property>
+             <property name="frameShadow">
+              <enum>QFrame::Raised</enum>
+             </property>
+             <layout class="QVBoxLayout" name="voltageInputLayout">
+              <item alignment="Qt::AlignTop">
+               <widget class="QLabel" name="setVoltageTitle">
+                <property name="sizePolicy">
+                 <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                  <horstretch>0</horstretch>
+                  <verstretch>0</verstretch>
+                 </sizepolicy>
+                </property>
+                <property name="styleSheet">
+                 <string>font-weight: bold; font-size: 12pt; color: #dcdcdc;</string>
+                </property>
+                <property name="text">
+                 <string>Set Target Voltage</string>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignCenter</set>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QLineEdit" name="hvpmVolt_LE">
+                <property name="sizePolicy">
+                 <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                  <horstretch>0</horstretch>
+                  <verstretch>0</verstretch>
+                 </sizepolicy>
+                </property>
+                <property name="styleSheet">
+                 <string>QLineEdit { 
                  font-size: 14pt; 
                  padding: 10px; 
                  border-radius: 5px; 
@@ -628,108 +498,36 @@
                QLineEdit:focus { 
                  border: 2px solid #4CAF50; 
                }</string>
-                  </property>
-                  <property name="alignment">
-                   <set>Qt::AlignCenter</set>
-                  </property>
-                  <property name="placeholderText">
-                   <string>Enter voltage (V)</string>
-                  </property>
-                 </widget>
-                </item>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignCenter</set>
+                </property>
+                <property name="placeholderText">
+                 <string>Enter voltage (V)</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <layout class="QHBoxLayout" name="buttonLayout">
+                <property name="spacing">
+                 <number>8</number>
+                </property>
                 <item>
-                 <spacer name="verticalSpacer_3">
-                  <property name="orientation">
-                   <enum>Qt::Vertical</enum>
+                 <widget class="QPushButton" name="readVoltCurrent_PB">
+                  <property name="sizePolicy">
+                   <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                    <horstretch>0</horstretch>
+                    <verstretch>0</verstretch>
+                   </sizepolicy>
                   </property>
-                  <property name="sizeHint" stdset="0">
+                  <property name="minimumSize">
                    <size>
-                    <width>20</width>
-                    <height>40</height>
+                    <width>0</width>
+                    <height>28</height>
                    </size>
                   </property>
-                 </spacer>
-                </item>
-                <item>
-                 <layout class="QHBoxLayout" name="horizontalLayout_10">
-                  <item>
-                   <widget class="QPushButton" name="startMonitoring_PB">
-                    <property name="sizePolicy">
-                     <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-                      <horstretch>0</horstretch>
-                      <verstretch>0</verstretch>
-                     </sizepolicy>
-                    </property>
-                    <property name="minimumSize">
-                     <size>
-                      <width>0</width>
-                      <height>28</height>
-                     </size>
-                    </property>
-                    <property name="styleSheet">
-                     <string>QPushButton { 
-                background-color: #4CAF50; 
-                color: white; 
-                font-weight: bold; 
-                border-radius: 5px; 
-                font-size: 11pt;
-              }
-              QPushButton:hover { 
-                background-color: #45a049; 
-              }</string>
-                    </property>
-                    <property name="text">
-                     <string>Monitor</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QPushButton" name="setVolt_PB">
-                    <property name="sizePolicy">
-                     <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-                      <horstretch>0</horstretch>
-                      <verstretch>0</verstretch>
-                     </sizepolicy>
-                    </property>
-                    <property name="minimumSize">
-                     <size>
-                      <width>0</width>
-                      <height>28</height>
-                     </size>
-                    </property>
-                    <property name="styleSheet">
-                     <string>QPushButton { 
-                background-color: #FF9800; 
-                color: white; 
-                font-weight: bold; 
-                border-radius: 5px; 
-                font-size: 11pt;
-              }
-              QPushButton:hover { 
-                background-color: #F57C00; 
-              }</string>
-                    </property>
-                    <property name="text">
-                     <string>Set V</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QPushButton" name="readVoltCurrent_PB">
-                    <property name="sizePolicy">
-                     <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-                      <horstretch>0</horstretch>
-                      <verstretch>0</verstretch>
-                     </sizepolicy>
-                    </property>
-                    <property name="minimumSize">
-                     <size>
-                      <width>0</width>
-                      <height>28</height>
-                     </size>
-                    </property>
-                    <property name="styleSheet">
-                     <string>QPushButton { 
+                  <property name="styleSheet">
+                   <string>QPushButton { 
                 background-color: #2196F3; 
                 color: white; 
                 font-weight: bold; 
@@ -739,64 +537,14 @@
               QPushButton:hover { 
                 background-color: #1976D2; 
               }</string>
-                    </property>
-                    <property name="text">
-                     <string>Read V&amp;I</string>
-                    </property>
-                   </widget>
-                  </item>
-                 </layout>
+                  </property>
+                  <property name="text">
+                   <string>Read V&amp;I</string>
+                  </property>
+                 </widget>
                 </item>
-               </layout>
-              </widget>
-             </item>
-            </layout>
-           </item>
-           <item>
-            <widget class="QLabel" name="nidaq_LB">
-             <property name="text">
-              <string>NI DAQ</string>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <layout class="QHBoxLayout" name="horizontalLayout_16">
-             <item>
-              <widget class="QFrame" name="niConnectionFrame">
-               <property name="sizePolicy">
-                <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-                 <horstretch>0</horstretch>
-                 <verstretch>0</verstretch>
-                </sizepolicy>
-               </property>
-               <property name="minimumSize">
-                <size>
-                 <width>350</width>
-                 <height>0</height>
-                </size>
-               </property>
-               <property name="maximumSize">
-                <size>
-                 <width>350</width>
-                 <height>16777215</height>
-                </size>
-               </property>
-               <property name="styleSheet">
-                <string>QFrame { 
-              background-color: #3a3a3a; 
-              border-radius: 8px; 
-              padding: 8px;
-            }</string>
-               </property>
-               <property name="frameShape">
-                <enum>QFrame::StyledPanel</enum>
-               </property>
-               <property name="frameShadow">
-                <enum>QFrame::Raised</enum>
-               </property>
-               <layout class="QHBoxLayout" name="horizontalLayout_13">
                 <item>
-                 <widget class="QPushButton" name="multiChannelMonitor_PB">
+                 <widget class="QPushButton" name="setVolt_PB">
                   <property name="sizePolicy">
                    <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
                     <horstretch>0</horstretch>
@@ -805,107 +553,314 @@
                   </property>
                   <property name="minimumSize">
                    <size>
-                    <width>140</width>
-                    <height>0</height>
+                    <width>0</width>
+                    <height>28</height>
                    </size>
                   </property>
-                  <property name="maximumSize">
-                   <size>
-                    <width>140</width>
-                    <height>16777215</height>
-                   </size>
+                  <property name="styleSheet">
+                   <string>QPushButton { 
+                background-color: #FF9800; 
+                color: white; 
+                font-weight: bold; 
+                border-radius: 5px; 
+                font-size: 11pt;
+              }
+              QPushButton:hover { 
+                background-color: #F57C00; 
+              }</string>
                   </property>
                   <property name="text">
-                   <string>Multi-Channel Monitor</string>
+                   <string>Set V</string>
                   </property>
                  </widget>
                 </item>
                 <item>
-                 <spacer name="horizontalSpacer_4">
-                  <property name="orientation">
-                   <enum>Qt::Horizontal</enum>
+                 <widget class="QPushButton" name="startMonitoring_PB">
+                  <property name="sizePolicy">
+                   <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                    <horstretch>0</horstretch>
+                    <verstretch>0</verstretch>
+                   </sizepolicy>
                   </property>
-                  <property name="sizeHint" stdset="0">
+                  <property name="minimumSize">
                    <size>
-                    <width>40</width>
-                    <height>20</height>
+                    <width>0</width>
+                    <height>28</height>
                    </size>
                   </property>
-                 </spacer>
+                  <property name="styleSheet">
+                   <string>QPushButton { 
+                background-color: #4CAF50; 
+                color: white; 
+                font-weight: bold; 
+                border-radius: 5px; 
+                font-size: 11pt;
+              }
+              QPushButton:hover { 
+                background-color: #45a049; 
+              }</string>
+                  </property>
+                  <property name="text">
+                   <string>Monitor</string>
+                  </property>
+                 </widget>
                 </item>
                </layout>
-              </widget>
-             </item>
-            </layout>
+              </item>
+             </layout>
+            </widget>
            </item>
           </layout>
          </widget>
         </item>
         <item>
-         <spacer name="verticalSpacer">
-          <property name="orientation">
-           <enum>Qt::Vertical</enum>
-          </property>
-          <property name="sizeHint" stdset="0">
-           <size>
-            <width>20</width>
-            <height>40</height>
-           </size>
-          </property>
-         </spacer>
-        </item>
-       </layout>
-      </item>
-      <item>
-       <spacer name="horizontalSpacer_2">
-        <property name="orientation">
-         <enum>Qt::Horizontal</enum>
-        </property>
-        <property name="sizeType">
-         <enum>QSizePolicy::Fixed</enum>
-        </property>
-        <property name="sizeHint" stdset="0">
-         <size>
-          <width>1</width>
-          <height>20</height>
-         </size>
-        </property>
-       </spacer>
-      </item>
-      <item>
-       <layout class="QVBoxLayout" name="verticalLayout_21">
-        <item alignment="Qt::AlignLeft|Qt::AlignTop">
-         <widget class="QGroupBox" name="autoTestGroupBox">
+         <widget class="QGroupBox" name="niCurrentGroupBox">
           <property name="sizePolicy">
-           <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-            <horstretch>0</horstretch>
+           <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+            <horstretch>1</horstretch>
             <verstretch>0</verstretch>
            </sizepolicy>
           </property>
           <property name="minimumSize">
            <size>
-            <width>350</width>
-            <height>317</height>
-           </size>
-          </property>
-          <property name="maximumSize">
-           <size>
-            <width>350</width>
-            <height>317</height>
+            <width>280</width>
+            <height>0</height>
            </size>
           </property>
           <property name="title">
-           <string/>
+           <string>NI DAQ Control</string>
           </property>
-          <layout class="QVBoxLayout" name="verticalLayout">
+          <layout class="QVBoxLayout" name="niCurrentLayout">
+           <property name="spacing">
+            <number>10</number>
+           </property>
            <item>
-            <widget class="QLabel" name="autoTest_LB">
-             <property name="text">
-              <string>Auto Test</string>
+            <widget class="QFrame" name="niConnectionFrame">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
              </property>
+             <property name="minimumSize">
+              <size>
+               <width>350</width>
+               <height>0</height>
+              </size>
+             </property>
+             <property name="maximumSize">
+              <size>
+               <width>380</width>
+               <height>16777215</height>
+              </size>
+             </property>
+             <property name="styleSheet">
+              <string>QFrame { 
+              background-color: #3a3a3a; 
+              border-radius: 8px; 
+              padding: 8px;
+            }</string>
+             </property>
+             <property name="frameShape">
+              <enum>QFrame::StyledPanel</enum>
+             </property>
+             <property name="frameShadow">
+              <enum>QFrame::Raised</enum>
+             </property>
+             <layout class="QVBoxLayout" name="niConnectionLayout">
+              <property name="spacing">
+               <number>6</number>
+              </property>
+              <item>
+               <widget class="QPushButton" name="multiChannelMonitor_PB">
+                <property name="sizePolicy">
+                 <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                  <horstretch>0</horstretch>
+                  <verstretch>0</verstretch>
+                 </sizepolicy>
+                </property>
+                <property name="text">
+                 <string>Multi-Channel Monitor</string>
+                </property>
+               </widget>
+              </item>
+             </layout>
             </widget>
            </item>
-           <item>
+          </layout>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="horizontalLayout">
+        <item alignment="Qt::AlignTop">
+         <widget class="QGroupBox" name="autoTestGroupBox">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+            <horstretch>2</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="minimumSize">
+           <size>
+            <width>400</width>
+            <height>0</height>
+           </size>
+          </property>
+          <property name="title">
+           <string>Auto Test</string>
+          </property>
+          <layout class="QVBoxLayout" name="autoTestLayout">
+           <property name="spacing">
+            <number>8</number>
+           </property>
+           <item alignment="Qt::AlignTop">
+            <widget class="QFrame" name="testConfigFrame">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="minimumSize">
+              <size>
+               <width>0</width>
+               <height>30</height>
+              </size>
+             </property>
+             <property name="maximumSize">
+              <size>
+               <width>350</width>
+               <height>16777215</height>
+              </size>
+             </property>
+             <property name="styleSheet">
+              <string>QFrame { 
+              background-color: #3a3a3a; 
+              border-radius: 8px; 
+              padding: 10px;
+            }</string>
+             </property>
+             <property name="frameShape">
+              <enum>QFrame::StyledPanel</enum>
+             </property>
+             <property name="frameShadow">
+              <enum>QFrame::Raised</enum>
+             </property>
+             <layout class="QVBoxLayout" name="testConfigLayout">
+              <property name="spacing">
+               <number>6</number>
+              </property>
+              <item>
+               <layout class="QHBoxLayout" name="scenarioLayout">
+                <item>
+                 <widget class="QLabel" name="testScenarioLabel">
+                  <property name="sizePolicy">
+                   <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                    <horstretch>0</horstretch>
+                    <verstretch>0</verstretch>
+                   </sizepolicy>
+                  </property>
+                  <property name="minimumSize">
+                   <size>
+                    <width>60</width>
+                    <height>10</height>
+                   </size>
+                  </property>
+                  <property name="styleSheet">
+                   <string>font-weight: bold; font-size: 9pt; color: #dcdcdc;</string>
+                  </property>
+                  <property name="text">
+                   <string>Scenario:</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QComboBox" name="testScenario_CB">
+                  <property name="sizePolicy">
+                   <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                    <horstretch>0</horstretch>
+                    <verstretch>0</verstretch>
+                   </sizepolicy>
+                  </property>
+                  <property name="minimumSize">
+                   <size>
+                    <width>0</width>
+                    <height>15</height>
+                   </size>
+                  </property>
+                  <property name="styleSheet">
+                   <string>QComboBox { font-size: 9pt; padding: 4px; }</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </item>
+              <item>
+               <widget class="QFrame" name="customScriptFrame">
+                <property name="visible">
+                 <bool>false</bool>
+                </property>
+                <property name="styleSheet">
+                 <string>QFrame { 
+                 background-color: #2a2a2a; 
+                 border-radius: 5px; 
+                 padding: 5px;
+               }</string>
+                </property>
+                <property name="frameShape">
+                 <enum>QFrame::StyledPanel</enum>
+                </property>
+                <property name="frameShadow">
+                 <enum>QFrame::Raised</enum>
+                </property>
+                <layout class="QVBoxLayout" name="customScriptLayout">
+                 <property name="spacing">
+                  <number>4</number>
+                 </property>
+                 <item>
+                  <widget class="QLabel" name="customScriptLabel">
+                   <property name="styleSheet">
+                    <string>font-size: 8pt; color: #dcdcdc;</string>
+                   </property>
+                   <property name="text">
+                    <string>Custom ADB Commands:</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QTextEdit" name="customScript_TE">
+                   <property name="maximumSize">
+                    <size>
+                     <width>16777215</width>
+                     <height>60</height>
+                    </size>
+                   </property>
+                   <property name="styleSheet">
+                    <string>QTextEdit { 
+                    background-color: #1a1a1a; 
+                    border: 1px solid #555; 
+                    border-radius: 3px; 
+                    font-family: 'Consolas', 'Courier New', monospace;
+                    font-size: 8pt;
+                    color: #dcdcdc;
+                  }</string>
+                   </property>
+                   <property name="placeholderText">
+                    <string>input keyevent KEYCODE_POWER
+sleep 5
+input keyevent KEYCODE_WAKEUP</string>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+             </layout>
+            </widget>
+           </item>
+           <item alignment="Qt::AlignTop">
             <widget class="QFrame" name="testProgressFrame">
              <property name="sizePolicy">
               <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
@@ -932,7 +887,7 @@
              <property name="frameShadow">
               <enum>QFrame::Raised</enum>
              </property>
-             <layout class="QVBoxLayout" name="verticalLayout_13">
+             <layout class="QVBoxLayout" name="testProgressLayout">
               <item>
                <widget class="QLabel" name="testProgressLabel">
                 <property name="sizePolicy">
@@ -999,7 +954,10 @@
                </widget>
               </item>
               <item>
-               <layout class="QHBoxLayout" name="horizontalLayout_12">
+               <layout class="QHBoxLayout" name="testControlLayout">
+                <property name="spacing">
+                 <number>10</number>
+                </property>
                 <item>
                  <widget class="QPushButton" name="startAutoTest_PB">
                   <property name="sizePolicy">
@@ -1112,8 +1070,45 @@
              </layout>
             </widget>
            </item>
-           <item>
-            <widget class="QFrame" name="testConfigFrame">
+          </layout>
+         </widget>
+        </item>
+        <item>
+         <widget class="QFrame" name="testResultsFrame">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+            <horstretch>1</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="minimumSize">
+           <size>
+            <width>300</width>
+            <height>0</height>
+           </size>
+          </property>
+          <property name="maximumSize">
+           <size>
+            <width>400</width>
+            <height>16777215</height>
+           </size>
+          </property>
+          <property name="styleSheet">
+           <string>QFrame { 
+              background-color: #3a3a3a; 
+              border-radius: 8px; 
+              padding: 10px;
+            }</string>
+          </property>
+          <property name="frameShape">
+           <enum>QFrame::StyledPanel</enum>
+          </property>
+          <property name="frameShadow">
+           <enum>QFrame::Raised</enum>
+          </property>
+          <layout class="QVBoxLayout" name="testResultsLayout">
+           <item alignment="Qt::AlignTop">
+            <widget class="QLabel" name="testResultsLabel">
              <property name="sizePolicy">
               <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
                <horstretch>0</horstretch>
@@ -1126,144 +1121,39 @@
                <height>30</height>
               </size>
              </property>
-             <property name="maximumSize">
+             <property name="font">
+              <font>
+               <pointsize>12</pointsize>
+               <bold>true</bold>
+              </font>
+             </property>
+             <property name="styleSheet">
+              <string>font-weight: bold; font-size: 12pt; color: #dcdcdc;</string>
+             </property>
+             <property name="text">
+              <string>Test Progress</string>
+             </property>
+             <property name="alignment">
+              <set>Qt::AlignCenter</set>
+             </property>
+            </widget>
+           </item>
+           <item alignment="Qt::AlignHCenter|Qt::AlignTop">
+            <widget class="QTextEdit" name="testResults_TE">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="minimumSize">
               <size>
-               <width>350</width>
-               <height>16777215</height>
+               <width>0</width>
+               <height>350</height>
               </size>
              </property>
              <property name="styleSheet">
-              <string>QFrame { 
-              background-color: #3a3a3a; 
-              border-radius: 8px; 
-              padding: 10px;
-            }</string>
-             </property>
-             <property name="frameShape">
-              <enum>QFrame::StyledPanel</enum>
-             </property>
-             <property name="frameShadow">
-              <enum>QFrame::Raised</enum>
-             </property>
-             <layout class="QHBoxLayout" name="horizontalLayout_11">
-              <item>
-               <widget class="QPushButton" name="testScenario_PB">
-                <property name="text">
-                 <string>Scenario Config</string>
-                </property>
-               </widget>
-              </item>
-             </layout>
-            </widget>
-           </item>
-          </layout>
-         </widget>
-        </item>
-        <item>
-         <spacer name="verticalSpacer_2">
-          <property name="orientation">
-           <enum>Qt::Vertical</enum>
-          </property>
-          <property name="sizeHint" stdset="0">
-           <size>
-            <width>20</width>
-            <height>40</height>
-           </size>
-          </property>
-         </spacer>
-        </item>
-       </layout>
-      </item>
-      <item>
-       <widget class="QFrame" name="testResultsFrame">
-        <property name="sizePolicy">
-         <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
-          <horstretch>0</horstretch>
-          <verstretch>0</verstretch>
-         </sizepolicy>
-        </property>
-        <property name="minimumSize">
-         <size>
-          <width>350</width>
-          <height>0</height>
-         </size>
-        </property>
-        <property name="maximumSize">
-         <size>
-          <width>350</width>
-          <height>16777215</height>
-         </size>
-        </property>
-        <property name="styleSheet">
-         <string>QFrame { 
-              background-color: #3a3a3a; 
-              border-radius: 8px; 
-              padding: 10px;
-            }</string>
-        </property>
-        <property name="frameShape">
-         <enum>QFrame::StyledPanel</enum>
-        </property>
-        <property name="frameShadow">
-         <enum>QFrame::Raised</enum>
-        </property>
-        <layout class="QVBoxLayout" name="verticalLayout_18">
-         <property name="leftMargin">
-          <number>0</number>
-         </property>
-         <item alignment="Qt::AlignHCenter">
-          <widget class="QLabel" name="testResultsLabel">
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-             <horstretch>0</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
-           </property>
-           <property name="minimumSize">
-            <size>
-             <width>300</width>
-             <height>39</height>
-            </size>
-           </property>
-           <property name="font">
-            <font>
-             <pointsize>12</pointsize>
-             <bold>true</bold>
-            </font>
-           </property>
-           <property name="styleSheet">
-            <string>font-weight: bold; font-size: 12pt; color: #dcdcdc;</string>
-           </property>
-           <property name="text">
-            <string>Test Progress</string>
-           </property>
-           <property name="alignment">
-            <set>Qt::AlignCenter</set>
-           </property>
-          </widget>
-         </item>
-         <item alignment="Qt::AlignHCenter">
-          <widget class="QTextEdit" name="testResults_TE">
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
-             <horstretch>0</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
-           </property>
-           <property name="minimumSize">
-            <size>
-             <width>300</width>
-             <height>350</height>
-            </size>
-           </property>
-           <property name="maximumSize">
-            <size>
-             <width>300</width>
-             <height>16777215</height>
-            </size>
-           </property>
-           <property name="styleSheet">
-            <string>QTextEdit { 
+              <string>QTextEdit { 
                  background-color: #2a2a2a; 
                  border: 1px solid #555; 
                  border-radius: 5px; 
@@ -1271,17 +1161,19 @@
                  font-size: 8pt;
                  color: #dcdcdc;
                }</string>
-           </property>
-           <property name="readOnly">
-            <bool>true</bool>
-           </property>
-           <property name="placeholderText">
-            <string>Test results will appear here...</string>
-           </property>
-          </widget>
-         </item>
-        </layout>
-       </widget>
+             </property>
+             <property name="readOnly">
+              <bool>true</bool>
+             </property>
+             <property name="placeholderText">
+              <string>Test results will appear here...</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+        </item>
+       </layout>
       </item>
      </layout>
     </item>
@@ -1295,21 +1187,21 @@
       </property>
       <property name="minimumSize">
        <size>
-        <width>1113</width>
+        <width>0</width>
         <height>200</height>
        </size>
       </property>
       <property name="maximumSize">
        <size>
-        <width>1113</width>
-        <height>200</height>
+        <width>16777215</width>
+        <height>300</height>
        </size>
       </property>
       <property name="title">
        <string>System Log</string>
       </property>
-      <layout class="QVBoxLayout" name="verticalLayout_17">
-       <item>
+      <layout class="QVBoxLayout" name="logLayout">
+       <item alignment="Qt::AlignTop">
         <widget class="QListWidget" name="log_LW">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
@@ -1317,17 +1209,8 @@
            <verstretch>0</verstretch>
           </sizepolicy>
          </property>
-         <property name="minimumSize">
-          <size>
-           <width>1093</width>
-           <height>200</height>
-          </size>
-         </property>
-         <property name="maximumSize">
-          <size>
-           <width>1093</width>
-           <height>200</height>
-          </size>
+         <property name="selectionMode">
+          <enum>QAbstractItemView::ExtendedSelection</enum>
          </property>
          <property name="styleSheet">
           <string>QListWidget { 
@@ -1338,24 +1221,19 @@
             font-size: 10pt;
           }</string>
          </property>
-         <property name="selectionMode">
-          <enum>QAbstractItemView::ExtendedSelection</enum>
-         </property>
         </widget>
        </item>
       </layout>
      </widget>
     </item>
    </layout>
-   <zorder>logGroupBox</zorder>
-   <zorder>connectionGroupBox</zorder>
   </widget>
   <widget class="QMenuBar" name="menubar">
    <property name="geometry">
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1113</width>
+     <width>1159</width>
      <height>22</height>
     </rect>
    </property>
