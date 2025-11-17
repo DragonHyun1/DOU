@@ -5,7 +5,7 @@ Scenario Config Dialog
 
 from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel, 
                              QPushButton, QSpinBox, QCheckBox, QScrollArea,
-                             QWidget, QFrame, QRadioButton, QButtonGroup)
+                             QWidget, QFrame, QRadioButton, QButtonGroup, QGroupBox)
 from PyQt6.QtCore import Qt
 
 
