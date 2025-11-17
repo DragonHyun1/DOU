@@ -145,11 +145,11 @@ class MainWindow(QtWidgets.QMainWindow):
         self._log("Reloading test scenarios after full UI initialization...", "info")
         self.setup_auto_test_ui()
         
-        # Apply adaptive sizing to UI elements
-        self._apply_adaptive_ui_sizing()
+        # Apply adaptive sizing to UI elements - DISABLED: Use Qt Designer settings
+        # self._apply_adaptive_ui_sizing()
         
-        # Apply responsive layout management
-        self._apply_responsive_layout()
+        # Apply responsive layout management - DISABLED: Use Qt Designer settings
+        # self._apply_responsive_layout()
         
         # Status bar 메시지
         self.ui.statusbar.showMessage("Ready - Connect devices to start monitoring and testing", 5000)
