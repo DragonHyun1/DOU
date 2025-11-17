@@ -12,6 +12,7 @@ from services.adaptive_ui import get_adaptive_ui
 from services.responsive_layout import get_responsive_manager
 from ui.test_settings_dialog import TestSettingsDialog
 from ui.multi_channel_monitor import MultiChannelMonitorDialog
+from ui.scenario_config_dialog import ScenarioConfigDialog
 from collections import deque
 import pyqtgraph as pg
 
@@ -84,6 +85,13 @@ class MainWindow(QtWidgets.QMainWindow):
             'stabilization_time': 10,
             'sampling_interval': 1.0,
             'skip_stabilization_data': True
+        }
+        
+        # Scenario configuration settings
+        self.scenario_config = {
+            'selected_scenarios': [],  # List of selected scenario keys
+            'repeat_count': 1,         # Number of times to repeat each scenario
+            'mode': 'all'              # 'all' or 'manual'
         }
         
         # Data collection state
@@ -413,7 +421,9 @@ class MainWindow(QtWidgets.QMainWindow):
             self.ui.startAutoTest_PB.clicked.connect(self._on_start_test_button_clicked)
         if hasattr(self.ui, 'stopAutoTest_PB') and self.ui.stopAutoTest_PB:
             self.ui.stopAutoTest_PB.clicked.connect(self.stop_auto_test)
-        # testSettings_PB removed
+        # Scenario Config button
+        if hasattr(self.ui, 'testScenario_PB') and self.ui.testScenario_PB:
+            self.ui.testScenario_PB.clicked.connect(self.open_scenario_config)
         
         # Combo box connections
         if hasattr(self.ui, 'comport_CB') and self.ui.comport_CB:
@@ -647,51 +657,30 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def setup_auto_test_ui(self):
         """Setup auto test UI components"""
-        # Check if auto test UI elements exist
+        # Load available scenarios and initialize default config
         try:
-            combo_box = getattr(self.ui, 'testScenario_CB', None)
-            if combo_box is None:
-                self._log("WARNING: testScenario_CB not found in UI - auto test features disabled", "warn")
-                return
+            self._log("Setting up auto test UI...", "info")
             
-            self._log(f"Setting up auto test UI. Current combo items: {combo_box.count()}", "info")
-                
-            # Clear existing scenarios and load from test scenario engine
-            combo_box.clear()
-            
-        except Exception as e:
-            self._log(f"ERROR: Failed to access testScenario_CB: {e}", "error")
-            return
-        
-        # Load available scenarios from test scenario engine
-        try:
-            self._log("Attempting to load test scenarios...", "info")
             scenarios = self.test_scenario_engine.get_available_scenarios()
             self._log(f"Retrieved scenarios: {list(scenarios.keys()) if scenarios else 'None'}", "info")
             
             if scenarios:
-                for scenario_key, scenario_config in scenarios.items():
-                    combo_box.addItem(scenario_config.name, scenario_key)
-                    self._log(f"Added scenario: {scenario_config.name} (key: {scenario_key})", "info")
+                # Initialize scenario config with all scenarios (default mode: ALL)
+                self.scenario_config['selected_scenarios'] = list(scenarios.keys())
+                self.scenario_config['repeat_count'] = 1
+                self.scenario_config['mode'] = 'all'
+                
                 self._log(f"Successfully loaded {len(scenarios)} test scenarios", "info")
+                
+                # Update button text to show default config
+                if hasattr(self.ui, 'testScenario_PB') and self.ui.testScenario_PB:
+                    self.ui.testScenario_PB.setText(f"Scenario Config (All x1)")
             else:
-                combo_box.addItem("No test scenarios available")
                 self._log("No test scenarios available", "warn")
         except Exception as e:
             import traceback
             self._log(f"Error loading test scenarios: {e}", "error")
             self._log(f"Traceback: {traceback.format_exc()}", "error")
-            combo_box.addItem("Error loading scenarios")
-        
-        # Enable combo box
-        combo_box.setEnabled(True)
-        
-        # Connect scenario selection change
-        try:
-            combo_box.currentIndexChanged.connect(self._on_scenario_changed)
-            self._log("Connected scenario selection change handler", "info")
-        except Exception as e:
-            self._log(f"Error connecting scenario change handler: {e}", "error")
         
         # Connect "Open Results Folder" button (defined in UI file)
         try:
@@ -700,14 +689,6 @@ class MainWindow(QtWidgets.QMainWindow):
                 self._log("✅ 'Open Results Folder' button connected", "info")
         except Exception as e:
             self._log(f"Error connecting Open Results button: {e}", "error")
-        
-        # Debug: Check combo box contents
-        combo_count = combo_box.count()
-        self._log(f"Final combo box item count: {combo_count}", "info")
-        for i in range(combo_count):
-            item_text = combo_box.itemText(i)
-            item_data = combo_box.itemData(i)
-            self._log(f"  [{i}] Text: '{item_text}', Data: {item_data}", "info")
 
     def _open_results_folder(self):
         """Open test_results folder in file explorer"""
@@ -744,33 +725,21 @@ class MainWindow(QtWidgets.QMainWindow):
                 f"Failed to open results folder:\n{str(e)}"
             )
     
-    def _update_groupbox_colors(self, hvpm_connected: bool, ni_connected: bool):
-        """Update GroupBox title colors based on connection status"""
+    def _update_label_colors(self, hvpm_connected: bool, ni_connected: bool):
+        """Update Label colors based on connection status"""
         try:
-            # HVPM Control color
-            if hasattr(self.ui, 'controlGroupBox') and self.ui.controlGroupBox:
+            # HVPM Label color
+            if hasattr(self.ui, 'hvpm_LB') and self.ui.hvpm_LB:
                 hvpm_color = "#4CAF50" if hvpm_connected else "#ff6b6b"  # Green if connected, red if not
-                self.ui.controlGroupBox.setStyleSheet(f"""
-                    QGroupBox::title {{
-                        color: {hvpm_color};
-                        font-weight: bold;
-                        font-size: 9pt;
-                    }}
-                """)
+                self.ui.hvpm_LB.setStyleSheet(f"font-weight: bold; font-size: 11pt; color: {hvpm_color};")
             
-            # NI DAQ Control color  
-            if hasattr(self.ui, 'niCurrentGroupBox') and self.ui.niCurrentGroupBox:
+            # NI DAQ Label color
+            if hasattr(self.ui, 'nidaq_LB') and self.ui.nidaq_LB:
                 ni_color = "#4CAF50" if ni_connected else "#ff6b6b"  # Green if connected, red if not
-                self.ui.niCurrentGroupBox.setStyleSheet(f"""
-                    QGroupBox::title {{
-                        color: {ni_color};
-                        font-weight: bold;
-                        font-size: 9pt;
-                    }}
-                """)
+                self.ui.nidaq_LB.setStyleSheet(f"font-weight: bold; font-size: 11pt; color: {ni_color};")
                 
         except Exception as e:
-            self._log(f"Error updating groupbox colors: {e}", "error")
+            self._log(f"Error updating label colors: {e}", "error")
 
     def refresh_connections(self):
         """Enhanced connection refresh with better feedback"""
@@ -856,7 +825,7 @@ class MainWindow(QtWidgets.QMainWindow):
             can_start = hvpm_connected and adb_connected and not test_running
             
             # Update GroupBox title colors based on connection status
-            self._update_groupbox_colors(hvpm_connected, self.ni_service.is_connected() if self.ni_service else False)
+            self._update_label_colors(hvpm_connected, self.ni_service.is_connected() if self.ni_service else False)
             
             # Reset Auto Test group box title when test is not running
             if not test_running and hasattr(self.ui, 'autoTestGroupBox') and self.ui.autoTestGroupBox:
@@ -1552,6 +1521,50 @@ class MainWindow(QtWidgets.QMainWindow):
             self.test_config['test_voltage']
         )
 
+    def open_scenario_config(self):
+        """Open scenario configuration dialog"""
+        try:
+            # Get available scenarios from test engine
+            available_scenarios = self.test_scenario_engine.get_available_scenarios()
+            
+            if not available_scenarios:
+                QtWidgets.QMessageBox.warning(
+                    self, 
+                    "No Scenarios",
+                    "No test scenarios are available."
+                )
+                return
+            
+            # Create and show dialog
+            dialog = ScenarioConfigDialog(available_scenarios, self)
+            
+            if dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+                # Get configuration from dialog
+                selected_scenarios = dialog.get_selected_scenarios()
+                repeat_count = dialog.get_repeat_count()
+                mode = dialog.get_mode()
+                
+                # Save configuration
+                self.scenario_config['selected_scenarios'] = selected_scenarios
+                self.scenario_config['repeat_count'] = repeat_count
+                self.scenario_config['mode'] = mode
+                
+                self._log(f"✅ Scenario config updated: {len(selected_scenarios)} scenarios, {repeat_count}x repeat, mode: {mode}", "info")
+                
+                # Update button text to show config
+                if hasattr(self.ui, 'testScenario_PB') and self.ui.testScenario_PB:
+                    if mode == 'all':
+                        self.ui.testScenario_PB.setText(f"Scenario Config (All x{repeat_count})")
+                    else:
+                        self.ui.testScenario_PB.setText(f"Scenario Config ({len(selected_scenarios)} x{repeat_count})")
+        except Exception as e:
+            self._log(f"Error opening scenario config: {e}", "error")
+            QtWidgets.QMessageBox.critical(
+                self,
+                "Error",
+                f"Failed to open scenario configuration:\n{e}"
+            )
+    
     def _on_start_test_button_clicked(self):
         """Handle start test button click with additional logging"""
         import traceback
@@ -1566,7 +1579,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.start_auto_test()
 
     def start_auto_test(self):
-        """Start automated test with selected scenario"""
+        """Start automated test with selected scenarios from Scenario Config"""
         self._log(f"🚀 start_auto_test called", "info")
         
         # Check if test scenario engine is running
@@ -1598,32 +1611,42 @@ class MainWindow(QtWidgets.QMainWindow):
             QtWidgets.QMessageBox.warning(self, "Connection Required", error_msg)
             return
         
-        # Check if any scenario is selected
-        if self.ui.testScenario_CB.count() == 0 or not self.ui.testScenario_CB.isEnabled():
-            QtWidgets.QMessageBox.warning(self, "No Scenario", "No test scenarios available.")
-            return
-            
-        current_text = self.ui.testScenario_CB.currentText()
-        if current_text == "No test scenarios available":
-            QtWidgets.QMessageBox.warning(self, "No Scenario", "No test scenarios available.")
-            return
+        # Get selected scenarios from scenario config
+        selected_scenarios = self.scenario_config.get('selected_scenarios', [])
+        repeat_count = self.scenario_config.get('repeat_count', 1)
         
-        # Get selected scenario
-        scenario_name = self.ui.testScenario_CB.currentText()
-        scenario_key = self.ui.testScenario_CB.currentData()
+        # If no scenarios selected, use all scenarios by default
+        if not selected_scenarios:
+            available_scenarios = self.test_scenario_engine.get_available_scenarios()
+            if not available_scenarios:
+                QtWidgets.QMessageBox.warning(self, "No Scenarios", "No test scenarios available.")
+                return
+            selected_scenarios = list(available_scenarios.keys())
+            self.scenario_config['selected_scenarios'] = selected_scenarios
+            self.scenario_config['mode'] = 'all'
         
-        if not scenario_key:
-            QtWidgets.QMessageBox.warning(self, "Invalid Scenario", "Selected scenario is not properly configured.")
-            return
+        # Get scenario names for display
+        available_scenarios = self.test_scenario_engine.get_available_scenarios()
+        scenario_names = [available_scenarios[key].name for key in selected_scenarios if key in available_scenarios]
         
         # Confirm test start
+        mode_text = self.scenario_config.get('mode', 'all')
+        confirm_msg = f"Start Auto Test?\n\n"
+        confirm_msg += f"Mode: {mode_text.upper()}\n"
+        confirm_msg += f"Scenarios: {len(selected_scenarios)}\n"
+        confirm_msg += f"Repeat: {repeat_count}x each\n\n"
+        confirm_msg += "Scenarios to run:\n"
+        for name in scenario_names[:5]:  # Show first 5
+            confirm_msg += f"  • {name}\n"
+        if len(scenario_names) > 5:
+            confirm_msg += f"  ... and {len(scenario_names) - 5} more\n"
+        confirm_msg += f"\nTotal tests: {len(selected_scenarios) * repeat_count}\n\n"
+        confirm_msg += "This will control ADB device, HVPM, and DAQ automatically."
+        
         reply = QtWidgets.QMessageBox.question(
             self,
             "Start Auto Test",
-            f"Start test scenario: {scenario_name}?\n\n"
-            f"This will control ADB device, HVPM, and DAQ automatically.\n"
-            f"Make sure all required devices are connected and configured properly.\n\n"
-            f"Test duration: Approximately 1-2 minutes",
+            confirm_msg,
             QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No
         )
         
@@ -1631,44 +1654,66 @@ class MainWindow(QtWidgets.QMainWindow):
             return
         
         try:
-            # Start the test using test scenario engine
-            success = self.test_scenario_engine.start_test(scenario_key)
+            # Store scenarios to run (for tracking)
+            self._scenarios_to_run = []
+            for scenario_key in selected_scenarios:
+                for i in range(repeat_count):
+                    self._scenarios_to_run.append((scenario_key, i+1))
             
-            if success:
-                self._log(f"Test scenario started: {scenario_name}", "info")
-                
-                # Disable all UI controls except Stop button during test
-                self._log("=== SETTING UI TEST MODE: TRUE ===", "info")
-                self._set_ui_test_mode(True)
-                self._log("=== UI TEST MODE SET COMPLETE ===", "info")
-                
-                # Update test status display
-                if hasattr(self.ui, 'testProgress_PB') and self.ui.testProgress_PB:
-                    self.ui.testProgress_PB.setValue(0)
-                if hasattr(self.ui, 'testStatus_LB') and self.ui.testStatus_LB:
-                    self.ui.testStatus_LB.setText("Test scenario running...")
-                    self.ui.testStatus_LB.setStyleSheet("font-size: 11pt; color: #4CAF50; font-weight: bold;")
-                
-                # Update Auto Test group box title to show running status
-                if hasattr(self.ui, 'autoTestGroupBox') and self.ui.autoTestGroupBox:
-                    self.ui.autoTestGroupBox.setTitle("Auto Test - RUNNING")
-                
-                # Update status bar
-                self.ui.statusbar.showMessage(f"Running Auto Test: {scenario_name}", 0)
-                
-                # Log with enhanced formatting
-                self._log(f"🎯 Starting automated test: {scenario_name}", "info")
-                if hasattr(self.ui, 'testResults_TE') and self.ui.testResults_TE:
-                    timestamp = time.strftime("%H:%M:%S")
-                    self.ui.testResults_TE.append(f"[{timestamp}] Test Started: {scenario_name}")
-                    self._log(f"📝 Added to testResults_TE: Test Started: {scenario_name}", "debug")
-            else:
-                self._log(f"Failed to start test scenario: {scenario_name}", "error")
-                QtWidgets.QMessageBox.critical(self, "Test Error", f"Failed to start test scenario: {scenario_name}")
+            self._current_scenario_index = 0
+            
+            # Start first scenario
+            self._start_next_scenario()
             
         except Exception as e:
-            self._log(f"Failed to start test scenario: {e}", "error")
+            self._log(f"Failed to start test scenarios: {e}", "error")
             QtWidgets.QMessageBox.critical(self, "Test Error", f"Failed to start test:\n{e}")
+    
+    def _start_next_scenario(self):
+        """Start the next scenario in the queue"""
+        if self._current_scenario_index >= len(self._scenarios_to_run):
+            # All scenarios completed
+            self._log("✅ All scenarios completed!", "info")
+            return
+        
+        scenario_key, repeat_num = self._scenarios_to_run[self._current_scenario_index]
+        available_scenarios = self.test_scenario_engine.get_available_scenarios()
+        scenario_name = available_scenarios[scenario_key].name if scenario_key in available_scenarios else scenario_key
+        
+        total_tests = len(self._scenarios_to_run)
+        current_test = self._current_scenario_index + 1
+        
+        self._log(f"🎯 Starting test {current_test}/{total_tests}: {scenario_name} (Repeat {repeat_num})", "info")
+        
+        # Start the test using test scenario engine
+        success = self.test_scenario_engine.start_test(scenario_key, repeat_count=1)
+        
+        if success:
+            # Disable all UI controls except Stop button during test
+            if self._current_scenario_index == 0:  # First test
+                self._set_ui_test_mode(True)
+            
+            # Update test status display
+            if hasattr(self.ui, 'testProgress_PB') and self.ui.testProgress_PB:
+                progress = int((current_test - 1) / total_tests * 100)
+                self.ui.testProgress_PB.setValue(progress)
+            
+            if hasattr(self.ui, 'testStatus_LB') and self.ui.testStatus_LB:
+                self.ui.testStatus_LB.setText(f"Running {current_test}/{total_tests}: {scenario_name}")
+                self.ui.testStatus_LB.setStyleSheet("font-size: 11pt; color: #4CAF50; font-weight: bold;")
+            
+            # Update Auto Test label
+            if hasattr(self.ui, 'autoTest_LB') and self.ui.autoTest_LB:
+                self.ui.autoTest_LB.setText(f"Auto Test - RUNNING ({current_test}/{total_tests})")
+                self.ui.autoTest_LB.setStyleSheet("font-weight: bold; font-size: 11pt; color: #4CAF50;")
+            
+            # Update status bar
+            self.ui.statusbar.showMessage(f"Running Test {current_test}/{total_tests}: {scenario_name}", 0)
+        else:
+            self._log(f"Failed to start test scenario: {scenario_name}", "error")
+            # Skip to next scenario
+            self._current_scenario_index += 1
+            self._start_next_scenario()
 
     def stop_auto_test(self):
         """Stop automated test"""
@@ -1741,19 +1786,30 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.last_timestamp_log = current_time
 
     def _on_auto_test_completed(self, success: bool, message: str):
-        """Handle auto test completion"""
+        """Handle auto test completion and start next scenario if any"""
         self._log(f"🔔 _on_auto_test_completed called: success={success}, message={message}", "info")
         
-        # Check test engine status before updating
-        if hasattr(self, 'test_scenario_engine'):
-            engine_status = self.test_scenario_engine.get_status()
-            engine_running = self.test_scenario_engine.is_running()
-            self._log(f"📊 Test engine status: {engine_status.value}, is_running: {engine_running}", "info")
+        # Check if we have more scenarios to run
+        if hasattr(self, '_scenarios_to_run') and hasattr(self, '_current_scenario_index'):
+            self._current_scenario_index += 1
             
-            # Log current test info
-            current_test = self.test_scenario_engine.get_current_test()
-            if current_test:
-                self._log(f"📋 Current test: {current_test.scenario_name}, status: {current_test.status.value if hasattr(current_test.status, 'value') else current_test.status}", "info")
+            if self._current_scenario_index < len(self._scenarios_to_run):
+                # More scenarios to run
+                total_tests = len(self._scenarios_to_run)
+                current_test = self._current_scenario_index + 1
+                
+                self._log(f"✅ Scenario completed. Starting next scenario ({current_test}/{total_tests})...", "info")
+                
+                # Small delay before starting next scenario
+                QTimer.singleShot(2000, self._start_next_scenario)
+                return
+            else:
+                # All scenarios completed
+                self._log("✅ All scenarios completed!", "info")
+                
+                # Clear scenario tracking
+                delattr(self, '_scenarios_to_run')
+                delattr(self, '_current_scenario_index')
         
         # Re-enable all UI controls after test completion
         self._set_ui_test_mode(False)
@@ -1778,28 +1834,29 @@ class MainWindow(QtWidgets.QMainWindow):
         
         if hasattr(self.ui, 'testStatus_LB') and self.ui.testStatus_LB:
             if success:
-                self.ui.testStatus_LB.setText("Test completed successfully")
+                self.ui.testStatus_LB.setText("All tests completed successfully")
                 self.ui.testStatus_LB.setStyleSheet("font-size: 11pt; color: #4CAF50; font-weight: bold;")
             else:
                 self.ui.testStatus_LB.setText("Test failed")
                 self.ui.testStatus_LB.setStyleSheet("font-size: 11pt; color: #F44336; font-weight: bold;")
         
-        # Force Auto Test group box title update
-        if hasattr(self.ui, 'autoTestGroupBox') and self.ui.autoTestGroupBox:
+        # Update Auto Test label
+        if hasattr(self.ui, 'autoTest_LB') and self.ui.autoTest_LB:
             if success:
-                self.ui.autoTestGroupBox.setTitle("Auto Test - COMPLETED")
+                self.ui.autoTest_LB.setText("Auto Test - COMPLETED")
+                self.ui.autoTest_LB.setStyleSheet("font-weight: bold; font-size: 11pt; color: #4CAF50;")
             else:
-                self.ui.autoTestGroupBox.setTitle("Auto Test - FAILED")
-            self._log(f"Auto Test GroupBox title updated to: {self.ui.autoTestGroupBox.title()}", "info")
+                self.ui.autoTest_LB.setText("Auto Test - FAILED")
+                self.ui.autoTest_LB.setStyleSheet("font-weight: bold; font-size: 11pt; color: #F44336;")
         
         # Update status bar and show completion message
         if success:
-            self.ui.statusbar.showMessage("Auto Test Completed Successfully", 5000)
+            self.ui.statusbar.showMessage("All Auto Tests Completed Successfully", 5000)
             
             # Show simple completion message (no save dialog - results already auto-saved)
             QtWidgets.QMessageBox.information(
-                self, "Test Complete", 
-                f"Automated test completed successfully!\n\n{message}\n\nResults have been automatically saved to CSV."
+                self, "All Tests Complete", 
+                f"All automated tests completed successfully!\n\n{message}\n\nResults have been automatically saved to CSV."
             )
         else:
             # Update status bar
