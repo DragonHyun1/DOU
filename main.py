@@ -253,21 +253,24 @@ class MainWindow(QtWidgets.QMainWindow):
     
     def _apply_responsive_layout(self):
         """Apply responsive layout management to UI elements"""
-        # Setup responsive GroupBoxes
+        # Setup responsive Widgets (new structure)
         self.responsive_manager.setup_responsive_groupbox(
-            getattr(self.ui, 'connectionGroupBox', None), 1.0
+            getattr(self.ui, 'connection_HW', None), 1.0
         )
         self.responsive_manager.setup_responsive_groupbox(
-            getattr(self.ui, 'controlGroupBox', None), 0.35
+            getattr(self.ui, 'HVPM_VW', None), 0.35
         )
         self.responsive_manager.setup_responsive_groupbox(
-            getattr(self.ui, 'autoTestGroupBox', None), 0.35
+            getattr(self.ui, 'NIDAQ_VW', None), 0.35
         )
         self.responsive_manager.setup_responsive_groupbox(
-            getattr(self.ui, 'niCurrentGroupBox', None), 0.25
+            getattr(self.ui, 'autoTest_VW', None), 0.35
         )
         self.responsive_manager.setup_responsive_groupbox(
-            getattr(self.ui, 'logGroupBox', None), 1.0
+            getattr(self.ui, 'testProgress_VW', None), 0.40
+        )
+        self.responsive_manager.setup_responsive_groupbox(
+            getattr(self.ui, 'logWidget', None), 1.0
         )
         
         # Setup responsive buttons
@@ -279,7 +282,9 @@ class MainWindow(QtWidgets.QMainWindow):
             getattr(self.ui, 'startMonitoring_PB', None),
             getattr(self.ui, 'startAutoTest_PB', None),
             getattr(self.ui, 'stopAutoTest_PB', None),
-            # testSettings_PB removed
+            getattr(self.ui, 'openResultsFolder_PB', None),
+            getattr(self.ui, 'testScenario_PB', None),
+            getattr(self.ui, 'multiChannelMonitor_PB', None),
         ]
         self.responsive_manager.setup_responsive_buttons(*[b for b in buttons if b])
         
@@ -288,15 +293,14 @@ class MainWindow(QtWidgets.QMainWindow):
             getattr(self.ui, 'hvpm_CB', None),
             getattr(self.ui, 'comport_CB', None),
             getattr(self.ui, 'daqDevice_CB', None),
-            getattr(self.ui, 'testScenario_CB', None),
         ]
         self.responsive_manager.setup_responsive_combobox(*[c for c in combos if c])
         
         # Apply responsive margins to main layouts
         layouts = [
-            getattr(self.ui, 'mainVerticalLayout', None),
-            getattr(self.ui, 'connectionLayout', None),
-            getattr(self.ui, 'mainContentLayout', None),
+            getattr(self.ui, 'verticalLayout_19', None),  # Main vertical layout
+            getattr(self.ui, 'horizontalLayout', None),   # Connection layout
+            getattr(self.ui, 'horizontalLayout_14', None),  # Control widget layout
         ]
         for layout in layouts:
             if layout:
@@ -737,6 +741,19 @@ class MainWindow(QtWidgets.QMainWindow):
             if hasattr(self.ui, 'nidaq_LB') and self.ui.nidaq_LB:
                 ni_color = "#4CAF50" if ni_connected else "#ff6b6b"  # Green if connected, red if not
                 self.ui.nidaq_LB.setStyleSheet(f"font-weight: bold; font-size: 11pt; color: {ni_color};")
+            
+            # Auto Test Label color - update based on test running status
+            if hasattr(self.ui, 'autoTest_LB') and self.ui.autoTest_LB:
+                test_running = hasattr(self, 'test_scenario_engine') and self.test_scenario_engine.is_running()
+                if test_running:
+                    # Keep the current color during test (set by progress handler)
+                    pass
+                else:
+                    # Set color based on readiness (HVPM + ADB connection)
+                    adb_connected = self.ui.comport_CB.currentText().strip() != "" if hasattr(self.ui, 'comport_CB') else False
+                    auto_test_ready = hvpm_connected and adb_connected
+                    auto_test_color = "#4CAF50" if auto_test_ready else "#ff6b6b"
+                    self.ui.autoTest_LB.setStyleSheet(f"font-weight: bold; font-size: 11pt; color: {auto_test_color};")
                 
         except Exception as e:
             self._log(f"Error updating label colors: {e}", "error")
@@ -777,6 +794,11 @@ class MainWindow(QtWidgets.QMainWindow):
                 else:
                     hvpm_status_label.setText("Disconnected")
                     hvpm_status_label.setStyleSheet(f"color: {theme.get_status_color('disconnected')}; font-weight: bold;")
+            
+            # Update label colors based on connection status
+            hvpm_connected = bool(self.hvpm_service.is_connected()) if hasattr(self, 'hvpm_service') else False
+            ni_connected = self.ni_service.is_connected() if self.ni_service else False
+            self._update_label_colors(hvpm_connected, ni_connected)
             
             # Update auto test button availability (safely)
             self._update_auto_test_buttons()
@@ -1161,6 +1183,10 @@ class MainWindow(QtWidgets.QMainWindow):
         if hasattr(self.ui, 'daqConnect_PB') and self.ui.daqConnect_PB:
             self.ui.daqConnect_PB.setText("Connected" if connected else "Connect")
         self._update_ni_status()
+        
+        # Update label colors when NI connection changes
+        hvpm_connected = bool(self.hvpm_service.is_connected()) if hasattr(self, 'hvpm_service') else False
+        self._update_label_colors(hvpm_connected, connected)
     
     def _on_ni_error(self, error_msg: str):
         """Handle NI DAQ errors"""
@@ -1752,9 +1778,9 @@ class MainWindow(QtWidgets.QMainWindow):
             self.ui.statusbar.showMessage("Auto Test Stopped", 3000)
             
             # Add to test results
-            if hasattr(self.ui, 'testResults_TE') and self.ui.testResults_TE:
+            if hasattr(self.ui, 'testProgress_TE') and self.ui.testProgress_TE:
                 timestamp = time.strftime("%H:%M:%S")
-                self.ui.testResults_TE.append(f"[{timestamp}] Test stopped by user")
+                self.ui.testProgress_TE.append(f"[{timestamp}] Test stopped by user")
 
     def _on_auto_test_progress(self, progress: int, status: str):
         """Handle auto test progress updates"""
@@ -1779,10 +1805,10 @@ class MainWindow(QtWidgets.QMainWindow):
         
         # Add to test results with 1-second interval logging
         current_time = time.time()
-        if hasattr(self.ui, 'testResults_TE') and self.ui.testResults_TE:
+        if hasattr(self.ui, 'testProgress_TE') and self.ui.testProgress_TE:
             if current_time - self.last_timestamp_log >= 1.0:  # 1 second interval
                 timestamp = time.strftime("%H:%M:%S")
-                self.ui.testResults_TE.append(f"[{timestamp}] {progress}% - {status}")
+                self.ui.testProgress_TE.append(f"[{timestamp}] {progress}% - {status}")
                 self.last_timestamp_log = current_time
 
     def _on_auto_test_completed(self, success: bool, message: str):
@@ -1815,10 +1841,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self._set_ui_test_mode(False)
         
         # Update test results display
-        if hasattr(self.ui, 'testResults_TE') and self.ui.testResults_TE:
+        if hasattr(self.ui, 'testProgress_TE') and self.ui.testProgress_TE:
             timestamp = time.strftime("%H:%M:%S")
             result_text = f"[{timestamp}] Test {'PASSED' if success else 'FAILED'}: {message}\n"
-            self.ui.testResults_TE.append(result_text)
+            self.ui.testProgress_TE.append(result_text)
         
         # Save test results
         self._save_test_results(success, message)
@@ -2048,9 +2074,9 @@ class MainWindow(QtWidgets.QMainWindow):
                         f.write(f"Date: {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
                         f.write(f"Test Scenario: {scenario_name}\n\n")
                         
-                        if hasattr(self.ui, 'testResults_TE') and self.ui.testResults_TE:
+                        if hasattr(self.ui, 'testProgress_TE') and self.ui.testProgress_TE:
                             f.write("=== Test Log ===\n")
-                            f.write(self.ui.testResults_TE.toPlainText())
+                            f.write(self.ui.testProgress_TE.toPlainText())
                 
                 self._log(f"Detailed results exported to {filename}", "success")
                 QtWidgets.QMessageBox.information(self, "Export Complete", f"Test results exported to:\n{filename}")
@@ -2118,7 +2144,7 @@ class MainWindow(QtWidgets.QMainWindow):
         """Debug function to check UI elements"""
         ui_elements = [
             'startAutoTest_PB', 'stopAutoTest_PB', 'testScenario_CB',
-            'testProgress_PB', 'testStatus_LB', 'testResults_TE'
+            'testProgress_PB', 'testStatus_LB', 'testProgress_TE'
         ]
         
         missing_elements = []

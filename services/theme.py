@@ -204,6 +204,49 @@ def apply_theme(app, plot_widget=None):
         border-radius: 6px;
     }}
     
+    /* Main Layout Widget Groups */
+    #connection_HW {{
+        background-color: {colors['secondary']};
+        border: 1px solid {colors['border']};
+        border-radius: {border_radius}px;
+        padding: {padding}px;
+    }}
+    
+    #HVPM_VW {{
+        background-color: {colors['secondary']};
+        border: 2px solid {colors['border']};
+        border-radius: {border_radius}px;
+        padding: {padding}px;
+    }}
+    
+    #NIDAQ_VW {{
+        background-color: {colors['secondary']};
+        border: 2px solid {colors['border']};
+        border-radius: {border_radius}px;
+        padding: {padding}px;
+    }}
+    
+    #autoTest_VW {{
+        background-color: {colors['secondary']};
+        border: 2px solid {colors['border']};
+        border-radius: {border_radius}px;
+        padding: {padding}px;
+    }}
+    
+    #testProgress_VW {{
+        background-color: {colors['secondary']};
+        border: 2px solid {colors['border']};
+        border-radius: {border_radius}px;
+        padding: {padding}px;
+    }}
+    
+    #logWidget {{
+        background-color: {colors['secondary']};
+        border: 2px solid {colors['border']};
+        border-radius: {border_radius}px;
+        padding: {padding}px;
+    }}
+    
     /* Scroll bars */
     QScrollBar:vertical {{
         background-color: {colors['secondary']};
