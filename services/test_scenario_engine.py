@@ -401,7 +401,7 @@ class TestScenarioEngine(QObject):
                     success = self._execute_test_unified(scenario, is_first_iteration=True)
                 else:
                     # Subsequent iterations: Quick reset only
-                    self.log_callback(f"📌 Iteration {self.current_repeat}: Quick reset (clear apps + 5s wait)", "info")
+                    self.log_callback(f"📌 Iteration {self.current_repeat}: Quick reset (clear apps + 10s wait + home)", "info")
                     success = self._execute_test_unified(scenario, is_first_iteration=False)
                 
                 if not success and not self.stop_requested:
@@ -454,11 +454,13 @@ class TestScenarioEngine(QObject):
                 self.log_callback(f"Starting {len(steps_to_execute)} test steps (full initialization)", "info")
             else:
                 # Subsequent iterations: Quick reset + DAQ + Test + Export
-                quick_reset_step = TestStep("quick_reset", 5.0, "quick_reset_before_test")
+                # Duration is 0 because waiting is handled inside the step itself
+                quick_reset_step = TestStep("quick_reset", 0.0, "quick_reset_before_test")
                 
                 # Find DAQ and test steps (skip all init steps)
                 daq_test_steps = [step for step in scenario.steps 
                                  if step.action in ['start_daq_monitoring', 'phone_app_scenario_test', 
+                                                    'screen_on_off_with_daq_monitoring', 'screen_on_off_cycle',
                                                     'stop_daq_monitoring', 'export_to_excel']]
                 
                 steps_to_execute = [quick_reset_step] + daq_test_steps
@@ -1041,25 +1043,55 @@ class TestScenarioEngine(QObject):
             return True  # Don't fail test for this optimization step
     
     def _step_quick_reset_before_test(self) -> bool:
-        """Quick reset between test iterations (clear apps only)"""
+        """Quick reset between test iterations (clear apps + 10s wait + home)"""
         try:
-            self.log_callback("=== Quick Reset (Clear Apps + 5s wait) ===", "info")
+            self.log_callback("=== Quick Reset (Clear Apps + 10s wait + Home) ===", "info")
             
             if not self.adb_service:
                 self.log_callback("ADB service not available", "error")
                 return False
             
-            # Clear all apps
-            self.log_callback("Clearing all apps...", "info")
+            # Step 1: Clear all apps
+            self.log_callback("Step 1: Clearing all recent apps...", "info")
             success = self.adb_service.clear_recent_apps()
             
-            if success:
-                self.log_callback("✅ Apps cleared, waiting 5 seconds for stabilization", "info")
-                # 5 second wait (handled by step duration)
-                return True
-            else:
+            if not success:
                 self.log_callback("⚠️ Failed to clear apps, continuing anyway", "warn")
-                return True  # Continue even if clear fails
+            else:
+                self.log_callback("✅ Recent apps cleared", "info")
+            
+            # Step 2: Wait 10 seconds for stabilization
+            self.log_callback("Step 2: Waiting 10 seconds for stabilization...", "info")
+            if not self._interruptible_sleep(10):
+                return False
+            
+            # Step 3: Press home key
+            self.log_callback("Step 3: Pressing home key...", "info")
+            home_success = self.adb_service.press_home_key()
+            if not home_success:
+                self.log_callback("⚠️ Failed to press home key, continuing anyway", "warn")
+            else:
+                self.log_callback("✅ Home key pressed", "info")
+            
+            # Step 4: Check if this is Screen On/Off scenario
+            is_screen_onoff = False
+            if hasattr(self, 'current_test') and self.current_test:
+                scenario_name = self.current_test.scenario_name.lower()
+                if 'screen' in scenario_name and ('on' in scenario_name or 'off' in scenario_name):
+                    is_screen_onoff = True
+                    self.log_callback("Detected Screen On/Off scenario", "info")
+            
+            # Step 5: If Screen On/Off scenario, turn screen off
+            if is_screen_onoff:
+                self.log_callback("Step 4: Turning screen OFF for Screen On/Off scenario...", "info")
+                screen_off_success = self.adb_service.turn_screen_off()
+                if not screen_off_success:
+                    self.log_callback("⚠️ Failed to turn screen off, continuing anyway", "warn")
+                else:
+                    self.log_callback("✅ Screen turned OFF", "info")
+            
+            self.log_callback("✅ Quick reset completed", "info")
+            return True
                 
         except Exception as e:
             self.log_callback(f"Error in quick reset: {e}", "error")

@@ -31,21 +31,54 @@ class ScenarioConfigDialog(QDialog):
         
         # Title
         title_label = QLabel("Test Scenario Configuration")
-        title_label.setStyleSheet("font-size: 14pt; font-weight: bold; color: #2196F3;")
+        title_label.setStyleSheet("font-size: 16pt; font-weight: bold; color: #2196F3; padding: 10px;")
         main_layout.addWidget(title_label)
         
         # Mode selection (All / Manual)
         mode_frame = QFrame()
-        mode_frame.setStyleSheet("QFrame { background-color: #f5f5f5; border-radius: 5px; padding: 10px; }")
+        mode_frame.setStyleSheet("""
+            QFrame { 
+                background-color: #e3f2fd; 
+                border: 2px solid #2196F3;
+                border-radius: 8px; 
+                padding: 15px; 
+            }
+        """)
         mode_layout = QHBoxLayout(mode_frame)
         
         mode_label = QLabel("Test Mode:")
-        mode_label.setStyleSheet("font-weight: bold;")
+        mode_label.setStyleSheet("font-weight: bold; font-size: 12pt; color: #1976D2;")
         mode_layout.addWidget(mode_label)
         
         self.mode_group = QButtonGroup(self)
         self.all_radio = QRadioButton("All Scenarios")
         self.manual_radio = QRadioButton("Manual Selection")
+        
+        # Improved radio button styling for better visibility
+        radio_style = """
+            QRadioButton {
+                font-size: 11pt;
+                font-weight: bold;
+                color: #333;
+                spacing: 8px;
+            }
+            QRadioButton::indicator {
+                width: 20px;
+                height: 20px;
+            }
+            QRadioButton::indicator::unchecked {
+                border: 2px solid #999;
+                border-radius: 10px;
+                background-color: white;
+            }
+            QRadioButton::indicator::checked {
+                border: 2px solid #2196F3;
+                border-radius: 10px;
+                background-color: #2196F3;
+            }
+        """
+        self.all_radio.setStyleSheet(radio_style)
+        self.manual_radio.setStyleSheet(radio_style)
         
         self.all_radio.setChecked(True)  # Default: All
         self.all_radio.toggled.connect(self.on_mode_changed)
@@ -61,30 +94,43 @@ class ScenarioConfigDialog(QDialog):
         
         # Repeat count
         repeat_frame = QFrame()
-        repeat_frame.setStyleSheet("QFrame { background-color: #f5f5f5; border-radius: 5px; padding: 10px; }")
+        repeat_frame.setStyleSheet("""
+            QFrame { 
+                background-color: #fff3e0; 
+                border: 2px solid #FF9800;
+                border-radius: 8px; 
+                padding: 15px; 
+            }
+        """)
         repeat_layout = QHBoxLayout(repeat_frame)
         
         repeat_label = QLabel("Repeat Count:")
-        repeat_label.setStyleSheet("font-weight: bold;")
+        repeat_label.setStyleSheet("font-weight: bold; font-size: 12pt; color: #F57C00;")
         repeat_layout.addWidget(repeat_label)
         
         self.repeat_spinbox = QSpinBox()
         self.repeat_spinbox.setMinimum(1)
         self.repeat_spinbox.setMaximum(100)
         self.repeat_spinbox.setValue(1)
-        self.repeat_spinbox.setStyleSheet("font-size: 11pt; padding: 5px;")
+        self.repeat_spinbox.setStyleSheet("""
+            QSpinBox {
+                font-size: 12pt; 
+                font-weight: bold;
+                padding: 8px;
+                border: 2px solid #FF9800;
+                border-radius: 5px;
+                background-color: white;
+                min-width: 80px;
+            }
+        """)
         repeat_layout.addWidget(self.repeat_spinbox)
-        
-        repeat_info = QLabel("(Each scenario will run this many times)")
-        repeat_info.setStyleSheet("color: #666; font-size: 9pt;")
-        repeat_layout.addWidget(repeat_info)
         repeat_layout.addStretch()
         
         main_layout.addWidget(repeat_frame)
         
         # Scenario list
         scenarios_label = QLabel("Available Scenarios:")
-        scenarios_label.setStyleSheet("font-weight: bold; font-size: 11pt; margin-top: 10px;")
+        scenarios_label.setStyleSheet("font-weight: bold; font-size: 13pt; margin-top: 15px; color: #4CAF50;")
         main_layout.addWidget(scenarios_label)
         
         # Scroll area for scenarios
@@ -101,34 +147,56 @@ class ScenarioConfigDialog(QDialog):
             scenario_frame = QFrame()
             scenario_frame.setStyleSheet("""
                 QFrame { 
-                    background-color: white; 
-                    border: 1px solid #ddd; 
-                    border-radius: 5px; 
-                    padding: 8px; 
+                    background-color: #f9f9f9; 
+                    border: 2px solid #4CAF50; 
+                    border-radius: 8px; 
+                    padding: 12px; 
                 }
                 QFrame:hover {
-                    border: 1px solid #2196F3;
+                    background-color: #e8f5e9;
+                    border: 2px solid #2196F3;
                 }
             """)
             
             scenario_layout = QVBoxLayout(scenario_frame)
-            scenario_layout.setContentsMargins(5, 5, 5, 5)
+            scenario_layout.setContentsMargins(8, 8, 8, 8)
             
             checkbox = QCheckBox(scenario_config.name)
-            checkbox.setStyleSheet("font-weight: bold; font-size: 10pt;")
+            # Improved checkbox styling for better visibility
+            checkbox.setStyleSheet("""
+                QCheckBox {
+                    font-weight: bold; 
+                    font-size: 11pt;
+                    color: #1976D2;
+                    spacing: 10px;
+                }
+                QCheckBox::indicator {
+                    width: 22px;
+                    height: 22px;
+                }
+                QCheckBox::indicator::unchecked {
+                    border: 2px solid #999;
+                    border-radius: 4px;
+                    background-color: white;
+                }
+                QCheckBox::indicator::checked {
+                    border: 2px solid #4CAF50;
+                    border-radius: 4px;
+                    background-color: #4CAF50;
+                    image: none;
+                }
+                QCheckBox::indicator::checked::after {
+                    content: "✓";
+                    color: white;
+                }
+                QCheckBox:disabled {
+                    color: #999;
+                }
+            """)
             checkbox.setChecked(True)  # Default: all enabled
             checkbox.scenario_key = scenario_key  # Store scenario key
             
-            description = QLabel(scenario_config.description)
-            description.setStyleSheet("color: #666; font-size: 9pt; margin-left: 20px;")
-            description.setWordWrap(True)
-            
-            duration_info = QLabel(f"Duration: ~{int(scenario_config.test_duration)}s test + setup")
-            duration_info.setStyleSheet("color: #999; font-size: 8pt; margin-left: 20px;")
-            
             scenario_layout.addWidget(checkbox)
-            scenario_layout.addWidget(description)
-            scenario_layout.addWidget(duration_info)
             
             scroll_layout.addWidget(scenario_frame)
             
