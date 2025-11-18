@@ -688,11 +688,14 @@ class ADBService:
         - wifi: off
         - autosync: off
         - gps: off
+        - wifi_scan_always_enabled: 0
+        - location_mode: 0
+        - wifi_persistent_scanning_policy: 0 0
         """
         try:
             self.logger.info("=== Applying Default Settings with Verification ===")
             settings_applied = 0
-            total_settings = 10
+            total_settings = 13  # Increased from 10 to 13
             
             # 1. Screen off timeout: 10분 (600000ms)
             self.logger.info("1/10: Setting screen timeout to 10 minutes...")
@@ -825,7 +828,7 @@ class ADBService:
                 settings_applied += 1  # Don't fail for this
             
             # 10. GPS/Location off
-            self.logger.info("10/10: Disabling GPS/Location...")
+            self.logger.info("10/13: Disabling GPS/Location...")
             # Method 1: Clear location providers
             result1 = self._run_adb_command(['shell', 'settings', 'put', 'secure', 'location_providers_allowed', ''])
             time.sleep(0.5)
@@ -847,13 +850,50 @@ class ADBService:
                     self.logger.warning(f"⚠️ GPS status unclear (mode: {verify}, providers: {verify2})")
                     settings_applied += 1  # Don't fail for this
             
+            # 11. WiFi scan always enabled: off
+            self.logger.info("11/13: Disabling WiFi scan always enabled...")
+            result = self._run_adb_command(['shell', 'settings', 'put', 'global', 'wifi_scan_always_enabled', '0'])
+            time.sleep(0.5)
+            # Verify
+            verify = self._run_adb_command(['shell', 'settings', 'get', 'global', 'wifi_scan_always_enabled'])
+            if verify and '0' in verify:
+                settings_applied += 1
+                self.logger.info("✅ WiFi scan always enabled disabled (verified)")
+            else:
+                self.logger.warning(f"⚠️ WiFi scan always enabled status unclear (got: {verify})")
+                settings_applied += 1  # Don't fail for this
+            
+            # 12. Location mode: 0 (already done in step 10, but ensure it's set)
+            self.logger.info("12/13: Re-confirming location mode is off...")
+            result = self._run_adb_command(['shell', 'settings', 'put', 'secure', 'location_mode', '0'])
+            time.sleep(0.5)
+            verify = self._run_adb_command(['shell', 'settings', 'get', 'secure', 'location_mode'])
+            if verify and '0' in verify:
+                settings_applied += 1
+                self.logger.info("✅ Location mode confirmed off (verified)")
+            else:
+                self.logger.warning(f"⚠️ Location mode status unclear (got: {verify})")
+                settings_applied += 1  # Don't fail for this
+            
+            # 13. WiFi persistent scanning policy: 0 0
+            self.logger.info("13/13: Setting WiFi persistent scanning policy to 0 0...")
+            result = self._run_adb_command(['shell', 'cmd', 'wifi', 'set-persistent-wifi-scanning-policy', '0', '0'])
+            time.sleep(0.5)
+            # Verification not available for this command, consider it applied if no error
+            if result is not None:
+                settings_applied += 1
+                self.logger.info("✅ WiFi persistent scanning policy set (command executed)")
+            else:
+                self.logger.warning("⚠️ WiFi persistent scanning policy command may have failed")
+                settings_applied += 1  # Don't fail for this
+            
             # Wait for settings to take effect
             time.sleep(2)
             
             success_rate = (settings_applied / total_settings) * 100
             self.logger.info(f"=== Default Settings Applied: {settings_applied}/{total_settings} ({success_rate:.1f}%) ===")
             
-            if settings_applied >= 8:  # At least 80% success rate
+            if settings_applied >= 10:  # At least 77% success rate (10/13)
                 self.logger.info("✅ Default settings application successful")
                 return True
             else:

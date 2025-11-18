@@ -1679,6 +1679,14 @@ class TestScenarioEngine(QObject):
                 self.log_callback("Test was stopped - skipping data export", "info")
                 return True
             
+            # Skip export if not the final iteration (when repeat_count > 1)
+            if hasattr(self, 'repeat_count') and self.repeat_count > 1:
+                if hasattr(self, 'current_repeat') and self.current_repeat < self.repeat_count:
+                    self.log_callback(f"Skipping export (iteration {self.current_repeat}/{self.repeat_count} - NOT final)", "info")
+                    return True
+                else:
+                    self.log_callback(f"Proceeding with export (iteration {self.current_repeat}/{self.repeat_count} - FINAL)", "info")
+            
             self.log_callback("Starting Excel export...", "info")
             
             # Check if we have data to export
