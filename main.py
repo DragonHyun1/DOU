@@ -1718,11 +1718,11 @@ class MainWindow(QtWidgets.QMainWindow):
             return
         
         try:
-            # Store scenarios to run (for tracking)
+            # Store scenarios to run with their repeat count
             self._scenarios_to_run = []
             for scenario_key in selected_scenarios:
-                for i in range(repeat_count):
-                    self._scenarios_to_run.append((scenario_key, i+1))
+                # Store scenario once with its repeat count
+                self._scenarios_to_run.append((scenario_key, repeat_count))
             
             self._current_scenario_index = 0
             
