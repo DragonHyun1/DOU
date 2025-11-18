@@ -1740,17 +1740,17 @@ class MainWindow(QtWidgets.QMainWindow):
             self._log("✅ All scenarios completed!", "info")
             return
         
-        scenario_key, repeat_num = self._scenarios_to_run[self._current_scenario_index]
+        scenario_key, repeat_count = self._scenarios_to_run[self._current_scenario_index]
         available_scenarios = self.test_scenario_engine.get_available_scenarios()
         scenario_name = available_scenarios[scenario_key].name if scenario_key in available_scenarios else scenario_key
         
-        total_tests = len(self._scenarios_to_run)
-        current_test = self._current_scenario_index + 1
+        total_scenarios = len(self._scenarios_to_run)
+        current_scenario = self._current_scenario_index + 1
         
-        self._log(f"🎯 Starting test {current_test}/{total_tests}: {scenario_name} (Repeat {repeat_num})", "info")
+        self._log(f"🎯 Starting scenario {current_scenario}/{total_scenarios}: {scenario_name} (Repeat: {repeat_count}x)", "info")
         
-        # Start the test using test scenario engine
-        success = self.test_scenario_engine.start_test(scenario_key, repeat_count=1)
+        # Start the test using test scenario engine with actual repeat count
+        success = self.test_scenario_engine.start_test(scenario_key, repeat_count=repeat_count)
         
         if success:
             # Disable all UI controls except Stop button during test
