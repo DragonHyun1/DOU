@@ -2141,36 +2141,6 @@ class MainWindow(QtWidgets.QMainWindow):
         """Handle test scenario selection change - DEPRECATED: Using Scenario Config Dialog"""
         # This method is no longer used since we moved to Scenario Config Dialog
         pass
-        
-        # Enable/disable start button based on scenario selection
-        if hasattr(self.ui, 'startAutoTest_PB') and self.ui.startAutoTest_PB:
-            if scenario_name and scenario_name not in ["No test scenarios available", "Test engine not ready"]:
-                # Check if not currently running a test
-                if hasattr(self, 'test_scenario_engine') and not self.test_scenario_engine.is_running():
-                    self.ui.startAutoTest_PB.setEnabled(True)
-                else:
-                    self.ui.startAutoTest_PB.setEnabled(False)
-            else:
-                self.ui.startAutoTest_PB.setEnabled(False)
-        
-        if scenario_data:
-            self._log(f"Test scenario selected: {scenario_name}", "info")
-            
-            # Update test parameters based on scenario (stored in settings)
-            if "screen_onoff" in scenario_data:
-                cycles = 10 if "long" in scenario_data else 5
-                duration = 15 if "long" in scenario_data else 10
-                self.test_config['test_cycles'] = cycles
-                self.test_config['test_duration'] = duration
-            elif "cpu_stress" in scenario_data:
-                self.test_config['test_cycles'] = 1
-                duration = 300 if "long" in scenario_data else 60
-                self.test_config['test_duration'] = duration
-            elif scenario_data == "custom_script":
-                self.test_config['test_cycles'] = 1
-                self.test_config['test_duration'] = 30
-        else:
-            self._log("WARNING: No scenario data found", "warn")
 
     def _check_ui_elements(self):
         """Debug function to check UI elements"""
