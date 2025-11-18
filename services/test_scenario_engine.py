@@ -453,13 +453,12 @@ class TestScenarioEngine(QObject):
                 steps_to_execute = scenario.steps
                 self.log_callback(f"Starting {len(steps_to_execute)} test steps (full initialization)", "info")
             else:
-                # Subsequent iterations: Quick reset + DAQ + Test + Stop DAQ (NO EXPORT until last iteration)
+                # Subsequent iterations: Quick reset + DAQ + Test + Stop DAQ + Export
                 # Duration is 0 because waiting is handled inside the step itself
                 quick_reset_step = TestStep("quick_reset", 0.0, "quick_reset_before_test")
                 
-                # Find DAQ and test steps (skip all init/default/stabilization/export steps)
-                # We want to keep: start_daq, test, stop_daq
-                # Export only on LAST iteration
+                # Find DAQ and test steps (skip all init/default/stabilization steps)
+                # We want to keep: start_daq, test, stop_daq, export
                 daq_test_steps = []
                 for step in scenario.steps:
                     # Skip init, default, stabilization steps
@@ -467,27 +466,15 @@ class TestScenarioEngine(QObject):
                         self.log_callback(f"  Skipping step: {step.name} (action: {step.action})", "debug")
                         continue
                     
-                    # Skip export on non-final iterations (will add it separately for final iteration)
-                    if step.action == 'export_to_excel':
-                        # Check if this is the final iteration
-                        is_final_iteration = (self.current_repeat == self.repeat_count)
-                        if is_final_iteration:
-                            self.log_callback(f"  Including step (FINAL iteration): {step.name} (action: {step.action})", "debug")
-                            daq_test_steps.append(step)
-                        else:
-                            self.log_callback(f"  Skipping export (NOT final iteration): {step.name}", "debug")
-                        continue
-                    
-                    # Include DAQ and test steps
+                    # Include DAQ, test, and export steps
                     if step.action in ['start_daq_monitoring', 'phone_app_scenario_test', 
                                        'screen_on_off_with_daq_monitoring', 'screen_on_off_cycle',
-                                       'stop_daq_monitoring', 'idle_wait_test']:
+                                       'stop_daq_monitoring', 'export_to_excel', 'idle_wait_test']:
                         self.log_callback(f"  Including step: {step.name} (action: {step.action})", "debug")
                         daq_test_steps.append(step)
                 
                 steps_to_execute = [quick_reset_step] + daq_test_steps
-                is_final = (self.current_repeat == self.repeat_count)
-                self.log_callback(f"Iteration {self.current_repeat}/{self.repeat_count}: {len(steps_to_execute)} steps (export={'YES' if is_final else 'NO'})", "info")
+                self.log_callback(f"Iteration {self.current_repeat}/{self.repeat_count}: {len(steps_to_execute)} steps", "info")
                 for i, step in enumerate(steps_to_execute):
                     self.log_callback(f"  Step {i+1}: {step.name} (action: {step.action})", "info")
             
@@ -1679,13 +1666,9 @@ class TestScenarioEngine(QObject):
                 self.log_callback("Test was stopped - skipping data export", "info")
                 return True
             
-            # Skip export if not the final iteration (when repeat_count > 1)
-            if hasattr(self, 'repeat_count') and self.repeat_count > 1:
-                if hasattr(self, 'current_repeat') and self.current_repeat < self.repeat_count:
-                    self.log_callback(f"Skipping export (iteration {self.current_repeat}/{self.repeat_count} - NOT final)", "info")
-                    return True
-                else:
-                    self.log_callback(f"Proceeding with export (iteration {self.current_repeat}/{self.repeat_count} - FINAL)", "info")
+            # Always export at the end of each iteration
+            if hasattr(self, 'repeat_count') and hasattr(self, 'current_repeat'):
+                self.log_callback(f"Exporting data for iteration {self.current_repeat}/{self.repeat_count}", "info")
             
             self.log_callback("Starting Excel export...", "info")
             
