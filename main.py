@@ -1759,20 +1759,20 @@ class MainWindow(QtWidgets.QMainWindow):
             
             # Update test status display
             if hasattr(self.ui, 'testProgress_PB') and self.ui.testProgress_PB:
-                progress = int((current_test - 1) / total_tests * 100)
+                progress = int((current_scenario - 1) / total_scenarios * 100)
                 self.ui.testProgress_PB.setValue(progress)
             
             if hasattr(self.ui, 'testStatus_LB') and self.ui.testStatus_LB:
-                self.ui.testStatus_LB.setText(f"Running {current_test}/{total_tests}: {scenario_name}")
+                self.ui.testStatus_LB.setText(f"Running {current_scenario}/{total_scenarios}: {scenario_name} (x{repeat_count})")
                 self.ui.testStatus_LB.setStyleSheet("font-size: 11pt; color: #4CAF50; font-weight: bold;")
             
             # Update Auto Test label
             if hasattr(self.ui, 'autoTest_LB') and self.ui.autoTest_LB:
-                self.ui.autoTest_LB.setText(f"Auto Test - RUNNING ({current_test}/{total_tests})")
+                self.ui.autoTest_LB.setText(f"Auto Test - RUNNING ({current_scenario}/{total_scenarios})")
                 self.ui.autoTest_LB.setStyleSheet("font-weight: bold; font-size: 11pt; color: #4CAF50;")
             
             # Update status bar
-            self.ui.statusbar.showMessage(f"Running Test {current_test}/{total_tests}: {scenario_name}", 0)
+            self.ui.statusbar.showMessage(f"Running Scenario {current_scenario}/{total_scenarios}: {scenario_name} (x{repeat_count})", 0)
         else:
             self._log(f"Failed to start test scenario: {scenario_name}", "error")
             # Skip to next scenario
@@ -1859,10 +1859,10 @@ class MainWindow(QtWidgets.QMainWindow):
             
             if self._current_scenario_index < len(self._scenarios_to_run):
                 # More scenarios to run
-                total_tests = len(self._scenarios_to_run)
-                current_test = self._current_scenario_index + 1
+                total_scenarios = len(self._scenarios_to_run)
+                current_scenario = self._current_scenario_index + 1
                 
-                self._log(f"✅ Scenario completed. Starting next scenario ({current_test}/{total_tests})...", "info")
+                self._log(f"✅ Scenario completed. Starting next scenario ({current_scenario}/{total_scenarios})...", "info")
                 
                 # Small delay before starting next scenario
                 QTimer.singleShot(2000, self._start_next_scenario)
