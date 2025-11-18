@@ -1698,13 +1698,13 @@ class MainWindow(QtWidgets.QMainWindow):
         confirm_msg = f"Start Auto Test?\n\n"
         confirm_msg += f"Mode: {mode_text.upper()}\n"
         confirm_msg += f"Scenarios: {len(selected_scenarios)}\n"
-        confirm_msg += f"Repeat: {repeat_count}x each\n\n"
+        confirm_msg += f"Repeat: {repeat_count}x each scenario\n\n"
         confirm_msg += "Scenarios to run:\n"
         for name in scenario_names[:5]:  # Show first 5
-            confirm_msg += f"  • {name}\n"
+            confirm_msg += f"  • {name} (x{repeat_count})\n"
         if len(scenario_names) > 5:
             confirm_msg += f"  ... and {len(scenario_names) - 5} more\n"
-        confirm_msg += f"\nTotal tests: {len(selected_scenarios) * repeat_count}\n\n"
+        confirm_msg += f"\nTotal iterations: {len(selected_scenarios)} scenarios × {repeat_count} repeats\n\n"
         confirm_msg += "This will control ADB device, HVPM, and DAQ automatically."
         
         reply = QtWidgets.QMessageBox.question(
