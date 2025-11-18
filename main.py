@@ -627,9 +627,6 @@ class MainWindow(QtWidgets.QMainWindow):
             self.ui.niMonitor_PB.setToolTip("Start/stop NI current monitoring")
         
         # Auto test tooltips (check if elements exist)
-        if hasattr(self.ui, 'testScenario_CB') and self.ui.testScenario_CB:
-            self.ui.testScenario_CB.setToolTip("Select test scenario to run")
-        # testSettings_PB removed
         if hasattr(self.ui, 'startAutoTest_PB') and self.ui.startAutoTest_PB:
             self.ui.startAutoTest_PB.setToolTip("Start automated test with voltage control")
         if hasattr(self.ui, 'stopAutoTest_PB') and self.ui.stopAutoTest_PB:
@@ -2014,9 +2011,9 @@ class MainWindow(QtWidgets.QMainWindow):
                 else:
                     self.ui.stopAutoTest_PB.setStyleSheet("")  # Reset to default
             
-            # Test scenario selection
-            if hasattr(self.ui, 'testScenario_CB') and self.ui.testScenario_CB:
-                self.ui.testScenario_CB.setEnabled(not test_running)
+            # Test scenario button
+            if hasattr(self.ui, 'testScenario_PB') and self.ui.testScenario_PB:
+                self.ui.testScenario_PB.setEnabled(not test_running)
             
             # HVPM controls
             hvpm_controls = [
@@ -2107,7 +2104,7 @@ class MainWindow(QtWidgets.QMainWindow):
                             f.write(f"{timestamp},{voltage},{current},Test_Execution\n")
                     else:
                         # Text format
-                        scenario_name = self.ui.testScenario_CB.currentText() if hasattr(self.ui, 'testScenario_CB') else "Unknown"
+                        scenario_name = self.scenario_config.get('selected_scenarios', ['Unknown'])[0] if self.scenario_config.get('selected_scenarios') else "Unknown"
                         f.write(f"=== HVPM Auto Test Detailed Results ===\n")
                         f.write(f"Date: {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
                         f.write(f"Test Scenario: {scenario_name}\n\n")
@@ -2141,12 +2138,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self._log(f"Test parameters: Cycles={cycles}, Duration={duration}s", "info")
     
     def _on_scenario_changed(self):
-        """Handle test scenario selection change"""
-        scenario_data = self.ui.testScenario_CB.currentData()
-        scenario_name = self.ui.testScenario_CB.currentText()
-        
-        # Log scenario selection for debugging
-        self._log(f"Test scenario selected: {scenario_name}", "info")
+        """Handle test scenario selection change - DEPRECATED: Using Scenario Config Dialog"""
+        # This method is no longer used since we moved to Scenario Config Dialog
+        pass
         
         # Enable/disable start button based on scenario selection
         if hasattr(self.ui, 'startAutoTest_PB') and self.ui.startAutoTest_PB:
@@ -2181,7 +2175,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def _check_ui_elements(self):
         """Debug function to check UI elements"""
         ui_elements = [
-            'startAutoTest_PB', 'stopAutoTest_PB', 'testScenario_CB',
+            'startAutoTest_PB', 'stopAutoTest_PB', 'testScenario_PB',
             'testProgress_PB', 'testStatus_LB', 'testProgress_TE'
         ]
         
@@ -2200,10 +2194,10 @@ class MainWindow(QtWidgets.QMainWindow):
         if existing_elements:
             self._log(f"Found UI elements: {', '.join(existing_elements)}", "info")
         
-        # Check test scenario combo box items
-        if hasattr(self.ui, 'testScenario_CB') and self.ui.testScenario_CB:
-            count = self.ui.testScenario_CB.count()
-            self._log(f"Test scenario combo box has {count} items", "info")
+        # Check test scenario config
+        if hasattr(self, 'scenario_config') and self.scenario_config:
+            selected = self.scenario_config.get('selected_scenarios', [])
+            self._log(f"Scenario config: {len(selected)} scenarios selected", "info")
         
         # Log current test settings
         self._log(f"Test settings loaded: {self.test_config}", "info")
@@ -2251,8 +2245,10 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def quick_test(self):
         """Quick test shortcut"""
-        if self.ui.testScenario_CB.count() > 0:
-            self.ui.testScenario_CB.setCurrentIndex(0)  # Select first scenario
+        # Open scenario config first if not configured
+        if not self.scenario_config.get('selected_scenarios'):
+            self.open_scenario_config()
+        else:
             self.start_auto_test()
 
     def test_settings(self):
