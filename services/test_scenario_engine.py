@@ -170,8 +170,8 @@ class TestScenarioEngine(QObject):
             TestStep("init_screen_timeout", 3.0, "set_screen_timeout_10min"),
             TestStep("init_clear_apps", 8.0, "home_and_clear_apps_only"),  # No unlock (already done)
             
-            # Stabilization - 60 seconds (1 minute for WiFi/Bluetooth stabilization)
-            TestStep("stabilize", 60.0, "wait_stabilization"),
+            # Stabilization - 75 seconds for current stabilization after WiFi/Bluetooth
+            TestStep("stabilize", 75.0, "wait_stabilization"),
             
             # DAQ Start + Phone App Test + DAQ Stop (separated)
             TestStep("start_daq", 2.0, "start_daq_monitoring"),
@@ -453,27 +453,41 @@ class TestScenarioEngine(QObject):
                 steps_to_execute = scenario.steps
                 self.log_callback(f"Starting {len(steps_to_execute)} test steps (full initialization)", "info")
             else:
-                # Subsequent iterations: Quick reset + DAQ + Test + Export
+                # Subsequent iterations: Quick reset + DAQ + Test + Stop DAQ (NO EXPORT until last iteration)
                 # Duration is 0 because waiting is handled inside the step itself
                 quick_reset_step = TestStep("quick_reset", 0.0, "quick_reset_before_test")
                 
-                # Find DAQ and test steps (skip all init/default/stabilization steps)
-                # We want to keep: start_daq, test, stop_daq, export
+                # Find DAQ and test steps (skip all init/default/stabilization/export steps)
+                # We want to keep: start_daq, test, stop_daq
+                # Export only on LAST iteration
                 daq_test_steps = []
                 for step in scenario.steps:
                     # Skip init, default, stabilization steps
                     if any(keyword in step.name.lower() for keyword in ['init', 'default', 'stabilize']):
                         self.log_callback(f"  Skipping step: {step.name} (action: {step.action})", "debug")
                         continue
-                    # Include DAQ, test, and export steps
+                    
+                    # Skip export on non-final iterations (will add it separately for final iteration)
+                    if step.action == 'export_to_excel':
+                        # Check if this is the final iteration
+                        is_final_iteration = (self.current_repeat == self.repeat_count)
+                        if is_final_iteration:
+                            self.log_callback(f"  Including step (FINAL iteration): {step.name} (action: {step.action})", "debug")
+                            daq_test_steps.append(step)
+                        else:
+                            self.log_callback(f"  Skipping export (NOT final iteration): {step.name}", "debug")
+                        continue
+                    
+                    # Include DAQ and test steps
                     if step.action in ['start_daq_monitoring', 'phone_app_scenario_test', 
                                        'screen_on_off_with_daq_monitoring', 'screen_on_off_cycle',
-                                       'stop_daq_monitoring', 'export_to_excel', 'idle_wait_test']:
+                                       'stop_daq_monitoring', 'idle_wait_test']:
                         self.log_callback(f"  Including step: {step.name} (action: {step.action})", "debug")
                         daq_test_steps.append(step)
                 
                 steps_to_execute = [quick_reset_step] + daq_test_steps
-                self.log_callback(f"2nd+ iteration: {len(steps_to_execute)} steps (1 quick_reset + {len(daq_test_steps)} test steps)", "info")
+                is_final = (self.current_repeat == self.repeat_count)
+                self.log_callback(f"Iteration {self.current_repeat}/{self.repeat_count}: {len(steps_to_execute)} steps (export={'YES' if is_final else 'NO'})", "info")
                 for i, step in enumerate(steps_to_execute):
                     self.log_callback(f"  Step {i+1}: {step.name} (action: {step.action})", "info")
             
