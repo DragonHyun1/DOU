@@ -2046,77 +2046,128 @@ class TestScenarioEngine(QObject):
                     print("ERROR: Screen test start timeout (25s)")
                     self.monitoring_active = False
                     return
+                print("✅ Test start signal received")
             
             # Get enabled channels
             enabled_channels = getattr(self, '_monitoring_channels', ['ai0', 'ai1'])
-            measurement_mode = getattr(self, '_monitoring_mode', 'current')
-            
             print(f"Collecting from {len(enabled_channels)} channels: {enabled_channels}")
-            print(f"Mode: {measurement_mode}")
             
-            # Get test duration from engine (configured per scenario)
-            test_duration = getattr(self, '_test_duration', 10.0)
-            expected_samples = int(test_duration * 1000)  # 1ms intervals
+            # Initialize DAQ CONTINUOUS collection
+            if not hasattr(self, 'daq_service') or not self.daq_service:
+                print("ERROR: DAQ service not available")
+                self.monitoring_active = False
+                return
             
-            # Use DAQ hardware timing: 1kHz for specified duration
-            # Use CURRENT measurement mode (same as Multi-Channel Monitor)
-            if hasattr(self, 'daq_service') and self.daq_service:
-                print(f"Starting DAQ hardware-timed CURRENT collection (1ms interval, 10 samples avg, {test_duration} seconds)...")
-                print(f"Expected samples: {expected_samples} (0 to {expected_samples-1} ms)")
+            import nidaqmx
+            from nidaqmx.constants import AcquisitionType, TerminalConfiguration, VoltageUnits
+            
+            sample_rate = 5000.0  # 5kHz
+            samples_per_read = 10  # 10 samples per read
+            read_interval = samples_per_read / sample_rate  # 0.002s = 2ms
+            voltage_range = 5.0
+            
+            print(f"Starting CONTINUOUS mode: {sample_rate}Hz, {samples_per_read} samples/read, {read_interval*1000:.1f}ms interval")
+            
+            with nidaqmx.Task() as task:
+                # Add voltage channels
+                for channel in enabled_channels:
+                    channel_name = f"{self.daq_service.device_name}/{channel}"
+                    
+                    # Try DIFFERENTIAL first
+                    try:
+                        task.ai_channels.add_ai_voltage_chan(
+                            channel_name,
+                            terminal_config=TerminalConfiguration.DIFF,
+                            min_val=-voltage_range,
+                            max_val=voltage_range,
+                            units=VoltageUnits.VOLTS
+                        )
+                    except:
+                        task.ai_channels.add_ai_voltage_chan(
+                            channel_name,
+                            terminal_config=TerminalConfiguration.RSE,
+                            min_val=-voltage_range,
+                            max_val=voltage_range,
+                            units=VoltageUnits.VOLTS
+                        )
                 
-                # Changed sampling strategy for better precision:
-                # - 5kHz sampling (reduced from 10kHz for USB stability)
-                # - Read every 2ms with 10 samples per read
-                # - Result: 5000 data points for 10s test (one every 2ms)
-                daq_result = self.daq_service.read_current_channels_hardware_timed(
-                    channels=enabled_channels,
-                    sample_rate=5000.0,  # 5kHz (10 samples per 2ms for chunked reading)
-                    compress_ratio=10,  # 10 samples per read
-                    duration_seconds=test_duration  # Duration from scenario config
+                # Configure CONTINUOUS mode
+                task.timing.cfg_samp_clk_timing(
+                    rate=sample_rate,
+                    sample_mode=AcquisitionType.CONTINUOUS,
+                    samps_per_chan=samples_per_read * 10  # Buffer: 100 samples
                 )
                 
-                if daq_result:
-                    print(f"DAQ collection completed: {len(daq_result)} channels")
+                task.start()
+                print("✅ DAQ task started in CONTINUOUS mode")
+                
+                # Read continuously until monitoring_active becomes False
+                read_count = 0
+                start_time = time.time()
+                
+                while self.monitoring_active and not self.stop_requested:
+                    read_start = time.time()
                     
-                    # Convert to daq_data format
-                    if hasattr(self, 'daq_data'):
-                        self.daq_data = []
+                    try:
+                        # Read 10 samples from each channel
+                        data = task.read(number_of_samples_per_channel=samples_per_read, timeout=0.1)
                         
-                        # Get sample count (depends on test duration: 10s=10000, 20s=20000, etc.)
-                        first_channel = list(daq_result.keys())[0]
-                        sample_count = daq_result[first_channel]['sample_count']
+                        # Average and convert to current for each channel
+                        channel_data_ma = {}
+                        if len(enabled_channels) == 1:
+                            # Single channel
+                            if isinstance(data, (list, tuple)) and len(data) >= samples_per_read:
+                                avg_voltage = sum(data[:samples_per_read]) / samples_per_read
+                                config = self.daq_service.channel_configs.get(enabled_channels[0], {})
+                                shunt_r = config.get('shunt_r', 0.01)
+                                battery_comp = 1.0 if enabled_channels[0] == 'ai0' else 4.0
+                                current_ma = (avg_voltage / shunt_r) * 1000 / battery_comp
+                                channel_data_ma[f'{enabled_channels[0]}_current'] = current_ma
+                        else:
+                            # Multiple channels
+                            if isinstance(data, (list, tuple)):
+                                for i, channel in enumerate(enabled_channels):
+                                    if i < len(data):
+                                        channel_samples = data[i] if isinstance(data[i], (list, tuple)) else [data[i]]
+                                        if len(channel_samples) >= samples_per_read:
+                                            avg_voltage = sum(channel_samples[:samples_per_read]) / samples_per_read
+                                            config = self.daq_service.channel_configs.get(channel, {})
+                                            shunt_r = config.get('shunt_r', 0.01)
+                                            battery_comp = 1.0 if channel == 'ai0' else 4.0
+                                            current_ma = (avg_voltage / shunt_r) * 1000 / battery_comp
+                                            channel_data_ma[f'{channel}_current'] = current_ma
                         
-                        print(f"Processing {sample_count} samples (0 to {sample_count-1} ms)...")
-                        
-                        # Create data points for each sample
-                        for i in range(sample_count):
+                        # Store data point
+                        if channel_data_ma:
+                            elapsed_ms = int((time.time() - start_time) * 1000)
                             data_point = {
                                 'timestamp': datetime.now(),
-                                'time_elapsed': i,  # Time in ms: 0, 1, 2, ..., (sample_count-1)
-                                'screen_test_time': i
+                                'time_elapsed': elapsed_ms,
+                                'screen_test_time': elapsed_ms
                             }
-                            
-                            # Add current data for each channel (already in mA from DAQ)
-                            for channel in enabled_channels:
-                                if channel in daq_result:
-                                    current_mA = daq_result[channel]['current_data'][i]
-                                    data_point[f'{channel}_current'] = current_mA  # Current in mA
-                            
+                            data_point.update(channel_data_ma)
                             self.daq_data.append(data_point)
+                            read_count += 1
                             
-                            # Log progress every 1000 samples
-                            if (i + 1) % 1000 == 0:
-                                print(f"Processed {i + 1}/{sample_count} samples")
+                            # Log progress every 500 reads (~1 second)
+                            if read_count % 500 == 0:
+                                elapsed_s = time.time() - start_time
+                                preview = ', '.join([f"{k}={v:.3f}mA" for k, v in list(channel_data_ma.items())[:2]])
+                                print(f"DAQ: {read_count} reads, {elapsed_s:.1f}s [{preview}...]")
                         
-                        print(f"? Successfully processed {len(self.daq_data)} data points")
-                    else:
-                        print("ERROR: daq_data attribute not found")
-                else:
-                    print("ERROR: DAQ collection returned no data")
-            else:
-                print("ERROR: DAQ service not available, using simulation")
-                # Fallback to simulation
-                self._daq_monitoring_loop_isolated_simulation()
+                        # Wait for next read interval (2ms)
+                        elapsed_since_read = time.time() - read_start
+                        sleep_time = max(0, read_interval - elapsed_since_read)
+                        if sleep_time > 0:
+                            time.sleep(sleep_time)
+                            
+                    except Exception as read_error:
+                        print(f"Read error at #{read_count}: {read_error}")
+                        time.sleep(0.001)
+                
+                task.stop()
+                elapsed_total = time.time() - start_time
+                print(f"✅ DAQ stopped: {read_count} reads over {elapsed_total:.1f}s, {len(self.daq_data)} data points")
                 
         except Exception as e:
             print(f"ERROR in hardware-timed DAQ collection: {e}")
