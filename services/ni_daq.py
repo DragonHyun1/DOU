@@ -971,212 +971,114 @@ class NIDAQService(QObject):
                     config['terminal_mode'] = terminal_mode_used
                     print(f"  📌 Channel {channel} configured with {terminal_mode_used} mode")
                 
-                # Configure hardware timing - FINITE mode for exact sample count
-                # FINITE mode ensures we get exactly the number of samples needed for 1ms intervals
-                # 10kHz sampling rate is safe for USB bandwidth
+                # Configure hardware timing - CONTINUOUS mode for periodic reading
+                # CONTINUOUS mode allows reading samples repeatedly every 2ms
+                samples_per_read = compress_ratio  # 10 samples per read
                 task.timing.cfg_samp_clk_timing(
-                    rate=sample_rate,  # 10kHz sampling rate (10 samples per ms, USB-safe)
-                    sample_mode=nidaqmx.constants.AcquisitionType.FINITE,  # FINITE mode (exact sample count)
-                    samps_per_chan=total_samples,  # Exact number of samples (100,000)
-                    active_edge=nidaqmx.constants.Edge.RISING  # Sample on rising edge
+                    rate=sample_rate,  # 5kHz sampling rate
+                    sample_mode=nidaqmx.constants.AcquisitionType.CONTINUOUS,  # CONTINUOUS mode
+                    samps_per_chan=samples_per_read * 10  # Buffer size: 10x read size (100 samples)
                 )
                 
-                print(f"Starting hardware-timed VOLTAGE acquisition ({sample_rate/1000:.0f}kHz, FINITE mode)...")
+                print(f"Starting hardware-timed VOLTAGE acquisition ({sample_rate/1000:.1f}kHz, CONTINUOUS mode)...")
                 task.start()
                 
-                # Read samples (FINITE mode - exact sample count)
-                timeout = duration_seconds + 5.0  # Add buffer
-                print(f"Reading {total_samples} raw samples per channel ({total_samples/1000:.0f}k)...")
-                data = task.read(number_of_samples_per_channel=total_samples, timeout=timeout)
+                # Read samples periodically (every 2ms)
+                all_channel_data = {ch: [] for ch in channels}
+                start_time = time.time()
+                read_count = 0
+                read_interval = samples_per_read / sample_rate  # 10 / 5000 = 0.002s = 2ms
+                total_reads = int(duration_seconds / read_interval)  # 10s / 0.002s = 5000 reads
+                
+                print(f"Starting periodic reads: {total_reads} reads, every {read_interval*1000:.1f}ms, {samples_per_read} samples/read")
+                
+                while read_count < total_reads:
+                    read_start = time.time()
+                    
+                    try:
+                        # Read 10 samples from each channel
+                        data = task.read(number_of_samples_per_channel=samples_per_read, timeout=0.1)
+                        
+                        # Average the 10 samples for each channel
+                        if len(channels) == 1:
+                            # Single channel
+                            if isinstance(data, (list, tuple)) and len(data) >= samples_per_read:
+                                avg_voltage = sum(data[:samples_per_read]) / samples_per_read
+                                all_channel_data[channels[0]].append(avg_voltage)
+                        else:
+                            # Multiple channels
+                            if isinstance(data, (list, tuple)):
+                                for i, channel in enumerate(channels):
+                                    if i < len(data):
+                                        channel_samples = data[i] if isinstance(data[i], (list, tuple)) else [data[i]]
+                                        if len(channel_samples) >= samples_per_read:
+                                            avg_voltage = sum(channel_samples[:samples_per_read]) / samples_per_read
+                                            all_channel_data[channel].append(avg_voltage)
+                        
+                        read_count += 1
+                        
+                        # Log progress every 500 reads (every 1 second)
+                        if read_count % 500 == 0:
+                            elapsed = time.time() - start_time
+                            print(f"Progress: {read_count}/{total_reads} reads ({elapsed:.1f}s elapsed)")
+                        
+                        # Wait for next read interval (2ms)
+                        elapsed_since_read = time.time() - read_start
+                        sleep_time = max(0, read_interval - elapsed_since_read)
+                        if sleep_time > 0:
+                            time.sleep(sleep_time)
+                            
+                    except Exception as read_error:
+                        print(f"Read error at read #{read_count}: {read_error}")
+                        # Continue to next read
                 
                 task.stop()
-                print(f"Hardware VOLTAGE acquisition completed ({len(data) if isinstance(data, list) else len(data[0])} samples)")
-                print(f"Starting compression (10:1 → 10,000 samples at 1ms intervals)...")
+                elapsed_total = time.time() - start_time
+                print(f"Periodic reading completed: {read_count} reads over {elapsed_total:.1f}s")
                 
-                # Process and compress voltage data, then convert to current
+                # Convert collected voltage data to current (data is already averaged per read)
                 result = {}
                 
-                if len(channels) == 1:
-                    # Single channel
-                    if isinstance(data, (list, tuple)) and len(data) > 0:
-                        voltage_data_volts = list(data)
-                        print(f"Raw voltage samples collected: {len(voltage_data_volts)}")
-                        
-                        # Compress voltage data by averaging (30:1 ratio)
-                        compressed_volts = self._compress_data(voltage_data_volts, compress_ratio)
-                        
-                        # Convert voltage to current using Ohm's law: I = V / R
-                        config = self.channel_configs.get(channels[0], {})
-                        shunt_r = config.get('shunt_r', 0.01)  # Default 0.01Ω
-                        terminal_mode = config.get('terminal_mode', 'UNKNOWN')
-                        target_v = config.get('target_v', 0.0)
-                        
-                        # Calculate average voltage for validation
-                        avg_v_volts = sum(compressed_volts) / len(compressed_volts) if compressed_volts else 0
-                        avg_v_mv = avg_v_volts * 1000
-                        
-                        # VALIDATION: Check if measuring rail voltage instead of shunt drop
-                        # Expected shunt drop: 0.01mV ~ 100mV (typically < 10mV for most cases)
-                        # Rail voltage: 1V ~ 5V (1000mV ~ 5000mV)
-                        is_rail_voltage = False
-                        if abs(avg_v_volts) > 0.5:  # > 500mV is suspicious for shunt drop
-                            is_rail_voltage = True
-                            print(f"")
-                            print(f"  🚨 CRITICAL WARNING for {channels[0]} 🚨")
-                            print(f"  🚨 Measured voltage ({avg_v_mv:.1f}mV) is too high for shunt drop!")
-                            print(f"  🚨 Expected shunt drop: < 100mV")
-                            print(f"  🚨 Measured value: {avg_v_mv:.1f}mV (likely measuring Rail Voltage!)")
-                            print(f"  🚨 Rail voltage for this channel: ~{target_v*1000:.0f}mV")
-                            print(f"  🚨 Terminal mode: {terminal_mode}")
-                            if terminal_mode == "RSE":
-                                print(f"  🚨 RSE mode measures rail voltage, not shunt drop!")
-                                print(f"  🚨 Hardware must be connected in DIFFERENTIAL mode")
-                            print(f"  🚨 Current calculation will be INCORRECT!")
-                            print(f"")
-                        
-                        # WARNING: Calibration factors are DISABLED
-                        # Reason: Only validated for Phone App scenario (1~6mA range)
-                        # Different scenarios (Idle, WiFi Heavy, etc.) may have different current ranges
-                        # If error is non-linear, same calibration factor won't work for all scenarios
-                        # TODO: Find root cause (likely incorrect shunt resistor values or measurement mode issue)
-                        
-                        # Calibration factors (DISABLED - for reference only)
-                        # These were determined from Phone App scenario only:
-                        # 'ai0': 0.237, 'ai1': 0.507, 'ai2': 0.431, 
-                        # 'ai3': 0.156, 'ai4': 0.415, 'ai5': 0.015
-                        
-                        # Use ENABLE_CALIBRATION = True to enable (not recommended without validation)
-                        ENABLE_CALIBRATION = False
-                        
-                        if ENABLE_CALIBRATION:
-                            CALIBRATION_FACTORS = {
-                                'ai0': 0.237, 'ai1': 0.507, 'ai2': 0.431,
-                                'ai3': 0.156, 'ai4': 0.415, 'ai5': 0.015,
-                            }
-                            calibration_factor = CALIBRATION_FACTORS.get(channels[0], 1.0)
-                            print(f"  ⚙️ Calibration factor: {calibration_factor:.3f} (Phone App scenario only!)")
-                        else:
-                            calibration_factor = 1.0
-                        
-                        # Battery voltage compensation factor
-                        # VBAT (4V) channel: no compensation needed
-                        # Other rails (1.2V, 1.8V, etc.): divide by 4 (battery voltage base)
-                        battery_compensation = 1.0
-                        if channels[0] != 'ai0':  # ai0 is VBAT (4V), others need compensation
-                            battery_compensation = 4.0
-                            print(f"  🔋 Battery voltage compensation: ÷{battery_compensation} (non-VBAT rail)")
-                        
-                        # Convert voltage to current: I = V / R * 1000 (mA)
-                        # Apply battery compensation for non-VBAT rails
-                        compressed_ma = [(v / shunt_r) * 1000 * calibration_factor / battery_compensation for v in compressed_volts]
-                        avg_i_ma = sum(compressed_ma) / len(compressed_ma) if compressed_ma else 0
-                        
-                        # Additional validation: Check if current is unreasonably high
-                        if abs(avg_i_ma) > 10000:  # > 10A (10,000mA)
-                            print(f"  🚨 WARNING: Current {avg_i_ma:.1f}mA is unreasonably high!")
-                            print(f"  🚨 This confirms measurement error (likely rail voltage)")
-                        
-                        result[channels[0]] = {
-                            'current_data': compressed_ma,  # Current in mA (compressed)
-                            'sample_count': len(compressed_ma),
-                            'name': config.get('name', channels[0]),
-                            'validation': {
-                                'is_rail_voltage': is_rail_voltage,
-                                'terminal_mode': terminal_mode,
-                                'avg_voltage_mv': avg_v_mv,
-                                'expected_shunt_drop_mv': '< 100mV'
-                            }
-                        }
-                        
-                        print(f"Channel {channels[0]}: {len(compressed_ma)} compressed samples")
-                        print(f"  Avg voltage: {avg_v_mv:.3f}mV, Avg current: {avg_i_ma:.3f}mA (shunt={shunt_r}Ω)")
-                        print(f"  Terminal mode: {terminal_mode}, Validation: {'❌ FAILED' if is_rail_voltage else '✅ PASSED'}")
-                else:
-                    # Multiple channels
-                    if isinstance(data, (list, tuple)) and len(data) == len(channels):
-                        for i, channel in enumerate(channels):
-                            channel_data = data[i] if isinstance(data[i], (list, tuple)) else [data[i]]
-                            voltage_data_volts = list(channel_data)
-                            print(f"Channel {channel}: {len(voltage_data_volts)} raw voltage samples")
-                            
-                            # Compress voltage data by averaging (30:1 ratio)
-                            compressed_volts = self._compress_data(voltage_data_volts, compress_ratio)
-                            
-                            # Convert voltage to current using Ohm's law: I = V / R
-                            config = self.channel_configs.get(channel, {})
-                            shunt_r = config.get('shunt_r', 0.01)  # Default 0.01Ω
-                            terminal_mode = config.get('terminal_mode', 'UNKNOWN')
-                            target_v = config.get('target_v', 0.0)
-                            
-                            # Calculate average voltage for validation
-                            avg_v_volts = sum(compressed_volts) / len(compressed_volts) if compressed_volts else 0
-                            avg_v_mv = avg_v_volts * 1000
-                            
-                            # VALIDATION: Check if measuring rail voltage instead of shunt drop
-                            is_rail_voltage = False
-                            if abs(avg_v_volts) > 0.5:  # > 500mV is suspicious for shunt drop
-                                is_rail_voltage = True
-                                print(f"")
-                                print(f"  🚨 CRITICAL WARNING for {channel} 🚨")
-                                print(f"  🚨 Measured voltage ({avg_v_mv:.1f}mV) is too high for shunt drop!")
-                                print(f"  🚨 Expected shunt drop: < 100mV")
-                                print(f"  🚨 Measured value: {avg_v_mv:.1f}mV (likely measuring Rail Voltage!)")
-                                print(f"  🚨 Rail voltage for this channel: ~{target_v*1000:.0f}mV")
-                                print(f"  🚨 Terminal mode: {terminal_mode}")
-                                if terminal_mode == "RSE":
-                                    print(f"  🚨 RSE mode measures rail voltage, not shunt drop!")
-                                    print(f"  🚨 Hardware must be connected in DIFFERENTIAL mode")
-                                print(f"  🚨 Current calculation will be INCORRECT!")
-                                print(f"")
-                            
-                            # WARNING: Calibration factors are DISABLED (see above for details)
-                            ENABLE_CALIBRATION = False
-                            
-                            if ENABLE_CALIBRATION:
-                                CALIBRATION_FACTORS = {
-                                    'ai0': 0.237, 'ai1': 0.507, 'ai2': 0.431,
-                                    'ai3': 0.156, 'ai4': 0.415, 'ai5': 0.015,
-                                }
-                                calibration_factor = CALIBRATION_FACTORS.get(channel, 1.0)
-                                print(f"  ⚙️ Calibration: {calibration_factor:.3f} (Phone App only!)")
-                            else:
-                                calibration_factor = 1.0
-                            
-                            # Battery voltage compensation factor
-                            # VBAT (4V) channel: no compensation needed
-                            # Other rails (1.2V, 1.8V, etc.): divide by 4 (battery voltage base)
-                            battery_compensation = 1.0
-                            if channel != 'ai0':  # ai0 is VBAT (4V), others need compensation
-                                battery_compensation = 4.0
-                                print(f"  🔋 Battery voltage compensation for {channel}: ÷{battery_compensation}")
-                            
-                            # Convert voltage to current: I = V / R * 1000 (mA)
-                            # Apply battery compensation for non-VBAT rails
-                            compressed_ma = [(v / shunt_r) * 1000 * calibration_factor / battery_compensation for v in compressed_volts]
-                            avg_i_ma = sum(compressed_ma) / len(compressed_ma) if compressed_ma else 0
-                            
-                            # Additional validation: Check if current is unreasonably high
-                            if abs(avg_i_ma) > 10000:  # > 10A (10,000mA)
-                                print(f"  🚨 WARNING: Current {avg_i_ma:.1f}mA is unreasonably high!")
-                                print(f"  🚨 This confirms measurement error (likely rail voltage)")
-                            
-                            result[channel] = {
-                                'current_data': compressed_ma,  # Current in mA (compressed)
-                                'sample_count': len(compressed_ma),
-                                'name': config.get('name', channel),
-                                'validation': {
-                                    'is_rail_voltage': is_rail_voltage,
-                                    'terminal_mode': terminal_mode,
-                                    'avg_voltage_mv': avg_v_mv,
-                                    'expected_shunt_drop_mv': '< 100mV'
-                                }
-                            }
-                            
-                            print(f"Channel {channel}: {len(compressed_ma)} compressed samples")
-                            print(f"  Avg voltage: {avg_v_mv:.3f}mV, Avg current: {avg_i_ma:.3f}mA (shunt={shunt_r}Ω)")
-                            print(f"  Terminal mode: {terminal_mode}, Validation: {'❌ FAILED' if is_rail_voltage else '✅ PASSED'}")
+                for channel in channels:
+                    if channel not in all_channel_data or not all_channel_data[channel]:
+                        print(f"WARNING: No data collected for channel {channel}")
+                        continue
+                    
+                    # Get averaged voltage data (one value per 2ms read)
+                    voltage_data_volts = all_channel_data[channel]
+                    print(f"Channel {channel}: {len(voltage_data_volts)} averaged samples (2ms interval)")
+                    
+                    # Get channel configuration
+                    config = self.channel_configs.get(channel, {})
+                    shunt_r = config.get('shunt_r', 0.01)  # Default 0.01Ω
+                    terminal_mode = config.get('terminal_mode', 'UNKNOWN')
+                    target_v = config.get('target_v', 0.0)
+                    
+                    # Calculate average voltage for validation
+                    avg_v_volts = sum(voltage_data_volts) / len(voltage_data_volts) if voltage_data_volts else 0
+                    avg_v_mv = avg_v_volts * 1000
+                    
+                    # Calibration disabled
+                    calibration_factor = 1.0
+                    
+                    # Battery voltage compensation
+                    battery_compensation = 1.0
+                    if channel != 'ai0':  # ai0 is VBAT (4V), others need compensation
+                        battery_compensation = 4.0
+                    
+                    # Convert voltage to current: I = V / R * 1000 (mA)
+                    current_ma = [(v / shunt_r) * 1000 * calibration_factor / battery_compensation for v in voltage_data_volts]
+                    avg_i_ma = sum(current_ma) / len(current_ma) if current_ma else 0
+                    
+                    result[channel] = {
+                        'current_data': current_ma,  # Current in mA
+                        'sample_count': len(current_ma),
+                        'name': config.get('name', channel)
+                    }
+                    
+                    print(f"  → {len(current_ma)} samples, Avg: {avg_i_ma:.3f}mA (shunt={shunt_r}Ω)")
                 
-                print(f"=== Hardware-timed VOLTAGE collection completed: {len(result)} channels ===")
+                print(f"=== Periodic chunked collection completed: {len(result)} channels ===")
                 return result
                 
         except Exception as e:
