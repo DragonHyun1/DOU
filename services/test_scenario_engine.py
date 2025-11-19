@@ -2064,10 +2064,14 @@ class TestScenarioEngine(QObject):
                 print(f"Starting DAQ hardware-timed CURRENT collection (1ms interval, 10 samples avg, {test_duration} seconds)...")
                 print(f"Expected samples: {expected_samples} (0 to {expected_samples-1} ms)")
                 
+                # Changed sampling strategy for better precision:
+                # - 5kHz sampling (reduced from 10kHz for USB stability)
+                # - Read every 2ms with 10 samples per read
+                # - Result: 5000 data points for 10s test (one every 2ms)
                 daq_result = self.daq_service.read_current_channels_hardware_timed(
                     channels=enabled_channels,
-                    sample_rate=10000.0,  # 10kHz (10 samples per ms, USB-safe)
-                    compress_ratio=10,  # 10:1 compression (average 10 samples → 1 per ms)
+                    sample_rate=5000.0,  # 5kHz (10 samples per 2ms for chunked reading)
+                    compress_ratio=10,  # 10 samples per read
                     duration_seconds=test_duration  # Duration from scenario config
                 )
                 
