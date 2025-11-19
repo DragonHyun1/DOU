@@ -2065,13 +2065,12 @@ class TestScenarioEngine(QObject):
             
             sample_rate = 10000.0  # 10kHz (10 samples per 1ms)
             samples_per_read = 10  # 10 samples per read
-            read_interval = samples_per_read / sample_rate  # 0.001s = 1ms
-            buffer_size = 30000  # Large buffer to prevent overflow
+            buffer_size = 100000  # Very large buffer to prevent overflow (10 seconds worth)
             voltage_range = 5.0
             num_channels = len(enabled_channels)
             
-            print(f"Starting CONTINUOUS mode with Stream Reader: {sample_rate}Hz, {samples_per_read} samples/read, {read_interval*1000:.1f}ms interval")
-            print(f"Hardware buffer size: {buffer_size} samples")
+            print(f"Starting CONTINUOUS mode with Stream Reader: {sample_rate}Hz, {samples_per_read} samples/read")
+            print(f"Hardware buffer size: {buffer_size} samples (prevents overflow during Get calls)")
             print(f"Using AnalogMultiChannelReader for efficient reading (no repeated Get calls)")
             
             with nidaqmx.Task() as task:
