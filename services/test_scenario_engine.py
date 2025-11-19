@@ -2119,59 +2119,62 @@ class TestScenarioEngine(QObject):
                 print("Task setup complete. Now entering read loop (only DAQmxReadAnalogF64 repeated)...")
                 
                 # Read continuously until monitoring_active becomes False
-                # Only DAQmxReadAnalogF64 is called repeatedly (efficient!)
+                # Fast reading to prevent buffer overflow
                 read_count = 0
                 start_time = time.time()
+                last_log_time = start_time
+                
+                print("Entering fast read loop (no sleep, prevent buffer overflow)...")
                 
                 while self.monitoring_active and not self.stop_requested:
-                    read_start = time.time()
-                    
                     try:
-                        # DAQmxReadAnalogF64 - Stream reader calls this directly!
-                        # No DAQmxGetReadChannelsToRead, DAQmxGetChanType, DAQmxGetAIMeasType
-                        stream_reader.read_many_sample(
-                            read_buffer, 
-                            number_of_samples_per_channel=samples_per_read,
-                            timeout=0.1
-                        )
+                        # Check available samples to prevent buffer overflow
+                        avail_samples = task.in_stream.avail_samp_per_chan
                         
-                        # Average and convert to current for each channel
-                        channel_data_ma = {}
-                        for i, channel in enumerate(enabled_channels):
-                            # Get 10 samples for this channel from buffer
-                            channel_samples = read_buffer[i, :]  # numpy array
-                            avg_voltage = np.mean(channel_samples)  # Fast numpy average
+                        # Only read if we have enough samples (10 or more)
+                        if avail_samples >= samples_per_read:
+                            # DAQmxReadAnalogF64 - Stream reader (direct read, minimal overhead)
+                            stream_reader.read_many_sample(
+                                read_buffer, 
+                                number_of_samples_per_channel=samples_per_read,
+                                timeout=0.1
+                            )
                             
-                            # Convert to current
-                            config = self.daq_service.channel_configs.get(channel, {})
-                            shunt_r = config.get('shunt_r', 0.01)
-                            battery_comp = 1.0 if channel == 'ai0' else 4.0
-                            current_ma = (avg_voltage / shunt_r) * 1000 / battery_comp
-                            channel_data_ma[f'{channel}_current'] = current_ma
-                        
-                        # Store data point
-                        if channel_data_ma:
-                            elapsed_ms = int((time.time() - start_time) * 1000)
-                            data_point = {
-                                'timestamp': datetime.now(),
-                                'time_elapsed': elapsed_ms,
-                                'screen_test_time': elapsed_ms
-                            }
-                            data_point.update(channel_data_ma)
-                            self.daq_data.append(data_point)
-                            read_count += 1
+                            # Average and convert to current for each channel
+                            channel_data_ma = {}
+                            for i, channel in enumerate(enabled_channels):
+                                channel_samples = read_buffer[i, :]
+                                avg_voltage = np.mean(channel_samples)
+                                
+                                # Convert to current
+                                config = self.daq_service.channel_configs.get(channel, {})
+                                shunt_r = config.get('shunt_r', 0.01)
+                                battery_comp = 1.0 if channel == 'ai0' else 4.0
+                                current_ma = (avg_voltage / shunt_r) * 1000 / battery_comp
+                                channel_data_ma[f'{channel}_current'] = current_ma
                             
-                            # Log progress every 1000 reads (~1 second)
-                            if read_count % 1000 == 0:
-                                elapsed_s = time.time() - start_time
-                                preview = ', '.join([f"{k}={v:.3f}mA" for k, v in list(channel_data_ma.items())[:2]])
-                                print(f"DAQ: {read_count} reads, {elapsed_s:.1f}s [{preview}...]")
-                        
-                        # Wait for next read interval (1ms)
-                        elapsed_since_read = time.time() - read_start
-                        sleep_time = max(0, read_interval - elapsed_since_read)
-                        if sleep_time > 0:
-                            time.sleep(sleep_time)
+                            # Store data point
+                            if channel_data_ma:
+                                elapsed_ms = int((time.time() - start_time) * 1000)
+                                data_point = {
+                                    'timestamp': datetime.now(),
+                                    'time_elapsed': elapsed_ms,
+                                    'screen_test_time': elapsed_ms
+                                }
+                                data_point.update(channel_data_ma)
+                                self.daq_data.append(data_point)
+                                read_count += 1
+                                
+                                # Log progress every 1 second (time-based, not count-based)
+                                current_time = time.time()
+                                if current_time - last_log_time >= 1.0:
+                                    elapsed_s = current_time - start_time
+                                    preview = ', '.join([f"{k}={v:.3f}mA" for k, v in list(channel_data_ma.items())[:2]])
+                                    print(f"DAQ: {read_count} reads, {elapsed_s:.1f}s, buffer={avail_samples} [{preview}...]")
+                                    last_log_time = current_time
+                        else:
+                            # Not enough samples yet, brief wait
+                            time.sleep(0.0001)  # 0.1ms to prevent busy loop
                             
                     except Exception as read_error:
                         print(f"Read error at #{read_count}: {read_error}")
