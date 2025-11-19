@@ -2060,15 +2060,19 @@ class TestScenarioEngine(QObject):
             
             import nidaqmx
             from nidaqmx.constants import AcquisitionType, TerminalConfiguration, VoltageUnits
+            from nidaqmx.stream_readers import AnalogMultiChannelReader
+            import numpy as np
             
             sample_rate = 10000.0  # 10kHz (10 samples per 1ms)
             samples_per_read = 10  # 10 samples per read
             read_interval = samples_per_read / sample_rate  # 0.001s = 1ms
             buffer_size = 30000  # Large buffer to prevent overflow
             voltage_range = 5.0
+            num_channels = len(enabled_channels)
             
-            print(f"Starting CONTINUOUS mode: {sample_rate}Hz, {samples_per_read} samples/read, {read_interval*1000:.1f}ms interval")
+            print(f"Starting CONTINUOUS mode with Stream Reader: {sample_rate}Hz, {samples_per_read} samples/read, {read_interval*1000:.1f}ms interval")
             print(f"Hardware buffer size: {buffer_size} samples")
+            print(f"Using AnalogMultiChannelReader for efficient reading (no repeated Get calls)")
             
             with nidaqmx.Task() as task:
                 # Add voltage channels
@@ -2101,10 +2105,18 @@ class TestScenarioEngine(QObject):
                     samps_per_chan=buffer_size  # 30000 samples buffer
                 )
                 
+                # Create stream reader (efficient - setup once, read repeatedly)
+                # This prevents repeated DAQmxGetChanType/DAQmxGetAIMeasType calls
+                stream_reader = AnalogMultiChannelReader(task.in_stream)
+                
+                # Pre-allocate numpy array for reading (reuse for efficiency)
+                read_buffer = np.zeros((num_channels, samples_per_read), dtype=np.float64)
+                
                 # Start task ONCE (setup complete)
                 task.start()
                 print("✅ DAQ task started in CONTINUOUS mode")
-                print("Task setup complete. Now entering read loop (read only, no re-initialization)...")
+                print("✅ Stream reader initialized")
+                print("Task setup complete. Now entering read loop (only DAQmxReadAnalogF64 repeated)...")
                 
                 # Read continuously until monitoring_active becomes False
                 # Only DAQmxReadAnalogF64 is called repeatedly (efficient!)
@@ -2115,34 +2127,27 @@ class TestScenarioEngine(QObject):
                     read_start = time.time()
                     
                     try:
-                        # DAQmxReadAnalogF64 - Read 10 samples from each channel
-                        # Task is already configured, just read data
-                        data = task.read(number_of_samples_per_channel=samples_per_read, timeout=0.1)
+                        # DAQmxReadAnalogF64 - Stream reader calls this directly!
+                        # No DAQmxGetReadChannelsToRead, DAQmxGetChanType, DAQmxGetAIMeasType
+                        stream_reader.read_many_sample(
+                            read_buffer, 
+                            number_of_samples_per_channel=samples_per_read,
+                            timeout=0.1
+                        )
                         
                         # Average and convert to current for each channel
                         channel_data_ma = {}
-                        if len(enabled_channels) == 1:
-                            # Single channel
-                            if isinstance(data, (list, tuple)) and len(data) >= samples_per_read:
-                                avg_voltage = sum(data[:samples_per_read]) / samples_per_read
-                                config = self.daq_service.channel_configs.get(enabled_channels[0], {})
-                                shunt_r = config.get('shunt_r', 0.01)
-                                battery_comp = 1.0 if enabled_channels[0] == 'ai0' else 4.0
-                                current_ma = (avg_voltage / shunt_r) * 1000 / battery_comp
-                                channel_data_ma[f'{enabled_channels[0]}_current'] = current_ma
-                        else:
-                            # Multiple channels
-                            if isinstance(data, (list, tuple)):
-                                for i, channel in enumerate(enabled_channels):
-                                    if i < len(data):
-                                        channel_samples = data[i] if isinstance(data[i], (list, tuple)) else [data[i]]
-                                        if len(channel_samples) >= samples_per_read:
-                                            avg_voltage = sum(channel_samples[:samples_per_read]) / samples_per_read
-                                            config = self.daq_service.channel_configs.get(channel, {})
-                                            shunt_r = config.get('shunt_r', 0.01)
-                                            battery_comp = 1.0 if channel == 'ai0' else 4.0
-                                            current_ma = (avg_voltage / shunt_r) * 1000 / battery_comp
-                                            channel_data_ma[f'{channel}_current'] = current_ma
+                        for i, channel in enumerate(enabled_channels):
+                            # Get 10 samples for this channel from buffer
+                            channel_samples = read_buffer[i, :]  # numpy array
+                            avg_voltage = np.mean(channel_samples)  # Fast numpy average
+                            
+                            # Convert to current
+                            config = self.daq_service.channel_configs.get(channel, {})
+                            shunt_r = config.get('shunt_r', 0.01)
+                            battery_comp = 1.0 if channel == 'ai0' else 4.0
+                            current_ma = (avg_voltage / shunt_r) * 1000 / battery_comp
+                            channel_data_ma[f'{channel}_current'] = current_ma
                         
                         # Store data point
                         if channel_data_ma:
