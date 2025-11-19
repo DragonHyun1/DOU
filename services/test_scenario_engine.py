@@ -2061,12 +2061,14 @@ class TestScenarioEngine(QObject):
             import nidaqmx
             from nidaqmx.constants import AcquisitionType, TerminalConfiguration, VoltageUnits
             
-            sample_rate = 5000.0  # 5kHz
+            sample_rate = 10000.0  # 10kHz (10 samples per 1ms)
             samples_per_read = 10  # 10 samples per read
-            read_interval = samples_per_read / sample_rate  # 0.002s = 2ms
+            read_interval = samples_per_read / sample_rate  # 0.001s = 1ms
+            buffer_size = 30000  # Large buffer to prevent overflow
             voltage_range = 5.0
             
             print(f"Starting CONTINUOUS mode: {sample_rate}Hz, {samples_per_read} samples/read, {read_interval*1000:.1f}ms interval")
+            print(f"Hardware buffer size: {buffer_size} samples")
             
             with nidaqmx.Task() as task:
                 # Add voltage channels
@@ -2091,17 +2093,21 @@ class TestScenarioEngine(QObject):
                             units=VoltageUnits.VOLTS
                         )
                 
-                # Configure CONTINUOUS mode
+                # Configure CONTINUOUS mode with large buffer
+                # Rate: 10kHz, Buffer: 30000 samples (prevents -200279 overflow error)
                 task.timing.cfg_samp_clk_timing(
-                    rate=sample_rate,
+                    rate=sample_rate,  # 10kHz
                     sample_mode=AcquisitionType.CONTINUOUS,
-                    samps_per_chan=samples_per_read * 10  # Buffer: 100 samples
+                    samps_per_chan=buffer_size  # 30000 samples buffer
                 )
                 
+                # Start task ONCE (setup complete)
                 task.start()
                 print("✅ DAQ task started in CONTINUOUS mode")
+                print("Task setup complete. Now entering read loop (read only, no re-initialization)...")
                 
                 # Read continuously until monitoring_active becomes False
+                # Only DAQmxReadAnalogF64 is called repeatedly (efficient!)
                 read_count = 0
                 start_time = time.time()
                 
@@ -2109,7 +2115,8 @@ class TestScenarioEngine(QObject):
                     read_start = time.time()
                     
                     try:
-                        # Read 10 samples from each channel
+                        # DAQmxReadAnalogF64 - Read 10 samples from each channel
+                        # Task is already configured, just read data
                         data = task.read(number_of_samples_per_channel=samples_per_read, timeout=0.1)
                         
                         # Average and convert to current for each channel
@@ -2149,13 +2156,13 @@ class TestScenarioEngine(QObject):
                             self.daq_data.append(data_point)
                             read_count += 1
                             
-                            # Log progress every 500 reads (~1 second)
-                            if read_count % 500 == 0:
+                            # Log progress every 1000 reads (~1 second)
+                            if read_count % 1000 == 0:
                                 elapsed_s = time.time() - start_time
                                 preview = ', '.join([f"{k}={v:.3f}mA" for k, v in list(channel_data_ma.items())[:2]])
                                 print(f"DAQ: {read_count} reads, {elapsed_s:.1f}s [{preview}...]")
                         
-                        # Wait for next read interval (2ms)
+                        # Wait for next read interval (1ms)
                         elapsed_since_read = time.time() - read_start
                         sleep_time = max(0, read_interval - elapsed_since_read)
                         if sleep_time > 0:
