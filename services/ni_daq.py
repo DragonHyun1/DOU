@@ -5,7 +5,8 @@ from PyQt6.QtCore import QObject, pyqtSignal, QTimer
 
 import os
 import sys
-# NOTE: ctypes imports removed (no longer using C API)
+import ctypes
+from ctypes import c_int32, c_double, c_uint32, c_char_p, byref, POINTER
 
 # NI-DAQmx 런타임 경로 추가 시도
 possible_paths = [
@@ -54,9 +55,16 @@ if found_paths:
 else:
     print("No NI-DAQmx paths found")
 
-# NOTE: C API (nicaiu.dll) support has been removed for code simplification
-# Only Python nidaqmx library is used throughout the codebase
-# This provides better maintainability and easier debugging
+# Load NI-DAQmx C API (nicaiu.dll)
+try:
+    # Try to load nicaiu.dll from system paths
+    nicaiu = ctypes.windll.nicaiu
+    print("✅ nicaiu.dll loaded successfully (C API available)")
+    C_API_AVAILABLE = True
+except:
+    nicaiu = None
+    print("⚠️ nicaiu.dll not found (C API not available, using Python API)")
+    C_API_AVAILABLE = False
 
 try:
     import nidaqmx
@@ -100,9 +108,6 @@ DAQmx_Val_Falling = 10171
 DAQmx_Val_OnboardClock = None  # Default, typically 0 or empty string
 DAQmx_Val_GroupByChannel = 0
 DAQmx_Val_GroupByScanNumber = 1
-
-# NOTE: NICAIUWrapper (C API) has been removed
-# All DAQ operations now use Python nidaqmx library exclusively
 
 class NIDAQService(QObject):
     """Service for NI DAQ multi-channel voltage/current monitoring"""

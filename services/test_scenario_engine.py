@@ -2034,8 +2034,8 @@ class TestScenarioEngine(QObject):
             print("DAQ monitoring loop ended")
     
     def _daq_monitoring_hardware_timed(self):
-        """DAQ monitoring using hardware timing (1kHz, 10,000 samples)"""
-        print("=== DAQ Hardware-Timed Collection Started ===")
+        """DAQ monitoring using C API (direct DAQmx calls)"""
+        print("=== DAQ Hardware-Timed Collection Started (C API) ===")
         
         try:
             # Wait for screen test to start
@@ -2052,98 +2052,147 @@ class TestScenarioEngine(QObject):
             enabled_channels = getattr(self, '_monitoring_channels', ['ai0', 'ai1'])
             print(f"Collecting from {len(enabled_channels)} channels: {enabled_channels}")
             
-            # Initialize DAQ CONTINUOUS collection
+            # Check DAQ service
             if not hasattr(self, 'daq_service') or not self.daq_service:
                 print("ERROR: DAQ service not available")
                 self.monitoring_active = False
                 return
             
-            import nidaqmx
-            from nidaqmx.constants import AcquisitionType, TerminalConfiguration, VoltageUnits
-            from nidaqmx.stream_readers import AnalogMultiChannelReader
+            # Check if C API is available
+            from services.ni_daq import nicaiu, C_API_AVAILABLE, DAQmx_Val_Diff, DAQmx_Val_RSE, DAQmx_Val_ContSamps, DAQmx_Val_GroupByChannel
+            
+            if not C_API_AVAILABLE or nicaiu is None:
+                print("ERROR: C API not available, cannot proceed")
+                self.monitoring_active = False
+                return
+            
+            import ctypes
+            from ctypes import c_int32, c_double, c_uint32, byref, POINTER
             import numpy as np
             
             sample_rate = 10000.0  # 10kHz (10 samples per 1ms)
             samples_per_read = 10  # 10 samples per read
-            buffer_size = 100000  # Very large buffer to prevent overflow (10 seconds worth)
+            buffer_size = 100000  # Very large buffer
             voltage_range = 5.0
             num_channels = len(enabled_channels)
+            device_name = self.daq_service.device_name
             
-            print(f"Starting CONTINUOUS mode with Stream Reader: {sample_rate}Hz, {samples_per_read} samples/read")
-            print(f"Hardware buffer size: {buffer_size} samples (prevents overflow during Get calls)")
-            print(f"Using AnalogMultiChannelReader for efficient reading (no repeated Get calls)")
+            print(f"Using C API: {sample_rate}Hz, {samples_per_read} samples/read, buffer={buffer_size}")
+            print(f"Device: {device_name}, Channels: {num_channels}")
             
-            with nidaqmx.Task() as task:
-                # Add voltage channels
+            # C API: Create task
+            task_handle = c_uint32(0)
+            status = nicaiu.DAQmxCreateTask(b"", byref(task_handle))
+            if status != 0:
+                print(f"ERROR: DAQmxCreateTask failed: {status}")
+                return
+            print(f"✅ DAQmxCreateTask: handle={task_handle.value}")
+            
+            try:
+                # C API: Add voltage channels
                 for channel in enabled_channels:
-                    channel_name = f"{self.daq_service.device_name}/{channel}"
+                    physical_channel = f"{device_name}/{channel}".encode('ascii')
                     
                     # Try DIFFERENTIAL first
-                    try:
-                        task.ai_channels.add_ai_voltage_chan(
-                            channel_name,
-                            terminal_config=TerminalConfiguration.DIFF,
-                            min_val=-voltage_range,
-                            max_val=voltage_range,
-                            units=VoltageUnits.VOLTS
+                    status = nicaiu.DAQmxCreateAIVoltageChan(
+                        task_handle,
+                        physical_channel,
+                        b"",  # name string
+                        DAQmx_Val_Diff,  # DIFFERENTIAL
+                        c_double(-voltage_range),
+                        c_double(voltage_range),
+                        c_int32(10348),  # DAQmx_Val_Volts
+                        None  # customScaleName
+                    )
+                    
+                    if status != 0:
+                        # Fallback to RSE
+                        status = nicaiu.DAQmxCreateAIVoltageChan(
+                            task_handle,
+                            physical_channel,
+                            b"",
+                            DAQmx_Val_RSE,  # RSE fallback
+                            c_double(-voltage_range),
+                            c_double(voltage_range),
+                            c_int32(10348),
+                            None
                         )
-                    except:
-                        task.ai_channels.add_ai_voltage_chan(
-                            channel_name,
-                            terminal_config=TerminalConfiguration.RSE,
-                            min_val=-voltage_range,
-                            max_val=voltage_range,
-                            units=VoltageUnits.VOLTS
-                        )
+                    
+                    if status == 0:
+                        print(f"  ✅ {channel} added")
+                    else:
+                        print(f"  ❌ {channel} failed: {status}")
                 
-                # Configure CONTINUOUS mode with large buffer
-                # Rate: 10kHz, Buffer: 30000 samples (prevents -200279 overflow error)
-                task.timing.cfg_samp_clk_timing(
-                    rate=sample_rate,  # 10kHz
-                    sample_mode=AcquisitionType.CONTINUOUS,
-                    samps_per_chan=buffer_size  # 30000 samples buffer
+                # C API: Configure timing (CONTINUOUS mode)
+                status = nicaiu.DAQmxCfgSampClkTiming(
+                    task_handle,
+                    None,  # Use default onboard clock
+                    c_double(sample_rate),  # 10kHz
+                    c_int32(10280),  # DAQmx_Val_Rising
+                    DAQmx_Val_ContSamps,  # CONTINUOUS mode
+                    c_uint32(buffer_size)  # 100000 samples buffer
                 )
+                if status != 0:
+                    print(f"ERROR: DAQmxCfgSampClkTiming failed: {status}")
+                    nicaiu.DAQmxClearTask(task_handle)
+                    return
+                print(f"✅ DAQmxCfgSampClkTiming: {sample_rate}Hz, CONTINUOUS, buffer={buffer_size}")
                 
-                # Create stream reader (efficient - setup once, read repeatedly)
-                # This prevents repeated DAQmxGetChanType/DAQmxGetAIMeasType calls
-                stream_reader = AnalogMultiChannelReader(task.in_stream)
+                # C API: Start task (ONCE!)
+                status = nicaiu.DAQmxStartTask(task_handle)
+                if status != 0:
+                    print(f"ERROR: DAQmxStartTask failed: {status}")
+                    nicaiu.DAQmxClearTask(task_handle)
+                    return
+                print("✅ DAQmxStartTask: Task started")
+                print("✅ Setup complete. Now only DAQmxReadAnalogF64 will be called!")
                 
-                # Pre-allocate numpy array for reading (reuse for efficiency)
-                read_buffer = np.zeros((num_channels, samples_per_read), dtype=np.float64)
+                # Pre-allocate read buffer (reuse for efficiency)
+                total_samples = num_channels * samples_per_read
+                read_buffer = (c_double * total_samples)()
+                samples_read = c_int32(0)
                 
-                # Start task ONCE (setup complete)
-                task.start()
-                print("✅ DAQ task started in CONTINUOUS mode")
-                print("✅ Stream reader initialized")
-                print("Task setup complete. Now entering read loop (only DAQmxReadAnalogF64 repeated)...")
-                
-                # Read continuously until monitoring_active becomes False
-                # Fast reading to prevent buffer overflow
                 read_count = 0
                 start_time = time.time()
                 last_log_time = start_time
                 
-                print("Entering fast read loop (no sleep, prevent buffer overflow)...")
+                print("Entering C API read loop (only DAQmxReadAnalogF64)...")
                 
+                # Read continuously until monitoring_active becomes False
                 while self.monitoring_active and not self.stop_requested:
                     try:
-                        # Check available samples to prevent buffer overflow
-                        avail_samples = task.in_stream.avail_samp_per_chan
+                        # C API: DAQmxReadAnalogF64 (ONLY THIS IS CALLED REPEATEDLY!)
+                        status = nicaiu.DAQmxReadAnalogF64(
+                            task_handle,
+                            c_int32(samples_per_read),  # 10 samples
+                            c_double(0.1),  # timeout
+                            DAQmx_Val_GroupByChannel,  # group by channel
+                            read_buffer,
+                            c_uint32(total_samples),  # array size
+                            byref(samples_read),
+                            None
+                        )
                         
-                        # Only read if we have enough samples (10 or more)
-                        if avail_samples >= samples_per_read:
-                            # DAQmxReadAnalogF64 - Stream reader (direct read, minimal overhead)
-                            stream_reader.read_many_sample(
-                                read_buffer, 
-                                number_of_samples_per_channel=samples_per_read,
-                                timeout=0.1
-                            )
-                            
-                            # Average and convert to current for each channel
+                        if status != 0:
+                            print(f"DAQmxReadAnalogF64 error: {status}")
+                            if status == -200279:  # Buffer overflow
+                                print("ERROR: Buffer overflow! Reading too slow")
+                                break
+                            time.sleep(0.001)
+                            continue
+                        
+                        # Process read data (grouped by channel)
+                        if samples_read.value == samples_per_read:
                             channel_data_ma = {}
-                            for i, channel in enumerate(enabled_channels):
-                                channel_samples = read_buffer[i, :]
-                                avg_voltage = np.mean(channel_samples)
+                            
+                            for ch_idx, channel in enumerate(enabled_channels):
+                                # Extract samples for this channel
+                                start_idx = ch_idx * samples_per_read
+                                end_idx = start_idx + samples_per_read
+                                channel_voltages = [read_buffer[i] for i in range(start_idx, end_idx)]
+                                
+                                # Average voltage
+                                avg_voltage = sum(channel_voltages) / len(channel_voltages)
                                 
                                 # Convert to current
                                 config = self.daq_service.channel_configs.get(channel, {})
@@ -2164,27 +2213,33 @@ class TestScenarioEngine(QObject):
                                 self.daq_data.append(data_point)
                                 read_count += 1
                                 
-                                # Log progress every 1 second (time-based, not count-based)
+                                # Log every 1 second
                                 current_time = time.time()
                                 if current_time - last_log_time >= 1.0:
                                     elapsed_s = current_time - start_time
                                     preview = ', '.join([f"{k}={v:.3f}mA" for k, v in list(channel_data_ma.items())[:2]])
-                                    print(f"DAQ: {read_count} reads, {elapsed_s:.1f}s, buffer={avail_samples} [{preview}...]")
+                                    print(f"DAQ: {read_count} reads, {elapsed_s:.1f}s [{preview}...]")
                                     last_log_time = current_time
-                        else:
-                            # Not enough samples yet, brief wait
-                            time.sleep(0.0001)  # 0.1ms to prevent busy loop
-                            
+                        
+                        # Small delay to prevent busy loop (0.1ms)
+                        time.sleep(0.0001)
+                        
                     except Exception as read_error:
-                        print(f"Read error at #{read_count}: {read_error}")
+                        print(f"Read error: {read_error}")
                         time.sleep(0.001)
                 
-                task.stop()
+                # C API: Stop task
+                nicaiu.DAQmxStopTask(task_handle)
                 elapsed_total = time.time() - start_time
-                print(f"✅ DAQ stopped: {read_count} reads over {elapsed_total:.1f}s, {len(self.daq_data)} data points")
+                print(f"✅ DAQmxStopTask: {read_count} reads over {elapsed_total:.1f}s, {len(self.daq_data)} data points")
+                
+            finally:
+                # C API: Clear task
+                nicaiu.DAQmxClearTask(task_handle)
+                print("✅ DAQmxClearTask: Task cleared")
                 
         except Exception as e:
-            print(f"ERROR in hardware-timed DAQ collection: {e}")
+            print(f"ERROR in C API DAQ collection: {e}")
             import traceback
             traceback.print_exc()
         finally:
