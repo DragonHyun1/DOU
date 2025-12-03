@@ -793,35 +793,30 @@ class NIDAQService(QObject):
             return None
     
     def _compress_data(self, data: List[float], compress_ratio: int) -> List[float]:
-        """Compress data by calculating RMS (Root Mean Square) of groups
+        """Compress data by averaging groups (noise reduction)
 
         Args:
             data: Raw data values
-            compress_ratio: How many samples to calculate RMS (e.g., 30)
+            compress_ratio: How many samples to average (e.g., 50)
 
         Returns:
-            Compressed data (RMS values, same units as input)
-
-        RMS Calculation:
-            RMS = sqrt(mean(x^2))
-            - More accurate for AC/varying signals
-            - Better noise representation than simple average
+            Compressed data (averaged, same units as input)
 
         Example:
-            Input: 300,000 samples
-            Ratio: 30
-            Output: 10,000 samples (each is RMS of 30)
+            Input: 500,000 samples
+            Ratio: 50
+            Output: 10,000 samples (each is average of 50)
         """
         compressed = []
 
         for i in range(0, len(data), compress_ratio):
-            # Get group of samples (e.g., 30 samples)
+            # Get group of samples (e.g., 50 samples)
             group = data[i:i+compress_ratio]
 
             if len(group) > 0:
-                # Calculate RMS: sqrt(mean(x^2))
-                rms_value = (sum(x**2 for x in group) / len(group)) ** 0.5
-                compressed.append(rms_value)
+                # Average the group
+                avg_value = sum(group) / len(group)
+                compressed.append(avg_value)
 
         return compressed
     
