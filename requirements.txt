@@ -3,6 +3,7 @@ PyQt6>=6.4.0
 
 # Data Processing and Export
 pandas>=1.5.0
+numpy>=1.21.0
 openpyxl>=3.0.0
 xlsxwriter>=3.0.0
 

@@ -1,0 +1,7 @@
+default setting에 아래 ADB cmd도 추가해줘
+
+adb shell settings put global wifi_scan_always_enabled 0
+adb shell settings put secure location_mode 0
+adb shell cmd wifi set-persistent-wifi-scanning-policy 0 0
+
+그리고 5회를 돌렸을때 iter01랑 iter05만 excel 나오고 있어.

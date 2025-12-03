@@ -417,8 +417,8 @@ class MultiChannelMonitorDialog(QtWidgets.QDialog):
                     
                     try:
                         if is_current_mode:
-                            # Current mode monitoring
-                            results = ni_service.read_current_channels_direct(enabled_channels, samples_per_channel=12)
+                            # Current mode monitoring - Use direct read for speed
+                            results = ni_service.read_current_channels_direct(enabled_channels, samples_per_channel=1000)
                         else:
                             # Voltage mode monitoring
                             results = ni_service.read_voltage_channels_trace_based(enabled_channels, samples_per_channel=12)
@@ -508,6 +508,17 @@ class MultiChannelMonitorDialog(QtWidgets.QDialog):
     
     def single_read(self):
         """Perform single read of all enabled channels"""
+        # Disable USB charging first (to prevent voltage interference with HVPM)
+        if hasattr(self.parent(), 'adb_service'):
+            try:
+                adb_service = self.parent().adb_service
+                if adb_service and adb_service.is_connected():
+                    print("🔌 Disabling USB charging before measurement...")
+                    adb_service.disable_usb_charging()
+                    self.status_label.setText("USB charging disabled")
+            except Exception as e:
+                print(f"Warning: Could not disable USB charging: {e}")
+        
         if hasattr(self.parent(), 'ni_service'):
             ni_service = self.parent().ni_service
             if ni_service.is_connected():
@@ -524,8 +535,8 @@ class MultiChannelMonitorDialog(QtWidgets.QDialog):
                         print(f"[Single Read] {mode_name} mode selected for channels: {enabled_channels}")
                         
                         if is_current_mode:
-                            # Current mode: Use DAQ's direct current measurement (like other tool)
-                            results = ni_service.read_current_channels_direct(enabled_channels, samples_per_channel=12)
+                            # Current mode: Use direct read
+                            results = ni_service.read_current_channels_direct(enabled_channels, samples_per_channel=1000)
                         else:
                             # Voltage mode: Use regular voltage measurement
                             results = ni_service.read_voltage_channels_trace_based(enabled_channels, samples_per_channel=12)
