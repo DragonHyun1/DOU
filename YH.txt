@@ -1,7 +1,80 @@
-default setting에 아래 ADB cmd도 추가해줘
+아래 로그로 보았을때 Screen on/off는 2번째 테스트때는 1번째 테스트의 마지막에 스크린 오프상태로만 만들어져있다면 
+그냥 10초만 기다리고 바로 테스트 진행해도 되는 것으로 보여
+(현재 quick_reset을 스킵해도 된다는 의미)
 
-adb shell settings put global wifi_scan_always_enabled 0
-adb shell settings put secure location_mode 0
-adb shell cmd wifi set-persistent-wifi-scanning-policy 0 0
-
-그리고 5회를 돌렸을때 iter01랑 iter05만 excel 나오고 있어.
+[13:42:03] ============================================================
+[13:42:03] 🔄 Test Iteration 2/2
+[13:42:03] ============================================================
+[13:42:03] 📌 Iteration 2: Skip default+init, quick reset only
+[13:42:03] Executing scenario: Screen On/Off Test (Single Thread)
+[13:42:03]   Skipping step: init_adb (action: setup_adb_device)
+[13:42:03]   Skipping step: default_settings (action: apply_default_settings)
+[13:42:03]   Skipping step: stabilize (action: wait_stabilization)
+[13:42:03]   Including step: start_daq (action: start_daq_monitoring)
+[13:42:03]   Including step: stop_daq (action: stop_daq_monitoring)
+[13:42:03]   Including step: save_data (action: export_to_excel)
+[13:42:03] Iteration 2/2: 4 steps
+[13:42:03]   Step 1: quick_reset (action: quick_reset_before_test)
+[13:42:03]   Step 2: start_daq (action: start_daq_monitoring)
+[13:42:03]   Step 3: stop_daq (action: stop_daq_monitoring)
+[13:42:03]   Step 4: save_data (action: export_to_excel)
+[13:42:03] Step 1/4: quick_reset
+[13:42:03] === Quick Reset for 2nd+ iteration ===
+[13:42:03] Sequence: Clear apps → 10s stabilization → Test start
+[13:42:03] Step 1: Clearing all recent apps...
+[13:42:15] ✅ Recent apps cleared
+[13:42:15] 🔍 Detected Screen On/Off scenario (from scenario key)
+[13:42:15] Step 2: Turning screen OFF for Screen On/Off scenario...
+[13:42:16] ✅ Screen turned OFF
+[13:42:16] Step 3: Waiting 10 seconds for current stabilization...
+[13:42:26] ✅ Quick reset completed, starting test...
+[13:42:26] Step 2/4: start_daq
+[13:42:26] Using scenario test duration: 20.0s
+[13:42:26] DAQ monitoring initialized with 20.0s test duration
+[13:42:26] ? Found enabled channel: ai0 -> VBAT
+[13:42:26] ? Found enabled channel: ai1 -> VDD_1P8_AP
+[13:42:26] ? Found enabled channel: ai2 -> VDD_MLDO_2P0
+[13:42:26] ? Found enabled channel: ai3 -> VDD_WIFI_1P0
+[13:42:26] ? Found enabled channel: ai4 -> VDD_1P2_AP_WIFI
+[13:42:26] ? Found enabled channel: ai5 -> VDD_1P35_WIFIPMU
+[13:42:26] ?? Total enabled channels from monitor: ['ai0', 'ai1', 'ai2', 'ai3', 'ai4', 'ai5']
+[13:42:26] DAQ monitoring channels: ['ai0', 'ai1', 'ai2', 'ai3', 'ai4', 'ai5']
+[13:42:26] DAQ hardware-timed monitoring thread started (1kHz)
+[13:42:26] DAQ monitoring started successfully with 6 channels
+[13:42:26] Waiting 2.0s for step completion
+[13:42:29] Step 3/4: stop_daq
+[13:42:29] Stopping DAQ monitoring...
+[13:42:29] Waiting for monitoring thread to finish...
+[13:42:32] WARNING: Monitoring thread did not finish in time
+[13:42:32] DAQ monitoring stopped. Collected 0 data points
+[13:42:32] WARNING: No data was collected during monitoring!
+[13:42:32] Waiting 2.0s for step completion
+[13:42:34] Step 4/4: save_data
+[13:42:34] Exporting data for iteration 2/2
+[13:42:34] Starting Excel export...
+[13:42:34] Preparing to export 0 data points
+[13:42:34] WARNING: No DAQ data collected to export!
+[13:42:34] This means DAQ monitoring did not collect any data during the test
+[13:42:34] Test failed at step: save_data
+[13:42:34] Step failed: save_data
+[13:42:34] Final auto test state reset: failed ? idle
+[13:42:34] ❌ Test iteration 2 failed
+[13:42:34] 
+[13:42:34] 🎉 All 2 test iterations completed successfully!
+[13:42:34] _on_auto_test_completed called: success=True, message=Completed 2 iterations
+[13:42:34] ✅ All scenarios completed!
+[13:42:34] Setting UI test mode: test_running=False
+[13:42:34] *** startAutoTest_PB enabled: True ***
+[13:42:34] *** stopAutoTest_PB enabled: False ***
+[13:42:34] Test execution completed, status reset to IDLE
+[13:42:34] UI test mode set successfully: test_running=False
+[13:42:38] 🔄 Resetting UI to initial state
+[13:42:38] 📊 Engine status during reset: idle
+[13:42:38] testStatus_LB reset to 'Ready'
+[13:42:38] testProgress_PB reset to 0
+[13:42:38] Setting UI test mode: test_running=False
+[13:42:38] *** startAutoTest_PB enabled: True ***
+[13:42:38] *** stopAutoTest_PB enabled: False ***
+[13:42:38] is_running() check: status=idle, running=False
+[13:42:38] UI test mode set successfully: test_running=False
+[13:42:38] UI reset to initial state completed
