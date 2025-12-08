@@ -420,28 +420,49 @@ class TestScenarioEngine(QObject):
                 steps_to_execute = scenario.steps
                 self.log_callback(f"Starting {len(steps_to_execute)} test steps (full initialization)", "info")
             else:
-                # Subsequent iterations: Quick reset + DAQ + Test + Stop DAQ + Export
-                # Duration is 0 because waiting is handled inside the step itself
-                quick_reset_step = TestStep("quick_reset", 0.0, "quick_reset_before_test")
-                
-                # Find DAQ and test steps (skip all init/default/stabilization steps)
-                # We want to keep: start_daq, test, stop_daq, export
-                daq_test_steps = []
-                for step in scenario.steps:
-                    # Skip init, default, stabilization steps
-                    if any(keyword in step.name.lower() for keyword in ['init', 'default', 'stabilize']):
-                        self.log_callback(f"  Skipping step: {step.name} (action: {step.action})", "debug")
-                        continue
-                    
-                    # Include DAQ, test, and export steps
-                    if step.action in ['start_daq_monitoring', 'phone_app_scenario_test',
-                                       'screen_on_off_with_daq_monitoring', 'screen_on_off_cycle',
-                                       'execute_screen_onoff_test',
-                                       'stop_daq_monitoring', 'export_to_excel']:
-                        self.log_callback(f"  Including step: {step.name} (action: {step.action})", "debug")
-                        daq_test_steps.append(step)
-                
-                steps_to_execute = [quick_reset_step] + daq_test_steps
+                # Subsequent iterations: Different handling based on scenario
+                is_screen_onoff = False
+                if hasattr(self, 'current_scenario') and self.current_scenario:
+                    scenario_key = self.current_scenario.lower()
+                    if 'screen' in scenario_key and 'onoff' in scenario_key:
+                        is_screen_onoff = True
+
+                if is_screen_onoff:
+                    # Screen On/Off: Skip quick reset, only 10s stabilization (screen already off from 1st test)
+                    self.log_callback(f"📌 Iteration {self.current_repeat}: Screen On/Off quick setup - 10s stabilization only", "info")
+                    stabilization_step = TestStep("quick_stabilization", 10.0, "quick_stabilization_10s")
+
+                    # Find test steps only
+                    daq_test_steps = []
+                    for step in scenario.steps:
+                        if step.action in ['start_daq_monitoring', 'screen_onoff_test',
+                                           'stop_daq_monitoring', 'export_to_excel']:
+                            self.log_callback(f"  Including step: {step.name} (action: {step.action})", "debug")
+                            daq_test_steps.append(step)
+
+                    steps_to_execute = [stabilization_step] + daq_test_steps
+                else:
+                    # Other scenarios: Quick reset + DAQ + Test + Stop DAQ + Export
+                    self.log_callback(f"📌 Iteration {self.current_repeat}: Skip default+init, quick reset only", "info")
+                    quick_reset_step = TestStep("quick_reset", 0.0, "quick_reset_before_test")
+
+                    # Find DAQ and test steps (skip all init/default/stabilization steps)
+                    daq_test_steps = []
+                    for step in scenario.steps:
+                        # Skip init, default, stabilization steps
+                        if any(keyword in step.name.lower() for keyword in ['init', 'default', 'stabilize']):
+                            self.log_callback(f"  Skipping step: {step.name} (action: {step.action})", "debug")
+                            continue
+
+                        # Include DAQ, test, and export steps
+                        if step.action in ['start_daq_monitoring', 'phone_app_scenario_test',
+                                           'screen_on_off_with_daq_monitoring', 'screen_on_off_cycle',
+                                           'execute_screen_onoff_test', 'screen_onoff_test',
+                                           'stop_daq_monitoring', 'export_to_excel']:
+                            self.log_callback(f"  Including step: {step.name} (action: {step.action})", "debug")
+                            daq_test_steps.append(step)
+
+                    steps_to_execute = [quick_reset_step] + daq_test_steps
                 self.log_callback(f"Iteration {self.current_repeat}/{self.repeat_count}: {len(steps_to_execute)} steps", "info")
                 for i, step in enumerate(steps_to_execute):
                     self.log_callback(f"  Step {i+1}: {step.name} (action: {step.action})", "info")
@@ -835,6 +856,8 @@ class TestScenarioEngine(QObject):
                 return self._step_unlock_screen()
             elif step.action == "quick_reset_before_test":
                 return self._step_quick_reset_before_test()
+            elif step.action == "quick_stabilization_10s":
+                return self._step_quick_stabilization_10s()
             elif step.action == "deviceidle_step":
                 return self._step_deviceidle_step()
             elif step.action == "unlock_and_clear_apps":
@@ -1082,7 +1105,23 @@ class TestScenarioEngine(QObject):
         self.log_callback("Waiting for current stabilization...", "info")
         # This step's duration is handled by the main execution loop
         return True
-    
+
+    def _step_quick_stabilization_10s(self) -> bool:
+        """Quick stabilization for Screen On/Off 2nd+ iteration (10 seconds only)"""
+        try:
+            self.log_callback("=== Quick Stabilization for Screen On/Off (10 seconds) ===", "info")
+            self.log_callback("Screen already OFF from 1st test, just waiting for current stabilization", "info")
+
+            if not self._interruptible_sleep(10):
+                return False
+
+            self.log_callback("✅ Quick stabilization completed, starting test...", "info")
+            return True
+
+        except Exception as e:
+            self.log_callback(f"Error in quick stabilization: {e}", "error")
+            return True  # Don't fail test for stabilization issues
+
     def _step_start_daq_monitoring(self) -> bool:
         """Start DAQ monitoring"""
         if not self.daq_service:
