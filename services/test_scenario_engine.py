@@ -184,40 +184,7 @@ class TestScenarioEngine(QObject):
         
         self.scenarios["phone_app_test"] = phone_app_config
         self.log_callback(f"Registered scenario: {phone_app_config.name} (key: phone_app_test)", "info")
-        
-        # Idle Wait Test Scenario (same init as Phone App, but waits 5 minutes after DAQ start)
-        idle_wait_config = TestConfig(
-            name="Idle Wait Test",
-            description="Phone app 시나리오와 동일한 init 부분까지 진행하지만, DAQ 시작 후 앱을 실행하지 않고 5분간 대기",
-            test_duration=300.0,  # 5 minutes = 300 seconds
-            stabilization_time=10.0
-        )
-        
-        idle_wait_config.steps = [
-            # Init Mode Setup (same as Phone App)
-            TestStep("init_hvpm", 2.0, "set_hvpm_voltage", {"voltage": 4.0}),
-            TestStep("init_adb", 3.0, "setup_adb_device"),
-            TestStep("init_flight_mode", 2.0, "enable_flight_mode"),
-            TestStep("init_wifi_2g", 8.0, "connect_wifi_2g"),
-            TestStep("init_bluetooth", 3.0, "enable_bluetooth"),
-            TestStep("init_screen_timeout", 3.0, "set_screen_timeout_10min"),
-            TestStep("init_unlock_clear", 10.0, "lcd_on_unlock_home_clear_apps"),
-            
-            # Stabilization (current stabilization for 10 seconds)
-            TestStep("stabilize", 10.0, "wait_stabilization"),
-            
-            # DAQ Start + Idle Wait (5 minutes) + DAQ Stop
-            TestStep("start_daq", 2.0, "start_daq_monitoring"),
-            TestStep("idle_wait", 300.0, "idle_wait_test"),  # 5 minutes = 300 seconds
-            TestStep("stop_daq", 2.0, "stop_daq_monitoring"),
-            
-            # Export results
-            TestStep("save_data", 2.0, "export_to_excel")
-        ]
-        
-        self.scenarios["idle_wait_test"] = idle_wait_config
-        self.log_callback(f"Registered scenario: {idle_wait_config.name} (key: idle_wait_test)", "info")
-        
+
         # Screen On/Off Test Scenario (LCD를 2초마다 켜고 끄는 전력 소비 테스트)
         screen_onoff_config = TestConfig(
             name="Screen On/Off Test",
@@ -467,9 +434,10 @@ class TestScenarioEngine(QObject):
                         continue
                     
                     # Include DAQ, test, and export steps
-                    if step.action in ['start_daq_monitoring', 'phone_app_scenario_test', 
+                    if step.action in ['start_daq_monitoring', 'phone_app_scenario_test',
                                        'screen_on_off_with_daq_monitoring', 'screen_on_off_cycle',
-                                       'stop_daq_monitoring', 'export_to_excel', 'idle_wait_test']:
+                                       'execute_screen_onoff_test',
+                                       'stop_daq_monitoring', 'export_to_excel']:
                         self.log_callback(f"  Including step: {step.name} (action: {step.action})", "debug")
                         daq_test_steps.append(step)
                 
@@ -849,8 +817,6 @@ class TestScenarioEngine(QObject):
                 return self._step_lcd_on_unlock_home_clear_apps()
             elif step.action == "phone_app_scenario_test":
                 return self._step_phone_app_scenario_test()
-            elif step.action == "idle_wait_test":
-                return self._step_idle_wait_test()
             elif step.action == "screen_onoff_test":
                 return self._step_screen_onoff_test()
             elif step.action == "lcd_off":
@@ -3671,56 +3637,6 @@ class TestScenarioEngine(QObject):
             
         except Exception as e:
             self.log_callback(f"Error in LCD/unlock/clear setup: {e}", "error")
-            return False
-    
-    def _step_idle_wait_test(self) -> bool:
-        """Execute idle wait test (5 minutes = 300 seconds) without running any app"""
-        try:
-            duration_seconds = 300.0  # 5 minutes
-            self.log_callback(f"=== Starting Idle Wait ({duration_seconds} seconds / {duration_seconds/60:.1f} minutes) ===", "info")
-            self.log_callback("No app will be executed - device will remain idle", "info")
-            
-            if not self.adb_service:
-                self.log_callback("ADB service not available", "error")
-                return False
-            
-            # Wait for specified duration with progress updates every 30 seconds
-            total_seconds = int(duration_seconds)
-            update_interval = 30  # Update progress every 30 seconds
-            
-            elapsed = 0
-            while elapsed < total_seconds:
-                if self.stop_requested:
-                    self.log_callback("Idle wait stopped by user request", "warn")
-                    return False
-                
-                remaining = total_seconds - elapsed
-                progress = int((elapsed / total_seconds) * 100)
-                
-                if elapsed % update_interval == 0 or elapsed == 0:
-                    minutes_elapsed = elapsed // 60
-                    seconds_elapsed = elapsed % 60
-                    minutes_remaining = remaining // 60
-                    seconds_remaining = remaining % 60
-                    
-                    self.log_callback(
-                        f"Idle wait progress: {elapsed}/{total_seconds}s ({progress}%) - "
-                        f"Elapsed: {minutes_elapsed}m {seconds_elapsed}s, "
-                        f"Remaining: {minutes_remaining}m {seconds_remaining}s",
-                        "info"
-                    )
-                
-                # Sleep for 1 second at a time to allow for cancellation/interruption
-                time.sleep(1)
-                elapsed += 1
-            
-            self.log_callback(f"✅ Idle wait completed: {total_seconds} seconds ({total_seconds/60:.1f} minutes)", "info")
-            return True
-            
-        except Exception as e:
-            self.log_callback(f"Error during idle wait: {e}", "error")
-            import traceback
-            traceback.print_exc()
             return False
     
     def _step_screen_onoff_test(self) -> bool:
