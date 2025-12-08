@@ -184,40 +184,7 @@ class TestScenarioEngine(QObject):
         
         self.scenarios["phone_app_test"] = phone_app_config
         self.log_callback(f"Registered scenario: {phone_app_config.name} (key: phone_app_test)", "info")
-        
-        # Idle Wait Test Scenario (same init as Phone App, but waits 5 minutes after DAQ start)
-        idle_wait_config = TestConfig(
-            name="Idle Wait Test",
-            description="Phone app 시나리오와 동일한 init 부분까지 진행하지만, DAQ 시작 후 앱을 실행하지 않고 5분간 대기",
-            test_duration=300.0,  # 5 minutes = 300 seconds
-            stabilization_time=10.0
-        )
-        
-        idle_wait_config.steps = [
-            # Init Mode Setup (same as Phone App)
-            TestStep("init_hvpm", 2.0, "set_hvpm_voltage", {"voltage": 4.0}),
-            TestStep("init_adb", 3.0, "setup_adb_device"),
-            TestStep("init_flight_mode", 2.0, "enable_flight_mode"),
-            TestStep("init_wifi_2g", 8.0, "connect_wifi_2g"),
-            TestStep("init_bluetooth", 3.0, "enable_bluetooth"),
-            TestStep("init_screen_timeout", 3.0, "set_screen_timeout_10min"),
-            TestStep("init_unlock_clear", 10.0, "lcd_on_unlock_home_clear_apps"),
-            
-            # Stabilization (current stabilization for 10 seconds)
-            TestStep("stabilize", 10.0, "wait_stabilization"),
-            
-            # DAQ Start + Idle Wait (5 minutes) + DAQ Stop
-            TestStep("start_daq", 2.0, "start_daq_monitoring"),
-            TestStep("idle_wait", 300.0, "idle_wait_test"),  # 5 minutes = 300 seconds
-            TestStep("stop_daq", 2.0, "stop_daq_monitoring"),
-            
-            # Export results
-            TestStep("save_data", 2.0, "export_to_excel")
-        ]
-        
-        self.scenarios["idle_wait_test"] = idle_wait_config
-        self.log_callback(f"Registered scenario: {idle_wait_config.name} (key: idle_wait_test)", "info")
-        
+
         # Screen On/Off Test Scenario (LCD를 2초마다 켜고 끄는 전력 소비 테스트)
         screen_onoff_config = TestConfig(
             name="Screen On/Off Test",
@@ -453,27 +420,49 @@ class TestScenarioEngine(QObject):
                 steps_to_execute = scenario.steps
                 self.log_callback(f"Starting {len(steps_to_execute)} test steps (full initialization)", "info")
             else:
-                # Subsequent iterations: Quick reset + DAQ + Test + Stop DAQ + Export
-                # Duration is 0 because waiting is handled inside the step itself
-                quick_reset_step = TestStep("quick_reset", 0.0, "quick_reset_before_test")
-                
-                # Find DAQ and test steps (skip all init/default/stabilization steps)
-                # We want to keep: start_daq, test, stop_daq, export
-                daq_test_steps = []
-                for step in scenario.steps:
-                    # Skip init, default, stabilization steps
-                    if any(keyword in step.name.lower() for keyword in ['init', 'default', 'stabilize']):
-                        self.log_callback(f"  Skipping step: {step.name} (action: {step.action})", "debug")
-                        continue
-                    
-                    # Include DAQ, test, and export steps
-                    if step.action in ['start_daq_monitoring', 'phone_app_scenario_test', 
-                                       'screen_on_off_with_daq_monitoring', 'screen_on_off_cycle',
-                                       'stop_daq_monitoring', 'export_to_excel', 'idle_wait_test']:
-                        self.log_callback(f"  Including step: {step.name} (action: {step.action})", "debug")
-                        daq_test_steps.append(step)
-                
-                steps_to_execute = [quick_reset_step] + daq_test_steps
+                # Subsequent iterations: Different handling based on scenario
+                is_screen_onoff = False
+                if hasattr(self, 'current_scenario') and self.current_scenario:
+                    scenario_key = self.current_scenario.lower()
+                    if 'screen' in scenario_key and 'onoff' in scenario_key:
+                        is_screen_onoff = True
+
+                if is_screen_onoff:
+                    # Screen On/Off: Skip quick reset, only 10s stabilization (screen already off from 1st test)
+                    self.log_callback(f"📌 Iteration {self.current_repeat}: Screen On/Off quick setup - 10s stabilization only", "info")
+                    stabilization_step = TestStep("quick_stabilization", 10.0, "quick_stabilization_10s")
+
+                    # Find test steps only
+                    daq_test_steps = []
+                    for step in scenario.steps:
+                        if step.action in ['start_daq_monitoring', 'screen_onoff_test',
+                                           'stop_daq_monitoring', 'export_to_excel']:
+                            self.log_callback(f"  Including step: {step.name} (action: {step.action})", "debug")
+                            daq_test_steps.append(step)
+
+                    steps_to_execute = [stabilization_step] + daq_test_steps
+                else:
+                    # Other scenarios: Quick reset + DAQ + Test + Stop DAQ + Export
+                    self.log_callback(f"📌 Iteration {self.current_repeat}: Skip default+init, quick reset only", "info")
+                    quick_reset_step = TestStep("quick_reset", 0.0, "quick_reset_before_test")
+
+                    # Find DAQ and test steps (skip all init/default/stabilization steps)
+                    daq_test_steps = []
+                    for step in scenario.steps:
+                        # Skip init, default, stabilization steps
+                        if any(keyword in step.name.lower() for keyword in ['init', 'default', 'stabilize']):
+                            self.log_callback(f"  Skipping step: {step.name} (action: {step.action})", "debug")
+                            continue
+
+                        # Include DAQ, test, and export steps
+                        if step.action in ['start_daq_monitoring', 'phone_app_scenario_test',
+                                           'screen_on_off_with_daq_monitoring', 'screen_on_off_cycle',
+                                           'execute_screen_onoff_test', 'screen_onoff_test',
+                                           'stop_daq_monitoring', 'export_to_excel']:
+                            self.log_callback(f"  Including step: {step.name} (action: {step.action})", "debug")
+                            daq_test_steps.append(step)
+
+                    steps_to_execute = [quick_reset_step] + daq_test_steps
                 self.log_callback(f"Iteration {self.current_repeat}/{self.repeat_count}: {len(steps_to_execute)} steps", "info")
                 for i, step in enumerate(steps_to_execute):
                     self.log_callback(f"  Step {i+1}: {step.name} (action: {step.action})", "info")
@@ -849,8 +838,6 @@ class TestScenarioEngine(QObject):
                 return self._step_lcd_on_unlock_home_clear_apps()
             elif step.action == "phone_app_scenario_test":
                 return self._step_phone_app_scenario_test()
-            elif step.action == "idle_wait_test":
-                return self._step_idle_wait_test()
             elif step.action == "screen_onoff_test":
                 return self._step_screen_onoff_test()
             elif step.action == "lcd_off":
@@ -869,6 +856,8 @@ class TestScenarioEngine(QObject):
                 return self._step_unlock_screen()
             elif step.action == "quick_reset_before_test":
                 return self._step_quick_reset_before_test()
+            elif step.action == "quick_stabilization_10s":
+                return self._step_quick_stabilization_10s()
             elif step.action == "deviceidle_step":
                 return self._step_deviceidle_step()
             elif step.action == "unlock_and_clear_apps":
@@ -1075,11 +1064,20 @@ class TestScenarioEngine(QObject):
             
             # Step 2: Check if this is Screen On/Off scenario and turn screen off if needed
             is_screen_onoff = False
-            if hasattr(self, 'current_test') and self.current_test:
-                scenario_name = self.current_test.scenario_name.lower()
-                if 'screen' in scenario_name and ('on' in scenario_name or 'off' in scenario_name):
+            if hasattr(self, 'current_scenario') and self.current_scenario:
+                scenario_key = self.current_scenario.lower()
+                # Check both scenario key and scenario name
+                if 'screen' in scenario_key and 'onoff' in scenario_key:
                     is_screen_onoff = True
-                    self.log_callback("🔍 Detected Screen On/Off scenario", "info")
+                    self.log_callback("🔍 Detected Screen On/Off scenario (from scenario key)", "info")
+                else:
+                    # Also check scenario config name
+                    scenario_config = self.scenarios.get(self.current_scenario)
+                    if scenario_config:
+                        scenario_name = scenario_config.name.lower()
+                        if 'screen' in scenario_name and ('on' in scenario_name or 'off' in scenario_name):
+                            is_screen_onoff = True
+                            self.log_callback("🔍 Detected Screen On/Off scenario (from scenario name)", "info")
             
             # For Screen On/Off scenario, turn screen off after clearing apps
             if is_screen_onoff:
@@ -1107,7 +1105,23 @@ class TestScenarioEngine(QObject):
         self.log_callback("Waiting for current stabilization...", "info")
         # This step's duration is handled by the main execution loop
         return True
-    
+
+    def _step_quick_stabilization_10s(self) -> bool:
+        """Quick stabilization for Screen On/Off 2nd+ iteration (10 seconds only)"""
+        try:
+            self.log_callback("=== Quick Stabilization for Screen On/Off (10 seconds) ===", "info")
+            self.log_callback("Screen already OFF from 1st test, just waiting for current stabilization", "info")
+
+            if not self._interruptible_sleep(10):
+                return False
+
+            self.log_callback("✅ Quick stabilization completed, starting test...", "info")
+            return True
+
+        except Exception as e:
+            self.log_callback(f"Error in quick stabilization: {e}", "error")
+            return True  # Don't fail test for stabilization issues
+
     def _step_start_daq_monitoring(self) -> bool:
         """Start DAQ monitoring"""
         if not self.daq_service:
@@ -2034,7 +2048,7 @@ class TestScenarioEngine(QObject):
             print("DAQ monitoring loop ended")
     
     def _daq_monitoring_hardware_timed(self):
-        """DAQ monitoring using hardware timing (1kHz, 10,000 samples)"""
+        """DAQ monitoring using hardware timing (20kHz with 20:1 compression, 1 sample per ms)"""
         print("=== DAQ Hardware-Timed Collection Started ===")
         
         try:
@@ -2061,13 +2075,13 @@ class TestScenarioEngine(QObject):
             # Use DAQ hardware timing: 1kHz for specified duration
             # Use CURRENT measurement mode (same as Multi-Channel Monitor)
             if hasattr(self, 'daq_service') and self.daq_service:
-                print(f"Starting DAQ hardware-timed CURRENT collection (1ms interval, 50 samples avg, {test_duration} seconds)...")
+                print(f"Starting DAQ hardware-timed CURRENT collection (1ms interval, 20 samples avg, {test_duration} seconds)...")
                 print(f"Expected samples: {expected_samples} (0 to {expected_samples-1} ms)")
 
                 daq_result = self.daq_service.read_current_channels_hardware_timed(
                     channels=enabled_channels,
-                    sample_rate=50000.0,  # 50kHz (50 samples per ms)
-                    compress_ratio=50,  # 50:1 compression (average 50 samples → 1 per ms)
+                    sample_rate=20000.0,  # 20kHz (20 samples per ms)
+                    compress_ratio=20,  # 20:1 compression (average 20 samples → 1 per ms)
                     duration_seconds=test_duration  # Duration from scenario config
                 )
                 
@@ -3671,56 +3685,6 @@ class TestScenarioEngine(QObject):
             
         except Exception as e:
             self.log_callback(f"Error in LCD/unlock/clear setup: {e}", "error")
-            return False
-    
-    def _step_idle_wait_test(self) -> bool:
-        """Execute idle wait test (5 minutes = 300 seconds) without running any app"""
-        try:
-            duration_seconds = 300.0  # 5 minutes
-            self.log_callback(f"=== Starting Idle Wait ({duration_seconds} seconds / {duration_seconds/60:.1f} minutes) ===", "info")
-            self.log_callback("No app will be executed - device will remain idle", "info")
-            
-            if not self.adb_service:
-                self.log_callback("ADB service not available", "error")
-                return False
-            
-            # Wait for specified duration with progress updates every 30 seconds
-            total_seconds = int(duration_seconds)
-            update_interval = 30  # Update progress every 30 seconds
-            
-            elapsed = 0
-            while elapsed < total_seconds:
-                if self.stop_requested:
-                    self.log_callback("Idle wait stopped by user request", "warn")
-                    return False
-                
-                remaining = total_seconds - elapsed
-                progress = int((elapsed / total_seconds) * 100)
-                
-                if elapsed % update_interval == 0 or elapsed == 0:
-                    minutes_elapsed = elapsed // 60
-                    seconds_elapsed = elapsed % 60
-                    minutes_remaining = remaining // 60
-                    seconds_remaining = remaining % 60
-                    
-                    self.log_callback(
-                        f"Idle wait progress: {elapsed}/{total_seconds}s ({progress}%) - "
-                        f"Elapsed: {minutes_elapsed}m {seconds_elapsed}s, "
-                        f"Remaining: {minutes_remaining}m {seconds_remaining}s",
-                        "info"
-                    )
-                
-                # Sleep for 1 second at a time to allow for cancellation/interruption
-                time.sleep(1)
-                elapsed += 1
-            
-            self.log_callback(f"✅ Idle wait completed: {total_seconds} seconds ({total_seconds/60:.1f} minutes)", "info")
-            return True
-            
-        except Exception as e:
-            self.log_callback(f"Error during idle wait: {e}", "error")
-            import traceback
-            traceback.print_exc()
             return False
     
     def _step_screen_onoff_test(self) -> bool:
