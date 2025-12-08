@@ -268,19 +268,29 @@ class ScreenOnOffScenario(BaseScenario):
         """Start DAQ monitoring using dedicated collection thread"""
         try:
             self.log_callback("=== Starting DAQ Collection Thread ===", "info")
-            
+
             if not self.daq_service:
                 self.log_callback("DAQ service not available - using mock data", "warn")
-            
+
+            # Ensure previous collection is fully stopped before starting new one
+            if hasattr(self, 'daq_collector') and self.daq_collector.is_collecting:
+                self.log_callback("⚠️ Previous DAQ collection still active, stopping it first...", "warn")
+                self.daq_collector.stop_collection()
+                time.sleep(0.5)  # Brief pause to ensure cleanup
+
+            # Reinitialize DAQ collector for clean state (especially for 2nd+ iterations)
+            self.log_callback("Reinitializing DAQ collector for clean state", "info")
+            self.daq_collector = DAQCollectionThread(self.daq_service, self.log_callback)
+
             # Configure DAQ collection
             enabled_channels = ['ai0', 'ai1', 'ai2', 'ai3']  # Example channels
             collection_interval = 1.0  # 1 second interval
-            
+
             self.daq_collector.configure(enabled_channels, collection_interval)
-            
+
             # Start collection thread
             success = self.daq_collector.start_collection()
-            
+
             if success:
                 self.log_callback("✅ DAQ collection thread started successfully", "info")
                 time.sleep(1)  # Brief pause to let collection start
@@ -288,9 +298,11 @@ class ScreenOnOffScenario(BaseScenario):
             else:
                 self.log_callback("⚠️ DAQ collection failed to start - continuing without DAQ", "warn")
                 return True  # Continue test even if DAQ fails
-            
+
         except Exception as e:
             self.log_callback(f"❌ Error starting DAQ collection: {e}", "error")
+            import traceback
+            self.log_callback(f"Traceback: {traceback.format_exc()}", "error")
             return True  # Don't fail test for DAQ issues
     
     def _step_execute_screen_onoff_test(self) -> bool:

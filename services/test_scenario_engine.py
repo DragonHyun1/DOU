@@ -1041,11 +1041,20 @@ class TestScenarioEngine(QObject):
             
             # Step 2: Check if this is Screen On/Off scenario and turn screen off if needed
             is_screen_onoff = False
-            if hasattr(self, 'current_test') and self.current_test:
-                scenario_name = self.current_test.scenario_name.lower()
-                if 'screen' in scenario_name and ('on' in scenario_name or 'off' in scenario_name):
+            if hasattr(self, 'current_scenario') and self.current_scenario:
+                scenario_key = self.current_scenario.lower()
+                # Check both scenario key and scenario name
+                if 'screen' in scenario_key and 'onoff' in scenario_key:
                     is_screen_onoff = True
-                    self.log_callback("🔍 Detected Screen On/Off scenario", "info")
+                    self.log_callback("🔍 Detected Screen On/Off scenario (from scenario key)", "info")
+                else:
+                    # Also check scenario config name
+                    scenario_config = self.scenarios.get(self.current_scenario)
+                    if scenario_config:
+                        scenario_name = scenario_config.name.lower()
+                        if 'screen' in scenario_name and ('on' in scenario_name or 'off' in scenario_name):
+                            is_screen_onoff = True
+                            self.log_callback("🔍 Detected Screen On/Off scenario (from scenario name)", "info")
             
             # For Screen On/Off scenario, turn screen off after clearing apps
             if is_screen_onoff:
