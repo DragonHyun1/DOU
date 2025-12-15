@@ -46,7 +46,7 @@ class TraditionalNIDAQ:
         if not self.available:
             print("⚠️ Traditional NI-DAQ (Legacy) not found")
             print("   This is expected if only NI-DAQmx (modern) is installed")
-            print("   Cannot use DAQReadNChanNSamp2DF64 function")
+            print("   Cannot use DAQReadNChanNSamp2DF32 function")
     
     def _setup_functions(self):
         """Setup function signatures for Traditional NI-DAQ"""
@@ -82,11 +82,11 @@ class TraditionalNIDAQ:
         except Exception as e:
             print(f"⚠️ Failed to setup Traditional NI-DAQ functions: {e}")
     
-    def read_multi_channel(self, device_number: int, channels: List[int], 
+    def read_multi_channel(self, device_number: int, channels: List[int],
                           samples_per_channel: int, rate: float, gain: int) -> Optional[np.ndarray]:
         """
-        Read multiple channels using DAQReadNChanNSamp2DF64
-        
+        Read multiple channels using DAQReadNChanNSamp2DF32
+
         Args:
             device_number: Device number (e.g., 1 for Dev1)
             channels: List of channel numbers (e.g., [0, 1, 2])
@@ -94,21 +94,21 @@ class TraditionalNIDAQ:
             rate: Sampling rate in Hz
             gain: Gain setting (1, 2, 5, 10, 20, 50, 100)
                   Gain=1: ±10V, Gain=2: ±5V, Gain=5: ±2V, etc.
-        
+
         Returns:
-            2D numpy array [channels][samples] or None if failed
+            2D numpy array [channels][samples] (float32) or None if failed
         """
         if not self.available or not self.dll:
             print("❌ Traditional NI-DAQ not available")
             return None
-        
+
         try:
             num_channels = len(channels)
-            
-            # Allocate buffer for data
+
+            # Allocate buffer for data (float32 for better performance)
             # 2D array: buffer[channel][sample]
             buffer_size = num_channels * samples_per_channel
-            buffer = (c_double * buffer_size)()
+            buffer = (c_float * buffer_size)()
             
             # Convert channels list to ctypes array
             channels_array = (c_int16 * num_channels)(*channels)
@@ -123,9 +123,9 @@ class TraditionalNIDAQ:
             print(f"   → Rate: {rate} Hz")
             print(f"   → Gain: {gain}")
             
-            # Call DAQReadNChanNSamp2DF64
+            # Call DAQReadNChanNSamp2DF32
             # NOTE: This function signature might need adjustment based on actual DLL
-            error = self.dll.DAQReadNChanNSamp2DF64(
+            error = self.dll.DAQReadNChanNSamp2DF32(
                 c_int16(device_number),
                 channels_array,
                 c_int16(num_channels),
@@ -135,13 +135,13 @@ class TraditionalNIDAQ:
                 buffer,
                 samples_read
             )
-            
+
             if error != self.NO_ERROR:
-                print(f"❌ DAQReadNChanNSamp2DF64 error: {error}")
+                print(f"❌ DAQReadNChanNSamp2DF32 error: {error}")
                 return None
-            
-            # Convert to numpy array and reshape
-            data = np.array(buffer[:buffer_size])
+
+            # Convert to numpy array (float32) and reshape
+            data = np.array(buffer[:buffer_size], dtype=np.float32)
             data = data.reshape((num_channels, samples_per_channel))
             
             print(f"✅ Read {samples_read[0]} samples per channel")
@@ -188,7 +188,7 @@ if __name__ == "__main__":
     
     if daq.available:
         print("\n✅ Traditional NI-DAQ is available!")
-        print("   Can use DAQReadNChanNSamp2DF64")
+        print("   Can use DAQReadNChanNSamp2DF32")
         
         # Example usage (won't actually run without hardware)
         print("\nExample usage:")
@@ -202,7 +202,7 @@ if __name__ == "__main__":
     else:
         print("\n❌ Traditional NI-DAQ NOT available")
         print("   Only NI-DAQmx (modern) is installed")
-        print("   Must use NI-DAQmx API (DAQmxReadAnalogF64)")
+        print("   Must use NI-DAQmx API (DAQmxReadAnalogF32)")
         print("\n💡 Recommendation:")
         print("   → Ask Manual tool developer for exact DAQ settings")
         print("   → Match Gain/Range settings in NI-DAQmx")
