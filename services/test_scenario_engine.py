@@ -185,11 +185,11 @@ class TestScenarioEngine(QObject):
         self.scenarios["phone_app_test"] = phone_app_config
         self.log_callback(f"Registered scenario: {phone_app_config.name} (key: phone_app_test)", "info")
 
-        # Screen On/Off Test Scenario (LCD를 2초마다 켜고 끄는 전력 소비 테스트)
+        # Screen On/Off Test Scenario (LCD를 3초마다 켜고 끄는 전력 소비 테스트)
         screen_onoff_config = TestConfig(
             name="Screen On/Off Test",
-            description="LCD를 2초마다 켜고 끄는 전력 소비 테스트",
-            test_duration=20.0,  # 20초 테스트
+            description="LCD를 3초마다 켜고 끄는 전력 소비 테스트 (hold key 10회)",
+            test_duration=30.0,  # 30초 테스트
             stabilization_time=60.0  # 1분 안정화
         )
         
@@ -577,9 +577,9 @@ class TestScenarioEngine(QObject):
                 measurement_mode = 'current'
             
             # Start screen test with integrated DAQ monitoring
-            test_duration = 20.0  # 20 seconds total
+            test_duration = 30.0  # 30 seconds total
             data_interval = 0.001  # 1ms intervals (1000 samples per second)
-            screen_interval = 2.0 # Screen changes every 2 seconds
+            screen_interval = 3.0 # Screen changes every 3 seconds
             
             # Define actual test data collection period (exclude setup/teardown)
             test_data_start = 2.0  # Start collecting data after 2s setup
@@ -3711,11 +3711,11 @@ class TestScenarioEngine(QObject):
             else:
                 self.log_callback("⚠️ Warning: _screen_test_started event not found", "warn")
             
-            # 테스트 시작 - 2초마다 ON/OFF 토글
-            # 0s: ON -> 2s: OFF -> 4s: ON -> 6s: OFF -> ... -> 18s: OFF -> 20s: 종료
-            # 총 10번의 동작 (ON 5번, OFF 5번)
-            test_duration = 20  # 20초
-            toggle_interval = 2  # 2초마다
+            # 테스트 시작 - 3초 간격으로 hold key를 눌러 LCD ON/OFF 토글
+            # 0s: ON -> 3s: hold key (toggle) -> 6s: hold key (toggle) -> ... -> 27s: hold key (toggle) -> 30s: 종료
+            # 총 hold key 10회
+            test_duration = 30  # 30초
+            toggle_interval = 3  # 3초 간격
             
             screen_on = True  # 첫 동작은 ON
             action_count = 0

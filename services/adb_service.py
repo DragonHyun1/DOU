@@ -1124,3 +1124,61 @@ class ADBService:
         except Exception as e:
             self.logger.error(f"Error getting battery voltage: {e}")
             return None
+
+    def enable_battery_slate_mode(self) -> bool:
+        """Enable battery slate mode (disconnect USB power)
+
+        This is used to isolate the device from external power during testing.
+
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        try:
+            self.logger.info("Enabling battery slate mode (USB power disconnect)...")
+
+            # Execute adb root
+            self._run_adb_command(['root'])
+            time.sleep(1)  # Wait for root to take effect
+
+            # Execute adb remount
+            self._run_adb_command(['remount'])
+            time.sleep(0.5)
+
+            # Set battery slate mode to 1
+            result = self._run_adb_command(['shell', 'echo 1 > /sys/class/power_supply/battery/batt_slate_mode'])
+
+            self.logger.info("✅ Battery slate mode enabled (USB power disconnected)")
+            return True
+
+        except Exception as e:
+            self.logger.error(f"Error enabling battery slate mode: {e}")
+            return False
+
+    def disable_battery_slate_mode(self) -> bool:
+        """Disable battery slate mode (restore USB power)
+
+        This restores USB power connection after testing.
+
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        try:
+            self.logger.info("Disabling battery slate mode (USB power restore)...")
+
+            # Execute adb root
+            self._run_adb_command(['root'])
+            time.sleep(1)
+
+            # Execute adb remount
+            self._run_adb_command(['remount'])
+            time.sleep(0.5)
+
+            # Set battery slate mode to 0
+            result = self._run_adb_command(['shell', 'echo 0 > /sys/class/power_supply/battery/batt_slate_mode'])
+
+            self.logger.info("✅ Battery slate mode disabled (USB power restored)")
+            return True
+
+        except Exception as e:
+            self.logger.error(f"Error disabling battery slate mode: {e}")
+            return False

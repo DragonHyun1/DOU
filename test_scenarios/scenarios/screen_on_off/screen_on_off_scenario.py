@@ -54,23 +54,29 @@ class ScreenOnOffScenario(BaseScenario):
         
         # Define detailed screen on/off test steps
         config.steps = [
+            # Battery slate mode setup (USB power disconnect)
+            TestStep("enable_slate_mode", 3.0, "enable_battery_slate_mode"),
+
             # Default settings (consistent for all scenarios)
             TestStep("default_settings", 5.0, "apply_default_settings"),
-            
+
             # Init mode steps
             TestStep("lcd_on_unlock", 3.0, "lcd_on_and_unlock"),
             TestStep("flight_mode", 2.0, "enable_flight_mode"),
             TestStep("clear_apps", 8.0, "clear_recent_apps"),
             TestStep("lcd_off", 2.0, "lcd_off"),
-            
+
             # 전류 안정화 1분
             TestStep("current_stabilization", 60.0, "wait_current_stabilization"),
-            
+
             # Test execution steps
             TestStep("start_daq_monitoring", 2.0, "start_daq_monitoring"),
             TestStep("screen_onoff_test", 30.0, "execute_screen_onoff_test"),
             TestStep("stop_daq_monitoring", 2.0, "stop_daq_monitoring"),
-            TestStep("save_excel", 3.0, "export_to_excel")
+            TestStep("save_excel", 3.0, "export_to_excel"),
+
+            # Battery slate mode restore (USB power restore)
+            TestStep("disable_slate_mode", 3.0, "disable_battery_slate_mode")
         ]
         
         return config
@@ -78,7 +84,9 @@ class ScreenOnOffScenario(BaseScenario):
     def execute_step(self, step: TestStep) -> bool:
         """Execute a single Screen On/Off test step"""
         try:
-            if step.action == "apply_default_settings":
+            if step.action == "enable_battery_slate_mode":
+                return self._step_enable_battery_slate_mode()
+            elif step.action == "apply_default_settings":
                 return self._step_apply_default_settings()
             elif step.action == "lcd_on_and_unlock":
                 return self._step_lcd_on_and_unlock()
@@ -98,14 +106,60 @@ class ScreenOnOffScenario(BaseScenario):
                 return self._step_stop_daq_monitoring()
             elif step.action == "export_to_excel":
                 return self._step_export_to_excel()
+            elif step.action == "disable_battery_slate_mode":
+                return self._step_disable_battery_slate_mode()
             else:
                 self.log_callback(f"Unknown step action: {step.action}", "error")
                 return False
-                
+
         except Exception as e:
             self.log_callback(f"Error executing step {step.name}: {e}", "error")
             return False
-    
+
+    def _step_enable_battery_slate_mode(self) -> bool:
+        """Enable battery slate mode (disconnect USB power)"""
+        try:
+            self.log_callback("=== Enabling Battery Slate Mode ===", "info")
+
+            if not self.adb_service:
+                self.log_callback("ADB service not available", "error")
+                return False
+
+            success = self.adb_service.enable_battery_slate_mode()
+
+            if success:
+                self.log_callback("✅ Battery slate mode enabled (USB power disconnected)", "info")
+                return True
+            else:
+                self.log_callback("⚠️ Failed to enable battery slate mode", "warn")
+                return True  # Continue test even if slate mode fails
+
+        except Exception as e:
+            self.log_callback(f"❌ Error enabling battery slate mode: {e}", "error")
+            return True  # Don't fail the entire test for slate mode
+
+    def _step_disable_battery_slate_mode(self) -> bool:
+        """Disable battery slate mode (restore USB power)"""
+        try:
+            self.log_callback("=== Disabling Battery Slate Mode ===", "info")
+
+            if not self.adb_service:
+                self.log_callback("ADB service not available", "error")
+                return False
+
+            success = self.adb_service.disable_battery_slate_mode()
+
+            if success:
+                self.log_callback("✅ Battery slate mode disabled (USB power restored)", "info")
+                return True
+            else:
+                self.log_callback("⚠️ Failed to disable battery slate mode", "warn")
+                return True  # Continue even if slate mode restore fails
+
+        except Exception as e:
+            self.log_callback(f"❌ Error disabling battery slate mode: {e}", "error")
+            return True  # Don't fail for slate mode issues
+
     def _step_apply_default_settings(self) -> bool:
         """Apply default settings for consistent test environment"""
         try:
