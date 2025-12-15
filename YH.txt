@@ -1,56 +1,12 @@
-터미널에 뜨는 로그랑 아직도 차이가 있음.
+데이터 수집을 다 완료해도 아래와 같은 로그가 뜨는데 이 warning가 뜰필요가 없는거같은데 체크해줘
+[16:27:31] ⚠️ WARNING: No data was collected during Screen On/Off test!
 
-system log랑 터미널 로그랑 같이 로그 정리했을때 아래와 같아
-현재 내가 생각했을때 실제 데이터가 정말 DAQ start와 동시에 Scenario가 동작하는 것이 맞는지 궁금해
-로그로만 보았을때 20초 정도까지 데이터를 수집하고 30000samples을 모으고 DAQ stop한 것으로 보임.
-정상적이라면 system log와 터미널 log가 같은 시점에서 끝나야함.
-근데 system log로 실시간으로 확인했을때 on off 동작이 계속되고 있는데도 불구하고 데이터 수집은 끝난거로 보임.
+현재 모든 테스트는 1ms에 10개 samples 수집이 고정이야 sampling rate는 10000으로 하는게 맞는거 같고
+주석이나 몇몇 부분들이 수정안되어있는데 이 부분 다 찾아서 제대로 수정해줘
 
+그리고 scenario 처음 시작 0초일때 바로 어떤 동작이 수행하면 수집이 어려울 수 있으니
+처음 동작은 DAQ start 후에 0초에서 0.5초 기다린다음 동작 수행하는거로 변경하자.
 
-Reading 300000 raw samples per channel (300k)...
-[16:00:19] ✅ Screen test start signal sent to DAQ monitoring
-[16:00:19] 0s: Action 1/10 - Turning LCD ON
-[16:00:23] 3s: Action 2/10 - Turning LCD OFF
-[16:00:28] 6s: Action 3/10 - Turning LCD ON
-[16:00:32] 9s: Action 4/10 - Turning LCD OFF
-[16:00:36] 12s: Action 5/10 - Turning LCD ON
-[16:00:41] 15s: Action 6/10 - Turning LCD OFF
-[16:00:45] 18s: Action 7/10 - Turning LCD ON
-Processing 30000 samples (0 to 29999 ms)...
-Processed 1000/30000 samples
-Processed 2000/30000 samples
-Processed 3000/30000 samples
-Processed 4000/30000 samples
-Processed 5000/30000 samples
-Processed 6000/30000 samples
-Processed 7000/30000 samples
-Processed 8000/30000 samples
-Processed 9000/30000 samples
-Processed 10000/30000 samples
-Processed 11000/30000 samples
-Processed 12000/30000 samples
-Processed 13000/30000 samples
-Processed 14000/30000 samples
-Processed 15000/30000 samples
-Processed 16000/30000 samples
-Processed 17000/30000 samples
-Processed 18000/30000 samples
-Processed 19000/30000 samples
-Processed 20000/30000 samples
-Processed 21000/30000 samples
-Processed 22000/30000 samples
-Processed 23000/30000 samples
-Processed 24000/30000 samples
-Processed 25000/30000 samples
-Processed 26000/30000 samples
-Processed 27000/30000 samples
-Processed 28000/30000 samples
-Processed 29000/30000 samples
-Processed 30000/30000 samples
-=== DAQ Hardware-Timed Collection Ended ===
-[16:00:50] 21s: Action 8/10 - Turning LCD OFF
-[16:00:54] 24s: Action 9/10 - Turning LCD ON
-[16:00:59] 27s: Action 10/10 - Turning LCD OFF
-[16:01:00] 30s: Screen On/Off test completed
-[16:01:00] ✅ Screen On/Off test completed. Collected 30000 data points
-[16:01:00] ✅ Successfully collected 30000 data points (0-29999 ms)
+그리고 현재 Target rail이 4V인 경우는 "/4" 하지 않아도 되는 것 같은데 적용되고 있더라고 이 부분도 수정해줘
+
+screen on/off 뿐만 아니라 Phone app Power Test scenario도 DAQ sync 문제 반영해줘
