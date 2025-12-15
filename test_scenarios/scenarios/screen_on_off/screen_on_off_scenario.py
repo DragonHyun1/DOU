@@ -364,6 +364,8 @@ class ScreenOnOffScenario(BaseScenario):
         0초: LCD on
         3초 간격으로 hold key를 눌러 LCD on/off 반복 (총 10회)
         30초: 테스트 끝
+
+        Uses real-time based timing to ensure accurate sync with DAQ collection.
         """
         try:
             self.log_callback("=== Executing Screen On/Off Test (30 seconds, 10 hold key presses) ===", "info")
@@ -372,47 +374,57 @@ class ScreenOnOffScenario(BaseScenario):
                 self.log_callback("ADB service not available", "error")
                 return False
 
+            # Test configuration
+            test_duration = 30.0  # 30 seconds total
+            toggle_times = [3, 6, 9, 12, 15, 18, 21, 24, 27]  # Exact toggle times in seconds
+
             # 0초: LCD on
+            start_time = time.time()
             self.log_callback("0s: Turning LCD ON", "info")
             if not self.adb_service.turn_screen_on():
                 self.log_callback("Failed to turn screen on at 0s", "error")
                 return False
 
-            # 3초 간격으로 hold key를 눌러 LCD on/off 반복 (총 10회)
-            # 0s: ON -> 3s: hold key (toggle) -> 6s: hold key (toggle) -> ... -> 27s: hold key (toggle) -> 30s: 종료
-            test_duration = 30  # 30초
-            toggle_interval = 3  # 3초 간격
-            hold_key_count = 10  # hold key 10회
-
-            screen_state = True  # 현재 ON 상태에서 시작 (0초에 ON 했으므로)
-            elapsed = 0
+            screen_state = True  # Current state (ON)
             key_press_count = 0
 
-            while elapsed < test_duration and key_press_count < hold_key_count:
-                time.sleep(toggle_interval)
-                elapsed += toggle_interval
+            # Execute toggles at precise times
+            for toggle_time in toggle_times:
+                # Wait until the exact toggle time
+                while True:
+                    elapsed = time.time() - start_time
+                    if elapsed >= toggle_time:
+                        break
+                    # Sleep for remaining time (with small buffer for precision)
+                    remaining = toggle_time - elapsed
+                    if remaining > 0.1:
+                        time.sleep(remaining - 0.05)  # Wake up 50ms before
+                    else:
+                        time.sleep(0.01)  # Small sleep to avoid busy loop
 
-                if elapsed >= test_duration:
-                    break
-
+                # Execute toggle at exact time
                 key_press_count += 1
-
-                # hold key (power button) 토글
                 screen_state = not screen_state
 
+                actual_elapsed = time.time() - start_time
+
                 if screen_state:
-                    self.log_callback(f"{elapsed}s: Pressing hold key (#{key_press_count}) - Turning LCD ON", "info")
+                    self.log_callback(f"{toggle_time}s (actual: {actual_elapsed:.1f}s): Pressing hold key (#{key_press_count}) - Turning LCD ON", "info")
                     if not self.adb_service.turn_screen_on():
-                        self.log_callback(f"Failed to turn screen on at {elapsed}s", "error")
+                        self.log_callback(f"Failed to turn screen on at {toggle_time}s", "error")
                         return False
                 else:
-                    self.log_callback(f"{elapsed}s: Pressing hold key (#{key_press_count}) - Turning LCD OFF", "info")
+                    self.log_callback(f"{toggle_time}s (actual: {actual_elapsed:.1f}s): Pressing hold key (#{key_press_count}) - Turning LCD OFF", "info")
                     if not self.adb_service.turn_screen_off():
-                        self.log_callback(f"Failed to turn screen off at {elapsed}s", "error")
+                        self.log_callback(f"Failed to turn screen off at {toggle_time}s", "error")
                         return False
 
-            # 30초: 테스트 끝
-            self.log_callback(f"30s: Screen On/Off test completed ({key_press_count} hold key presses)", "info")
+            # Wait until test_duration is reached
+            while time.time() - start_time < test_duration:
+                time.sleep(0.1)
+
+            total_elapsed = time.time() - start_time
+            self.log_callback(f"30s: Screen On/Off test completed ({key_press_count} hold key presses, actual duration: {total_elapsed:.1f}s)", "info")
             return True
 
         except Exception as e:

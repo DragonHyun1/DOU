@@ -3714,39 +3714,54 @@ class TestScenarioEngine(QObject):
             # 테스트 시작 - 3초 간격으로 hold key를 눌러 LCD ON/OFF 토글
             # 0s: ON -> 3s: hold key (toggle) -> 6s: hold key (toggle) -> ... -> 27s: hold key (toggle) -> 30s: 종료
             # 총 hold key 10회
-            test_duration = 30  # 30초
-            toggle_interval = 3  # 3초 간격
-            
+            # Uses real-time based timing to ensure accurate sync with DAQ collection
+            test_duration = 30.0  # 30초
+            toggle_times = [0, 3, 6, 9, 12, 15, 18, 21, 24, 27]  # Exact toggle times
+
+            start_time = time.time()
             screen_on = True  # 첫 동작은 ON
             action_count = 0
-            
-            for elapsed in range(0, test_duration, toggle_interval):
+
+            for toggle_time in toggle_times:
                 if self.stop_requested:
                     self.log_callback("Screen On/Off test stopped by user request", "warn")
                     return False
-                
+
+                # Wait until exact toggle time
+                while True:
+                    elapsed = time.time() - start_time
+                    if elapsed >= toggle_time:
+                        break
+                    remaining = toggle_time - elapsed
+                    if remaining > 0.1:
+                        time.sleep(remaining - 0.05)
+                    else:
+                        time.sleep(0.01)
+
                 action_count += 1
-                
+                actual_elapsed = time.time() - start_time
+
                 if screen_on:
-                    self.log_callback(f"{elapsed}s: Action {action_count}/10 - Turning LCD ON", "info")
+                    self.log_callback(f"{toggle_time}s (actual: {actual_elapsed:.1f}s): Action {action_count}/10 - Turning LCD ON", "info")
                     if not self.adb_service.turn_screen_on():
-                        self.log_callback(f"Failed to turn screen on at {elapsed}s", "error")
+                        self.log_callback(f"Failed to turn screen on at {toggle_time}s", "error")
                         return False
                 else:
-                    self.log_callback(f"{elapsed}s: Action {action_count}/10 - Turning LCD OFF", "info")
+                    self.log_callback(f"{toggle_time}s (actual: {actual_elapsed:.1f}s): Action {action_count}/10 - Turning LCD OFF", "info")
                     if not self.adb_service.turn_screen_off():
-                        self.log_callback(f"Failed to turn screen off at {elapsed}s", "error")
+                        self.log_callback(f"Failed to turn screen off at {toggle_time}s", "error")
                         return False
-                
+
                 # 다음 동작을 위해 토글
                 screen_on = not screen_on
-                
-                # 마지막 동작이 아니면 2초 대기
-                if elapsed + toggle_interval < test_duration:
-                    time.sleep(toggle_interval)
-            
-            # 20초: 테스트 끝
-            self.log_callback("20s: Screen On/Off test completed", "info")
+
+            # Wait until test_duration is reached
+            while time.time() - start_time < test_duration:
+                time.sleep(0.1)
+
+            # 30초: 테스트 끝
+            total_elapsed = time.time() - start_time
+            self.log_callback(f"30s: Screen On/Off test completed (actual: {total_elapsed:.1f}s)", "info")
             
             # Log data collection status
             data_count = len(self.daq_data) if hasattr(self, 'daq_data') else 0
@@ -3754,8 +3769,8 @@ class TestScenarioEngine(QObject):
             
             if data_count == 0:
                 self.log_callback("⚠️ WARNING: No data was collected during Screen On/Off test!", "warn")
-            elif data_count < 20000:
-                self.log_callback(f"⚠️ WARNING: Expected 20,000 samples but got {data_count}", "warn")
+            elif data_count < 30000:
+                self.log_callback(f"⚠️ WARNING: Expected 30,000 samples but got {data_count}", "warn")
             else:
                 self.log_callback(f"✅ Successfully collected {data_count} data points (0-{data_count-1} ms)", "info")
             
