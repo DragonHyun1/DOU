@@ -251,8 +251,8 @@ class NIDAQService(QObject):
                             temp_task.ai_channels.add_ai_voltage_chan(
                                 channel_name,
                                 terminal_config=nidaqmx.constants.TerminalConfiguration.RSE,
-                                min_val=-5.0,  # ±5V range
-                                max_val=5.0,
+                                min_val=-1.25,  # ±1.25V range
+                                max_val=1.25,
                                 units=nidaqmx.constants.VoltageUnits.VOLTS
                             )
                         
@@ -416,8 +416,8 @@ class NIDAQService(QObject):
             self.task.ai_channels.add_ai_voltage_chan(
                 channel_name,
                 terminal_config=nidaqmx.constants.TerminalConfiguration.RSE,
-                min_val=-5.0,  # Use ±5V as shown in trace for better accuracy
-                max_val=5.0,
+                min_val=-1.25,  # ±1.25V range for all scenarios
+                max_val=1.25,
                 units=nidaqmx.constants.VoltageUnits.VOLTS
             )
             
@@ -684,10 +684,10 @@ class NIDAQService(QObject):
     
     def read_current_via_differential_measurement(self, voltage_channels: List[str], samples_per_channel: int = 12) -> Optional[dict]:
         """Read current using differential measurement across shunt resistors
-        
+
         For proper current measurement, we need to measure voltage difference
         across shunt resistor, not the rail voltage.
-        
+
         Example setup:
         - ai0: Voltage before shunt resistor (rail voltage)
         - ai1: Voltage after shunt resistor (rail voltage - shunt drop)
@@ -695,11 +695,11 @@ class NIDAQService(QObject):
         """
         if not NI_AVAILABLE or not self.connected:
             return None
-            
+
         try:
             with nidaqmx.Task() as task:
                 print(f"=== Creating differential measurement task for channels: {voltage_channels} ===")
-                
+
                 # Add channels for differential measurement
                 for channel in voltage_channels:
                     channel_name = f"{self.device_name}/{channel}"
@@ -707,8 +707,8 @@ class NIDAQService(QObject):
                     task.ai_channels.add_ai_voltage_chan(
                         channel_name,
                         terminal_config=nidaqmx.constants.TerminalConfiguration.RSE,
-                        min_val=-5.0,
-                        max_val=5.0,
+                        min_val=-1.25,
+                        max_val=1.25,
                         units=nidaqmx.constants.VoltageUnits.VOLTS
                     )
                 
@@ -820,7 +820,7 @@ class NIDAQService(QObject):
 
         return compressed
     
-    def read_current_channels_hardware_timed(self, channels: List[str], sample_rate: float = 10000.0, compress_ratio: int = 10, duration_seconds: float = 10.0, voltage_range: float = 5.0) -> Optional[dict]:
+    def read_current_channels_hardware_timed(self, channels: List[str], sample_rate: float = 10000.0, compress_ratio: int = 10, duration_seconds: float = 10.0, voltage_range: float = 1.25) -> Optional[dict]:
         """Read current using DAQ hardware timing with compression
         
         Uses NI-DAQmx API to read voltage drop across external shunt resistor.
@@ -874,13 +874,13 @@ class NIDAQService(QObject):
                     # to measure voltage drop across external shunt resistor
                     # 
                     # Voltage range configuration:
-                    # - Wide range (±5V) matches Manual tool and provides stable measurement
-                    # - Typical shunt drops: 0.01mV ~ 100mV (well within ±5V range)
+                    # - Range (±1.25V) for all scenarios
+                    # - Typical shunt drops: 0.01mV ~ 100mV (well within ±1.25V range)
                     # - If DIFFERENTIAL fails, fallback modes will be attempted
                     terminal_mode_used = "UNKNOWN"
                     try:
                         # Try DIFFERENTIAL first with current voltage range
-                        # ±5V range matches Manual tool configuration
+                        # ±1.25V range for all scenarios
                         #
                         # Try multiple ways to specify DIFFERENTIAL mode (library version compatibility)
                         differential_success = False
@@ -935,7 +935,7 @@ class NIDAQService(QObject):
                                     units=nidaqmx.constants.VoltageUnits.VOLTS
                                 )
                                 terminal_mode_used = "DEFAULT"
-                                print(f"  ✅ DEFAULT mode enabled (±5V range)")
+                                print(f"  ✅ DEFAULT mode enabled (±1.25V range)")
                             except Exception as default_error:
                                 # Try NRSE as fallback
                                 print(f"  ⚠️ DEFAULT failed: {type(default_error).__name__}: {str(default_error)}")
@@ -1191,11 +1191,11 @@ class NIDAQService(QObject):
         """Read multiple voltage channels simultaneously (matching other tool's NI I/O Trace)"""
         if not NI_AVAILABLE or not self.connected:
             return None
-            
+
         try:
             with nidaqmx.Task() as task:
                 print(f"=== Creating task for channels: {channels} ===")
-                
+
                 # Add multiple channels as shown in other tool's trace
                 for channel in channels:
                     channel_name = f"{self.device_name}/{channel}"
@@ -1203,8 +1203,8 @@ class NIDAQService(QObject):
                     task.ai_channels.add_ai_voltage_chan(
                         channel_name,
                         terminal_config=nidaqmx.constants.TerminalConfiguration.RSE,
-                        min_val=-5.0,
-                        max_val=5.0,
+                        min_val=-1.25,
+                        max_val=1.25,
                         units=nidaqmx.constants.VoltageUnits.VOLTS
                     )
                 

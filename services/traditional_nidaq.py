@@ -156,10 +156,10 @@ class TraditionalNIDAQ:
     def get_gain_for_range(self, voltage_range: float) -> int:
         """
         Get appropriate gain value for desired voltage range
-        
+
         Args:
-            voltage_range: Desired max voltage (e.g., 5.0 for ±5V)
-        
+            voltage_range: Desired max voltage (e.g., 1.25 for ±1.25V)
+
         Returns:
             Gain value (1, 2, 5, 10, 20, 50, 100)
         """
@@ -167,6 +167,7 @@ class TraditionalNIDAQ:
             10.0: 1,   # ±10V
             5.0: 2,    # ±5V
             2.0: 5,    # ±2V
+            1.25: 5,   # ±1.25V (uses gain 5 for ±2V range, safe margin)
             1.0: 10,   # ±1V
             0.5: 20,   # ±0.5V
             0.2: 50,   # ±0.2V
@@ -196,7 +197,7 @@ if __name__ == "__main__":
         print("      channels=[0, 1, 2],")
         print("      samples_per_channel=1000,")
         print("      rate=30000.0,")
-        print("      gain=2  # ±5V range")
+        print("      gain=5  # ±1.25V range")
         print("  )")
     else:
         print("\n❌ Traditional NI-DAQ NOT available")

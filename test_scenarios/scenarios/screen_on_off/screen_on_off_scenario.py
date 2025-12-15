@@ -1,6 +1,6 @@
 """
 Screen On/Off Test Scenario
-LCD를 2초마다 켜고 끄는 전력 소비 테스트
+LCD를 3초마다 켜고 끄는 전력 소비 테스트
 
 [Default setting] 후에
 [init setting]
@@ -10,9 +10,9 @@ LCD를 2초마다 켜고 끄는 전력 소비 테스트
 - LCD off
 [전류 안정화 1분]
 [Test start]
-DAQ start하고 
-0초, LCD on 후에 2초 마다 LCD 끄고 키고 반복 동작
-20초, 테스트 끝
+DAQ start하고
+0초, LCD on 후에 3초 마다 hold key를 눌러 LCD on/off 반복 (총 10회)
+30초, 테스트 끝
 [Test end]
 [csv 저장]
 """
@@ -45,11 +45,11 @@ class ScreenOnOffScenario(BaseScenario):
         """Get Screen On/Off test configuration"""
         config = TestConfig(
             name="Screen On/Off Test",
-            description="LCD를 2초마다 켜고 끄는 전력 소비 테스트",
+            description="LCD를 3초마다 켜고 끄는 전력 소비 테스트 (hold key 10회)",
             hvpm_voltage=4.0,
             stabilization_time=60.0,  # 1분 안정화
             monitoring_interval=1.0,
-            test_duration=20.0  # 20초 테스트
+            test_duration=30.0  # 30초 테스트
         )
         
         # Define detailed screen on/off test steps
@@ -68,7 +68,7 @@ class ScreenOnOffScenario(BaseScenario):
             
             # Test execution steps
             TestStep("start_daq_monitoring", 2.0, "start_daq_monitoring"),
-            TestStep("screen_onoff_test", 20.0, "execute_screen_onoff_test"),
+            TestStep("screen_onoff_test", 30.0, "execute_screen_onoff_test"),
             TestStep("stop_daq_monitoring", 2.0, "stop_daq_monitoring"),
             TestStep("save_excel", 3.0, "export_to_excel")
         ]
@@ -306,57 +306,61 @@ class ScreenOnOffScenario(BaseScenario):
             return True  # Don't fail test for DAQ issues
     
     def _step_execute_screen_onoff_test(self) -> bool:
-        """Execute Screen On/Off test (20 seconds)
+        """Execute Screen On/Off test (30 seconds)
         0초: LCD on
-        2초마다 LCD 끄고 키고 반복
-        20초: 테스트 끝
+        3초 간격으로 hold key를 눌러 LCD on/off 반복 (총 10회)
+        30초: 테스트 끝
         """
         try:
-            self.log_callback("=== Executing Screen On/Off Test (20 seconds) ===", "info")
-            
+            self.log_callback("=== Executing Screen On/Off Test (30 seconds, 10 hold key presses) ===", "info")
+
             if not self.adb_service:
                 self.log_callback("ADB service not available", "error")
                 return False
-            
+
             # 0초: LCD on
             self.log_callback("0s: Turning LCD ON", "info")
             if not self.adb_service.turn_screen_on():
                 self.log_callback("Failed to turn screen on at 0s", "error")
                 return False
-            
-            # 2초마다 LCD 끄고 키고 반복 (20초 동안)
-            # 0s: ON -> 2s: OFF -> 4s: ON -> 6s: OFF -> ... -> 18s: OFF -> 20s: 종료
-            test_duration = 20  # 20초
-            toggle_interval = 2  # 2초마다
-            
+
+            # 3초 간격으로 hold key를 눌러 LCD on/off 반복 (총 10회)
+            # 0s: ON -> 3s: hold key (toggle) -> 6s: hold key (toggle) -> ... -> 27s: hold key (toggle) -> 30s: 종료
+            test_duration = 30  # 30초
+            toggle_interval = 3  # 3초 간격
+            hold_key_count = 10  # hold key 10회
+
             screen_state = True  # 현재 ON 상태에서 시작 (0초에 ON 했으므로)
             elapsed = 0
-            
-            while elapsed < test_duration:
+            key_press_count = 0
+
+            while elapsed < test_duration and key_press_count < hold_key_count:
                 time.sleep(toggle_interval)
                 elapsed += toggle_interval
-                
+
                 if elapsed >= test_duration:
                     break
-                
-                # 화면 토글
+
+                key_press_count += 1
+
+                # hold key (power button) 토글
                 screen_state = not screen_state
-                
+
                 if screen_state:
-                    self.log_callback(f"{elapsed}s: Turning LCD ON", "info")
+                    self.log_callback(f"{elapsed}s: Pressing hold key (#{key_press_count}) - Turning LCD ON", "info")
                     if not self.adb_service.turn_screen_on():
                         self.log_callback(f"Failed to turn screen on at {elapsed}s", "error")
                         return False
                 else:
-                    self.log_callback(f"{elapsed}s: Turning LCD OFF", "info")
+                    self.log_callback(f"{elapsed}s: Pressing hold key (#{key_press_count}) - Turning LCD OFF", "info")
                     if not self.adb_service.turn_screen_off():
                         self.log_callback(f"Failed to turn screen off at {elapsed}s", "error")
                         return False
-            
-            # 20초: 테스트 끝
-            self.log_callback("20s: Screen On/Off test completed", "info")
+
+            # 30초: 테스트 끝
+            self.log_callback(f"30s: Screen On/Off test completed ({key_press_count} hold key presses)", "info")
             return True
-            
+
         except Exception as e:
             self.log_callback(f"Error executing Screen On/Off test: {e}", "error")
             return False
