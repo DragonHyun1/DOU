@@ -376,13 +376,18 @@ class ScreenOnOffScenario(BaseScenario):
 
             # Test configuration
             test_duration = 30.0  # 30 seconds total
-            toggle_times = [3, 6, 9, 12, 15, 18, 21, 24, 27]  # Exact toggle times in seconds
+            toggle_times = [0.5, 3, 6, 9, 12, 15, 18, 21, 24, 27]  # Exact toggle times in seconds (0.5s for DAQ sync)
 
-            # 0초: LCD on
             start_time = time.time()
-            self.log_callback("0s: Turning LCD ON", "info")
+
+            # Wait 0.5s before first action to allow DAQ to stabilize
+            self.log_callback("Waiting 0.5s for DAQ to stabilize before first action...", "info")
+            time.sleep(0.5)
+
+            # 0.5초: LCD on (first action)
+            self.log_callback("0.5s: Turning LCD ON (first action)", "info")
             if not self.adb_service.turn_screen_on():
-                self.log_callback("Failed to turn screen on at 0s", "error")
+                self.log_callback("Failed to turn screen on at 0.5s", "error")
                 return False
 
             screen_state = True  # Current state (ON)

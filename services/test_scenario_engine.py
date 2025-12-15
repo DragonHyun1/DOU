@@ -2048,7 +2048,7 @@ class TestScenarioEngine(QObject):
             print("DAQ monitoring loop ended")
     
     def _daq_monitoring_hardware_timed(self):
-        """DAQ monitoring using hardware timing (20kHz with 20:1 compression, 1 sample per ms)"""
+        """DAQ monitoring using hardware timing (10kHz with 10:1 compression, 1 sample per ms)"""
         print("=== DAQ Hardware-Timed Collection Started ===")
         
         try:
@@ -2075,13 +2075,13 @@ class TestScenarioEngine(QObject):
             # Use DAQ hardware timing: 1kHz for specified duration
             # Use CURRENT measurement mode (same as Multi-Channel Monitor)
             if hasattr(self, 'daq_service') and self.daq_service:
-                print(f"Starting DAQ hardware-timed CURRENT collection (1ms interval, 20 samples avg, {test_duration} seconds)...")
+                print(f"Starting DAQ hardware-timed CURRENT collection (1ms interval, 10 samples avg, {test_duration} seconds)...")
                 print(f"Expected samples: {expected_samples} (0 to {expected_samples-1} ms)")
 
                 daq_result = self.daq_service.read_current_channels_hardware_timed(
                     channels=enabled_channels,
-                    sample_rate=20000.0,  # 20kHz (20 samples per ms)
-                    compress_ratio=20,  # 20:1 compression (average 20 samples → 1 per ms)
+                    sample_rate=10000.0,  # 10kHz (10 samples per ms)
+                    compress_ratio=10,  # 10:1 compression (average 10 samples → 1 per ms)
                     duration_seconds=test_duration  # Duration from scenario config
                 )
                 
@@ -3712,13 +3712,18 @@ class TestScenarioEngine(QObject):
                 self.log_callback("⚠️ Warning: _screen_test_started event not found", "warn")
             
             # 테스트 시작 - 3초 간격으로 hold key를 눌러 LCD ON/OFF 토글
-            # 0s: ON -> 3s: hold key (toggle) -> 6s: hold key (toggle) -> ... -> 27s: hold key (toggle) -> 30s: 종료
+            # 0.5s: ON -> 3s: hold key (toggle) -> 6s: hold key (toggle) -> ... -> 27s: hold key (toggle) -> 30s: 종료
             # 총 hold key 10회
             # Uses real-time based timing to ensure accurate sync with DAQ collection
             test_duration = 30.0  # 30초
-            toggle_times = [0, 3, 6, 9, 12, 15, 18, 21, 24, 27]  # Exact toggle times
+            toggle_times = [0.5, 3, 6, 9, 12, 15, 18, 21, 24, 27]  # Exact toggle times (0.5s for DAQ sync)
 
             start_time = time.time()
+
+            # Wait 0.5s before first action to allow DAQ to stabilize
+            self.log_callback("Waiting 0.5s for DAQ to stabilize before first action...", "info")
+            time.sleep(0.5)
+
             screen_on = True  # 첫 동작은 ON
             action_count = 0
 
@@ -3764,16 +3769,15 @@ class TestScenarioEngine(QObject):
             self.log_callback(f"30s: Screen On/Off test completed (actual: {total_elapsed:.1f}s)", "info")
             
             # Log data collection status
-            data_count = len(self.daq_data) if hasattr(self, 'daq_data') else 0
+            data_count = len(self.daq_data) if hasattr(self, 'daq_data') and self.daq_data else 0
             self.log_callback(f"✅ Screen On/Off test completed. Collected {data_count} data points", "info")
-            
-            if data_count == 0:
-                self.log_callback("⚠️ WARNING: No data was collected during Screen On/Off test!", "warn")
-            elif data_count < 30000:
-                self.log_callback(f"⚠️ WARNING: Expected 30,000 samples but got {data_count}", "warn")
-            else:
+
+            if data_count >= 30000:
                 self.log_callback(f"✅ Successfully collected {data_count} data points (0-{data_count-1} ms)", "info")
-            
+            elif data_count > 0:
+                self.log_callback(f"⚠️ WARNING: Expected 30,000 samples but got {data_count}", "warn")
+            # Note: If data_count is 0, DAQ monitoring will log its own warning
+
             return True
             
         except Exception as e:
@@ -3827,30 +3831,41 @@ class TestScenarioEngine(QObject):
                 self.log_callback("?? Warning: _screen_test_started event not found", "warn")
             
             # Phone App Scenario Test (10 seconds)
+            # Uses real-time based timing to ensure accurate sync with DAQ collection
             self.log_callback("[Phone App Scenario] Starting 10-second test", "info")
-            
-            # 0?: Phone app ??
-            self.log_callback("0s: Click Phone app", "info")
+
+            test_duration = 10.0  # 10 seconds total
+            action_times = [0.5, 5.0]  # Exact action times (0.5s for DAQ sync, 5s for back key)
+
+            start_time = time.time()
+
+            # Wait 0.5s before first action to allow DAQ to stabilize
+            self.log_callback("Waiting 0.5s for DAQ to stabilize before first action...", "info")
+            time.sleep(0.5)
+
+            # 0.5s: Phone app 열기
+            actual_elapsed = time.time() - start_time
+            self.log_callback(f"0.5s (actual: {actual_elapsed:.1f}s): Click Phone app", "info")
             if not self.adb_service.open_phone_app():
                 self.log_callback("Failed to open Phone app", "error")
-            time.sleep(0.5)
-            
-            # 5??? ?? (Phone app??)
-            self.log_callback("Waiting until 5s in Phone app...", "info")
-            time.sleep(4.5)  # 0.5?? ?? ?????? 4.5? ?
-            
-            # 5?: Back key ??
-            self.log_callback("5s: Click back key", "info")
+
+            # Wait until 5s
+            while time.time() - start_time < 5.0:
+                time.sleep(0.1)
+
+            # 5s: Back key 누르기
+            actual_elapsed = time.time() - start_time
+            self.log_callback(f"5s (actual: {actual_elapsed:.1f}s): Click back key", "info")
             if not self.adb_service.press_back_key():
                 self.log_callback("Failed to press back key", "error")
-            time.sleep(0.5)
-            
-            # 10??? ?? (? ????)
-            self.log_callback("Waiting until 10s on home screen...", "info")
-            time.sleep(4.5)  # 0.5?? ?? ?????? 4.5? ?
-            
-            # 10?: Test end
-            self.log_callback("10s: Test end", "info")
+
+            # Wait until 10s
+            while time.time() - start_time < test_duration:
+                time.sleep(0.1)
+
+            # 10s: Test end
+            total_elapsed = time.time() - start_time
+            self.log_callback(f"10s: Test end (actual: {total_elapsed:.1f}s)", "info")
             
             self.log_callback("=== Phone App Scenario Test Completed ===", "info")
             return True
