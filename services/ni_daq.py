@@ -583,10 +583,19 @@ class NIDAQService(QObject):
                 timeout = max(2.0, min(estimated_time, 10.0))  # Min 2s, Max 10s
                 
                 # ReadMultiSample: Read exact number of samples (FINITE mode), then average
-                data = task.read(number_of_samples_per_channel=samples_to_collect, timeout=timeout)
-                
+                # Use AnalogMultiChannelReader for efficient buffer management
+                reader = stream_readers.AnalogMultiChannelReader(task.in_stream)
+                buffer = np.zeros((len(channels), samples_to_collect), dtype=np.float64)
+                reader.read_many_sample(buffer, number_of_samples_per_channel=samples_to_collect, timeout=timeout)
+
+                # Convert to list format for compatibility
+                if len(channels) == 1:
+                    data = buffer[0].tolist()
+                else:
+                    data = [ch_data.tolist() for ch_data in buffer]
+
                 task.stop()
-                
+
                 print(f"Raw current data: {type(data)}, length: {len(data) if hasattr(data, '__len__') else 'N/A'}")
                 
                 # Process current measurement data with averaging (critical for accuracy)
@@ -723,12 +732,21 @@ class NIDAQService(QObject):
                 
                 print(f"Starting differential measurement task...")
                 task.start()
-                
+
                 print(f"Reading {samples_per_channel} samples per channel for differential calculation...")
-                data = task.read(number_of_samples_per_channel=samples_per_channel, timeout=1.0)
-                
+                # Use AnalogMultiChannelReader for efficient buffer management
+                reader = stream_readers.AnalogMultiChannelReader(task.in_stream)
+                buffer = np.zeros((len(voltage_channels), samples_per_channel), dtype=np.float64)
+                reader.read_many_sample(buffer, number_of_samples_per_channel=samples_per_channel, timeout=1.0)
+
+                # Convert to list format for compatibility
+                if len(voltage_channels) == 1:
+                    data = buffer[0].tolist()
+                else:
+                    data = [ch_data.tolist() for ch_data in buffer]
+
                 task.stop()
-                
+
                 print(f"Raw differential data: {type(data)}, length: {len(data) if hasattr(data, '__len__') else 'N/A'}")
                 
                 # Process differential measurement for current calculation
@@ -1251,14 +1269,23 @@ class NIDAQService(QObject):
                 
                 print(f"Starting task with {len(channels)} channels...")
                 task.start()
-                
+
                 # Read data like DAQReadNChanNSamp1DWfm (small chunks continuously)
                 print(f"Reading {samples_per_channel} samples per channel...")
-                data = task.read(number_of_samples_per_channel=samples_per_channel, timeout=1.0)
-                
+                # Use AnalogMultiChannelReader for efficient buffer management
+                reader = stream_readers.AnalogMultiChannelReader(task.in_stream)
+                buffer = np.zeros((len(channels), samples_per_channel), dtype=np.float64)
+                reader.read_many_sample(buffer, number_of_samples_per_channel=samples_per_channel, timeout=1.0)
+
+                # Convert to list format for compatibility
+                if len(channels) == 1:
+                    data = buffer[0].tolist()
+                else:
+                    data = [ch_data.tolist() for ch_data in buffer]
+
                 print(f"Stopping task...")
                 task.stop()
-                
+
                 print(f"Raw data received: {type(data)}, length: {len(data) if hasattr(data, '__len__') else 'N/A'}")
                 
                 # Process data for each channel
