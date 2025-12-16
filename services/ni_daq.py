@@ -988,13 +988,18 @@ class NIDAQService(QObject):
 
                 # Read samples (FINITE mode - exact sample count)
                 timeout = duration_seconds + 5.0  # Add buffer
-                print(f"Reading {total_samples} raw samples per channel ({total_samples/1000:.0f}k) using Float32...")
+                print(f"Reading {total_samples} raw samples per channel ({total_samples/1000:.0f}k)...")
 
-                # Use AnalogMultiChannelReader with Float32 (50% less memory than Float64)
-                # Float32 provides sufficient precision for USB-6289 (18-bit, ±1.25V = 0.0095mV resolution)
+                # Use AnalogMultiChannelReader for better performance
+                # Note: nidaqmx library uses Float64 internally (read_analog_f64)
+                # We convert to Float32 after reading to save memory (50% reduction)
                 reader = stream_readers.AnalogMultiChannelReader(task.in_stream)
-                data_array = np.zeros((len(channels), total_samples), dtype=np.float32)
+                data_array = np.zeros((len(channels), total_samples), dtype=np.float64)
                 reader.read_many_sample(data_array, number_of_samples_per_channel=total_samples, timeout=timeout)
+
+                # Convert to Float32 for memory efficiency (Float64 8 bytes → Float32 4 bytes)
+                # Float32 provides sufficient precision for USB-6289 (18-bit, ±1.25V = 0.0095mV resolution)
+                data_array = data_array.astype(np.float32)
 
                 # Convert to list format for compatibility with existing code
                 if len(channels) == 1:
@@ -1003,7 +1008,7 @@ class NIDAQService(QObject):
                     data = [channel_data.tolist() for channel_data in data_array]  # Multi-channel: list of lists
 
                 task.stop()
-                print(f"Hardware VOLTAGE acquisition completed ({len(data) if isinstance(data, list) else len(data[0])} samples, Float32)")
+                print(f"Hardware VOLTAGE acquisition completed ({len(data) if isinstance(data, list) else len(data[0])} samples, converted to Float32)")
                 print(f"Starting compression (10:1 → 10,000 samples at 1ms intervals)...")
                 
                 # Process and compress voltage data, then convert to current
