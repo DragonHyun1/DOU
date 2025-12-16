@@ -1,12 +1,19 @@
-데이터 수집을 다 완료해도 아래와 같은 로그가 뜨는데 이 warning가 뜰필요가 없는거같은데 체크해줘
-[16:27:31] ⚠️ WARNING: No data was collected during Screen On/Off test!
-
-현재 모든 테스트는 1ms에 10개 samples 수집이 고정이야 sampling rate는 10000으로 하는게 맞는거 같고
-주석이나 몇몇 부분들이 수정안되어있는데 이 부분 다 찾아서 제대로 수정해줘
-
-그리고 scenario 처음 시작 0초일때 바로 어떤 동작이 수행하면 수집이 어려울 수 있으니
-처음 동작은 DAQ start 후에 0초에서 0.5초 기다린다음 동작 수행하는거로 변경하자.
-
-그리고 현재 Target rail이 4V인 경우는 "/4" 하지 않아도 되는 것 같은데 적용되고 있더라고 이 부분도 수정해줘
-
-screen on/off 뿐만 아니라 Phone app Power Test scenario도 DAQ sync 문제 반영해줘
+tarting hardware-timed VOLTAGE acquisition (20kHz, FINITE mode)...
+Reading 200000 raw samples per channel (200k) using Float32...
+Hardware-timed collection error: argument 5: TypeError: array must have data type float64
+Traceback (most recent call last):
+  File "d:\PCT\Tool\github\DOU_1215\services\ni_daq.py", line 997, in read_current_channels_hardware_timed
+    reader.read_many_sample(data_array, number_of_samples_per_channel=total_samples, timeout=timeout)
+  File "D:\PCT\Tool\github\DOU_1215\.venv\lib\site-packages\nidaqmx\stream_readers.py", line 327, in read_many_sample
+    _, samps_per_chan_read = self._interpreter.read_analog_f64(
+  File "D:\PCT\Tool\github\DOU_1215\.venv\lib\site-packages\nidaqmx\_library_interpreter.py", line 4187, in read_analog_f64
+    error_code = cfunc(
+ctypes.ArgumentError: argument 5: TypeError: array must have data type float64
+ERROR: DAQ collection returned no data
+=== DAQ Hardware-Timed Collection Ended ===
+WARNING: No data was collected during monitoring!
+WARNING: No DAQ data collected to export!
+This means DAQ monitoring did not collect any data during the test
+Test failed at step: save_data
+Step failed: save_data
+❌ Test iteration 1 failed
