@@ -61,6 +61,8 @@ else:
 try:
     import nidaqmx
     from nidaqmx.constants import AcquisitionType
+    from nidaqmx import stream_readers
+    import numpy as np
     NI_AVAILABLE = True
     
     # Get version info
@@ -416,7 +418,7 @@ class NIDAQService(QObject):
             self.task.ai_channels.add_ai_voltage_chan(
                 channel_name,
                 terminal_config=nidaqmx.constants.TerminalConfiguration.RSE,
-                min_val=-5.0,  # Use ±5V as shown in trace for better accuracy
+                min_val=-5.0,  # ±5V range for all scenarios
                 max_val=5.0,
                 units=nidaqmx.constants.VoltageUnits.VOLTS
             )
@@ -581,10 +583,19 @@ class NIDAQService(QObject):
                 timeout = max(2.0, min(estimated_time, 10.0))  # Min 2s, Max 10s
                 
                 # ReadMultiSample: Read exact number of samples (FINITE mode), then average
-                data = task.read(number_of_samples_per_channel=samples_to_collect, timeout=timeout)
-                
+                # Use AnalogMultiChannelReader for efficient buffer management
+                reader = stream_readers.AnalogMultiChannelReader(task.in_stream)
+                buffer = np.zeros((len(channels), samples_to_collect), dtype=np.float64)
+                reader.read_many_sample(buffer, number_of_samples_per_channel=samples_to_collect, timeout=timeout)
+
+                # Convert to list format for compatibility
+                if len(channels) == 1:
+                    data = buffer[0].tolist()
+                else:
+                    data = [ch_data.tolist() for ch_data in buffer]
+
                 task.stop()
-                
+
                 print(f"Raw current data: {type(data)}, length: {len(data) if hasattr(data, '__len__') else 'N/A'}")
                 
                 # Process current measurement data with averaging (critical for accuracy)
@@ -684,10 +695,10 @@ class NIDAQService(QObject):
     
     def read_current_via_differential_measurement(self, voltage_channels: List[str], samples_per_channel: int = 12) -> Optional[dict]:
         """Read current using differential measurement across shunt resistors
-        
+
         For proper current measurement, we need to measure voltage difference
         across shunt resistor, not the rail voltage.
-        
+
         Example setup:
         - ai0: Voltage before shunt resistor (rail voltage)
         - ai1: Voltage after shunt resistor (rail voltage - shunt drop)
@@ -695,11 +706,11 @@ class NIDAQService(QObject):
         """
         if not NI_AVAILABLE or not self.connected:
             return None
-            
+
         try:
             with nidaqmx.Task() as task:
                 print(f"=== Creating differential measurement task for channels: {voltage_channels} ===")
-                
+
                 # Add channels for differential measurement
                 for channel in voltage_channels:
                     channel_name = f"{self.device_name}/{channel}"
@@ -721,12 +732,21 @@ class NIDAQService(QObject):
                 
                 print(f"Starting differential measurement task...")
                 task.start()
-                
+
                 print(f"Reading {samples_per_channel} samples per channel for differential calculation...")
-                data = task.read(number_of_samples_per_channel=samples_per_channel, timeout=1.0)
-                
+                # Use AnalogMultiChannelReader for efficient buffer management
+                reader = stream_readers.AnalogMultiChannelReader(task.in_stream)
+                buffer = np.zeros((len(voltage_channels), samples_per_channel), dtype=np.float64)
+                reader.read_many_sample(buffer, number_of_samples_per_channel=samples_per_channel, timeout=1.0)
+
+                # Convert to list format for compatibility
+                if len(voltage_channels) == 1:
+                    data = buffer[0].tolist()
+                else:
+                    data = [ch_data.tolist() for ch_data in buffer]
+
                 task.stop()
-                
+
                 print(f"Raw differential data: {type(data)}, length: {len(data) if hasattr(data, '__len__') else 'N/A'}")
                 
                 # Process differential measurement for current calculation
@@ -874,13 +894,13 @@ class NIDAQService(QObject):
                     # to measure voltage drop across external shunt resistor
                     # 
                     # Voltage range configuration:
-                    # - Wide range (±5V) matches Manual tool and provides stable measurement
-                    # - Typical shunt drops: 0.01mV ~ 100mV (well within ±5V range)
+                    # - Range (±1.25V) for all scenarios
+                    # - Typical shunt drops: 0.01mV ~ 100mV (well within ±1.25V range)
                     # - If DIFFERENTIAL fails, fallback modes will be attempted
                     terminal_mode_used = "UNKNOWN"
                     try:
                         # Try DIFFERENTIAL first with current voltage range
-                        # ±5V range matches Manual tool configuration
+                        # ±1.25V range for all scenarios
                         #
                         # Try multiple ways to specify DIFFERENTIAL mode (library version compatibility)
                         differential_success = False
@@ -935,7 +955,7 @@ class NIDAQService(QObject):
                                     units=nidaqmx.constants.VoltageUnits.VOLTS
                                 )
                                 terminal_mode_used = "DEFAULT"
-                                print(f"  ✅ DEFAULT mode enabled (±5V range)")
+                                print(f"  ✅ DEFAULT mode enabled (±1.25V range)")
                             except Exception as default_error:
                                 # Try NRSE as fallback
                                 print(f"  ⚠️ DEFAULT failed: {type(default_error).__name__}: {str(default_error)}")
@@ -983,14 +1003,30 @@ class NIDAQService(QObject):
                 
                 print(f"Starting hardware-timed VOLTAGE acquisition ({sample_rate/1000:.0f}kHz, FINITE mode)...")
                 task.start()
-                
+
                 # Read samples (FINITE mode - exact sample count)
                 timeout = duration_seconds + 5.0  # Add buffer
                 print(f"Reading {total_samples} raw samples per channel ({total_samples/1000:.0f}k)...")
-                data = task.read(number_of_samples_per_channel=total_samples, timeout=timeout)
-                
+
+                # Use AnalogMultiChannelReader for better performance
+                # Note: nidaqmx library uses Float64 internally (read_analog_f64)
+                # We convert to Float32 after reading to save memory (50% reduction)
+                reader = stream_readers.AnalogMultiChannelReader(task.in_stream)
+                data_array = np.zeros((len(channels), total_samples), dtype=np.float64)
+                reader.read_many_sample(data_array, number_of_samples_per_channel=total_samples, timeout=timeout)
+
+                # Convert to Float32 for memory efficiency (Float64 8 bytes → Float32 4 bytes)
+                # Float32 provides sufficient precision for USB-6289 (18-bit, ±1.25V = 0.0095mV resolution)
+                data_array = data_array.astype(np.float32)
+
+                # Convert to list format for compatibility with existing code
+                if len(channels) == 1:
+                    data = data_array[0].tolist()  # Single channel: 1D list
+                else:
+                    data = [channel_data.tolist() for channel_data in data_array]  # Multi-channel: list of lists
+
                 task.stop()
-                print(f"Hardware VOLTAGE acquisition completed ({len(data) if isinstance(data, list) else len(data[0])} samples)")
+                print(f"Hardware VOLTAGE acquisition completed ({len(data) if isinstance(data, list) else len(data[0])} samples, converted to Float32)")
                 print(f"Starting compression (10:1 → 10,000 samples at 1ms intervals)...")
                 
                 # Process and compress voltage data, then convert to current
@@ -1059,15 +1095,21 @@ class NIDAQService(QObject):
                             calibration_factor = 1.0
                         
                         # Battery voltage compensation factor
-                        # VBAT (4V) channel: no compensation needed
-                        # Other rails (1.2V, 1.8V, etc.): divide by 4 (battery voltage base)
+                        # Based on target rail voltage (4V reference base)
+                        # 4V → 1/1 (compensation=1.0), 2V → 1/2 (compensation=2.0), 1V → 1/4 (compensation=4.0)
+                        # Formula: compensation = 4.0 / target_v
+                        config = self.channel_configs.get(channels[0], {})
+                        target_v = config.get('target_v', 4.0)  # Default to 4V if not specified
+
                         battery_compensation = 1.0
-                        if channels[0] != 'ai0':  # ai0 is VBAT (4V), others need compensation
-                            battery_compensation = 4.0
-                            print(f"  🔋 Battery voltage compensation: ÷{battery_compensation} (non-VBAT rail)")
-                        
+                        if target_v > 0:
+                            battery_compensation = 4.0 / target_v
+                            print(f"  🔋 Battery voltage compensation: ÷{battery_compensation:.2f} (target={target_v}V, ratio=4V/{target_v}V)")
+                        else:
+                            print(f"  🔋 No battery compensation (target_v={target_v}V, invalid)")
+
                         # Convert voltage to current: I = V / R * 1000 (mA)
-                        # Apply battery compensation for non-VBAT rails
+                        # Apply battery compensation for non-4V rails
                         compressed_ma = [(v / shunt_r) * 1000 * calibration_factor / battery_compensation for v in compressed_volts]
                         avg_i_ma = sum(compressed_ma) / len(compressed_ma) if compressed_ma else 0
                         
@@ -1143,15 +1185,21 @@ class NIDAQService(QObject):
                                 calibration_factor = 1.0
                             
                             # Battery voltage compensation factor
-                            # VBAT (4V) channel: no compensation needed
-                            # Other rails (1.2V, 1.8V, etc.): divide by 4 (battery voltage base)
+                            # Based on target rail voltage (4V reference base)
+                            # 4V → 1/1 (compensation=1.0), 2V → 1/2 (compensation=2.0), 1V → 1/4 (compensation=4.0)
+                            # Formula: compensation = 4.0 / target_v
+                            config = self.channel_configs.get(channel, {})
+                            target_v = config.get('target_v', 4.0)  # Default to 4V if not specified
+
                             battery_compensation = 1.0
-                            if channel != 'ai0':  # ai0 is VBAT (4V), others need compensation
-                                battery_compensation = 4.0
-                                print(f"  🔋 Battery voltage compensation for {channel}: ÷{battery_compensation}")
-                            
+                            if target_v > 0:
+                                battery_compensation = 4.0 / target_v
+                                print(f"  🔋 Battery voltage compensation for {channel}: ÷{battery_compensation:.2f} (target={target_v}V)")
+                            else:
+                                print(f"  🔋 No battery compensation for {channel} (target_v={target_v}V, invalid)")
+
                             # Convert voltage to current: I = V / R * 1000 (mA)
-                            # Apply battery compensation for non-VBAT rails
+                            # Apply battery compensation for non-4V rails
                             compressed_ma = [(v / shunt_r) * 1000 * calibration_factor / battery_compensation for v in compressed_volts]
                             avg_i_ma = sum(compressed_ma) / len(compressed_ma) if compressed_ma else 0
                             
@@ -1191,11 +1239,11 @@ class NIDAQService(QObject):
         """Read multiple voltage channels simultaneously (matching other tool's NI I/O Trace)"""
         if not NI_AVAILABLE or not self.connected:
             return None
-            
+
         try:
             with nidaqmx.Task() as task:
                 print(f"=== Creating task for channels: {channels} ===")
-                
+
                 # Add multiple channels as shown in other tool's trace
                 for channel in channels:
                     channel_name = f"{self.device_name}/{channel}"
@@ -1217,14 +1265,23 @@ class NIDAQService(QObject):
                 
                 print(f"Starting task with {len(channels)} channels...")
                 task.start()
-                
+
                 # Read data like DAQReadNChanNSamp1DWfm (small chunks continuously)
                 print(f"Reading {samples_per_channel} samples per channel...")
-                data = task.read(number_of_samples_per_channel=samples_per_channel, timeout=1.0)
-                
+                # Use AnalogMultiChannelReader for efficient buffer management
+                reader = stream_readers.AnalogMultiChannelReader(task.in_stream)
+                buffer = np.zeros((len(channels), samples_per_channel), dtype=np.float64)
+                reader.read_many_sample(buffer, number_of_samples_per_channel=samples_per_channel, timeout=1.0)
+
+                # Convert to list format for compatibility
+                if len(channels) == 1:
+                    data = buffer[0].tolist()
+                else:
+                    data = [ch_data.tolist() for ch_data in buffer]
+
                 print(f"Stopping task...")
                 task.stop()
-                
+
                 print(f"Raw data received: {type(data)}, length: {len(data) if hasattr(data, '__len__') else 'N/A'}")
                 
                 # Process data for each channel

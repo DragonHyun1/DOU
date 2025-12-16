@@ -1,6 +1,6 @@
 """
 Screen On/Off Test Scenario
-LCD를 2초마다 켜고 끄는 전력 소비 테스트
+LCD를 3초마다 켜고 끄는 전력 소비 테스트
 
 [Default setting] 후에
 [init setting]
@@ -10,9 +10,9 @@ LCD를 2초마다 켜고 끄는 전력 소비 테스트
 - LCD off
 [전류 안정화 1분]
 [Test start]
-DAQ start하고 
-0초, LCD on 후에 2초 마다 LCD 끄고 키고 반복 동작
-20초, 테스트 끝
+DAQ start하고
+0초, LCD on 후에 3초 마다 hold key를 눌러 LCD on/off 반복 (총 10회)
+30초, 테스트 끝
 [Test end]
 [csv 저장]
 """
@@ -45,32 +45,38 @@ class ScreenOnOffScenario(BaseScenario):
         """Get Screen On/Off test configuration"""
         config = TestConfig(
             name="Screen On/Off Test",
-            description="LCD를 2초마다 켜고 끄는 전력 소비 테스트",
+            description="LCD를 3초마다 켜고 끄는 전력 소비 테스트 (hold key 10회)",
             hvpm_voltage=4.0,
             stabilization_time=60.0,  # 1분 안정화
             monitoring_interval=1.0,
-            test_duration=20.0  # 20초 테스트
+            test_duration=30.0  # 30초 테스트
         )
         
         # Define detailed screen on/off test steps
         config.steps = [
+            # Battery slate mode setup (USB power disconnect)
+            TestStep("enable_slate_mode", 3.0, "enable_battery_slate_mode"),
+
             # Default settings (consistent for all scenarios)
             TestStep("default_settings", 5.0, "apply_default_settings"),
-            
+
             # Init mode steps
             TestStep("lcd_on_unlock", 3.0, "lcd_on_and_unlock"),
             TestStep("flight_mode", 2.0, "enable_flight_mode"),
             TestStep("clear_apps", 8.0, "clear_recent_apps"),
             TestStep("lcd_off", 2.0, "lcd_off"),
-            
+
             # 전류 안정화 1분
             TestStep("current_stabilization", 60.0, "wait_current_stabilization"),
-            
+
             # Test execution steps
             TestStep("start_daq_monitoring", 2.0, "start_daq_monitoring"),
-            TestStep("screen_onoff_test", 20.0, "execute_screen_onoff_test"),
+            TestStep("screen_onoff_test", 30.0, "execute_screen_onoff_test"),
             TestStep("stop_daq_monitoring", 2.0, "stop_daq_monitoring"),
-            TestStep("save_excel", 3.0, "export_to_excel")
+            TestStep("save_excel", 3.0, "export_to_excel"),
+
+            # Battery slate mode restore (USB power restore)
+            TestStep("disable_slate_mode", 3.0, "disable_battery_slate_mode")
         ]
         
         return config
@@ -78,7 +84,9 @@ class ScreenOnOffScenario(BaseScenario):
     def execute_step(self, step: TestStep) -> bool:
         """Execute a single Screen On/Off test step"""
         try:
-            if step.action == "apply_default_settings":
+            if step.action == "enable_battery_slate_mode":
+                return self._step_enable_battery_slate_mode()
+            elif step.action == "apply_default_settings":
                 return self._step_apply_default_settings()
             elif step.action == "lcd_on_and_unlock":
                 return self._step_lcd_on_and_unlock()
@@ -98,14 +106,60 @@ class ScreenOnOffScenario(BaseScenario):
                 return self._step_stop_daq_monitoring()
             elif step.action == "export_to_excel":
                 return self._step_export_to_excel()
+            elif step.action == "disable_battery_slate_mode":
+                return self._step_disable_battery_slate_mode()
             else:
                 self.log_callback(f"Unknown step action: {step.action}", "error")
                 return False
-                
+
         except Exception as e:
             self.log_callback(f"Error executing step {step.name}: {e}", "error")
             return False
-    
+
+    def _step_enable_battery_slate_mode(self) -> bool:
+        """Enable battery slate mode (disconnect USB power)"""
+        try:
+            self.log_callback("=== Enabling Battery Slate Mode ===", "info")
+
+            if not self.adb_service:
+                self.log_callback("ADB service not available", "error")
+                return False
+
+            success = self.adb_service.enable_battery_slate_mode()
+
+            if success:
+                self.log_callback("✅ Battery slate mode enabled (USB power disconnected)", "info")
+                return True
+            else:
+                self.log_callback("⚠️ Failed to enable battery slate mode", "warn")
+                return True  # Continue test even if slate mode fails
+
+        except Exception as e:
+            self.log_callback(f"❌ Error enabling battery slate mode: {e}", "error")
+            return True  # Don't fail the entire test for slate mode
+
+    def _step_disable_battery_slate_mode(self) -> bool:
+        """Disable battery slate mode (restore USB power)"""
+        try:
+            self.log_callback("=== Disabling Battery Slate Mode ===", "info")
+
+            if not self.adb_service:
+                self.log_callback("ADB service not available", "error")
+                return False
+
+            success = self.adb_service.disable_battery_slate_mode()
+
+            if success:
+                self.log_callback("✅ Battery slate mode disabled (USB power restored)", "info")
+                return True
+            else:
+                self.log_callback("⚠️ Failed to disable battery slate mode", "warn")
+                return True  # Continue even if slate mode restore fails
+
+        except Exception as e:
+            self.log_callback(f"❌ Error disabling battery slate mode: {e}", "error")
+            return True  # Don't fail for slate mode issues
+
     def _step_apply_default_settings(self) -> bool:
         """Apply default settings for consistent test environment"""
         try:
@@ -306,57 +360,78 @@ class ScreenOnOffScenario(BaseScenario):
             return True  # Don't fail test for DAQ issues
     
     def _step_execute_screen_onoff_test(self) -> bool:
-        """Execute Screen On/Off test (20 seconds)
+        """Execute Screen On/Off test (30 seconds)
         0초: LCD on
-        2초마다 LCD 끄고 키고 반복
-        20초: 테스트 끝
+        3초 간격으로 hold key를 눌러 LCD on/off 반복 (총 10회)
+        30초: 테스트 끝
+
+        Uses real-time based timing to ensure accurate sync with DAQ collection.
         """
         try:
-            self.log_callback("=== Executing Screen On/Off Test (20 seconds) ===", "info")
-            
+            self.log_callback("=== Executing Screen On/Off Test (30 seconds, 10 hold key presses) ===", "info")
+
             if not self.adb_service:
                 self.log_callback("ADB service not available", "error")
                 return False
-            
-            # 0초: LCD on
-            self.log_callback("0s: Turning LCD ON", "info")
+
+            # Test configuration
+            test_duration = 30.0  # 30 seconds total
+            toggle_times = [0.5, 3, 6, 9, 12, 15, 18, 21, 24, 27]  # Exact toggle times in seconds (0.5s for DAQ sync)
+
+            start_time = time.time()
+
+            # Wait 0.5s before first action to allow DAQ to stabilize
+            self.log_callback("Waiting 0.5s for DAQ to stabilize before first action...", "info")
+            time.sleep(0.5)
+
+            # 0.5초: LCD on (first action)
+            self.log_callback("0.5s: Turning LCD ON (first action)", "info")
             if not self.adb_service.turn_screen_on():
-                self.log_callback("Failed to turn screen on at 0s", "error")
+                self.log_callback("Failed to turn screen on at 0.5s", "error")
                 return False
-            
-            # 2초마다 LCD 끄고 키고 반복 (20초 동안)
-            # 0s: ON -> 2s: OFF -> 4s: ON -> 6s: OFF -> ... -> 18s: OFF -> 20s: 종료
-            test_duration = 20  # 20초
-            toggle_interval = 2  # 2초마다
-            
-            screen_state = True  # 현재 ON 상태에서 시작 (0초에 ON 했으므로)
-            elapsed = 0
-            
-            while elapsed < test_duration:
-                time.sleep(toggle_interval)
-                elapsed += toggle_interval
-                
-                if elapsed >= test_duration:
-                    break
-                
-                # 화면 토글
+
+            screen_state = True  # Current state (ON)
+            key_press_count = 0
+
+            # Execute toggles at precise times
+            for toggle_time in toggle_times:
+                # Wait until the exact toggle time
+                while True:
+                    elapsed = time.time() - start_time
+                    if elapsed >= toggle_time:
+                        break
+                    # Sleep for remaining time (with small buffer for precision)
+                    remaining = toggle_time - elapsed
+                    if remaining > 0.1:
+                        time.sleep(remaining - 0.05)  # Wake up 50ms before
+                    else:
+                        time.sleep(0.01)  # Small sleep to avoid busy loop
+
+                # Execute toggle at exact time
+                key_press_count += 1
                 screen_state = not screen_state
-                
+
+                actual_elapsed = time.time() - start_time
+
                 if screen_state:
-                    self.log_callback(f"{elapsed}s: Turning LCD ON", "info")
+                    self.log_callback(f"{toggle_time}s (actual: {actual_elapsed:.1f}s): Pressing hold key (#{key_press_count}) - Turning LCD ON", "info")
                     if not self.adb_service.turn_screen_on():
-                        self.log_callback(f"Failed to turn screen on at {elapsed}s", "error")
+                        self.log_callback(f"Failed to turn screen on at {toggle_time}s", "error")
                         return False
                 else:
-                    self.log_callback(f"{elapsed}s: Turning LCD OFF", "info")
+                    self.log_callback(f"{toggle_time}s (actual: {actual_elapsed:.1f}s): Pressing hold key (#{key_press_count}) - Turning LCD OFF", "info")
                     if not self.adb_service.turn_screen_off():
-                        self.log_callback(f"Failed to turn screen off at {elapsed}s", "error")
+                        self.log_callback(f"Failed to turn screen off at {toggle_time}s", "error")
                         return False
-            
-            # 20초: 테스트 끝
-            self.log_callback("20s: Screen On/Off test completed", "info")
+
+            # Wait until test_duration is reached
+            while time.time() - start_time < test_duration:
+                time.sleep(0.1)
+
+            total_elapsed = time.time() - start_time
+            self.log_callback(f"30s: Screen On/Off test completed ({key_press_count} hold key presses, actual duration: {total_elapsed:.1f}s)", "info")
             return True
-            
+
         except Exception as e:
             self.log_callback(f"Error executing Screen On/Off test: {e}", "error")
             return False
