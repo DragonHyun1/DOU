@@ -1095,15 +1095,18 @@ class NIDAQService(QObject):
                             calibration_factor = 1.0
                         
                         # Battery voltage compensation factor
-                        # ai0 is VBAT rail (4V reference): no compensation needed
-                        # Other channels (ai1~ai5): divide by 4 for 4V base scaling
-                        # This is because the measurement is based on 4V reference
+                        # Based on target rail voltage (4V reference base)
+                        # 4V → 1/1 (compensation=1.0), 2V → 1/2 (compensation=2.0), 1V → 1/4 (compensation=4.0)
+                        # Formula: compensation = 4.0 / target_v
+                        config = self.channel_configs.get(channels[0], {})
+                        target_v = config.get('target_v', 4.0)  # Default to 4V if not specified
+
                         battery_compensation = 1.0
-                        if channels[0] != 'ai0':  # ai0 is VBAT, others need 1/4 scaling
-                            battery_compensation = 4.0
-                            print(f"  🔋 Battery voltage compensation: ÷{battery_compensation} (channel={channels[0]}, non-VBAT)")
+                        if target_v > 0:
+                            battery_compensation = 4.0 / target_v
+                            print(f"  🔋 Battery voltage compensation: ÷{battery_compensation:.2f} (target={target_v}V, ratio=4V/{target_v}V)")
                         else:
-                            print(f"  🔋 No battery compensation (channel={channels[0]}, VBAT rail)")
+                            print(f"  🔋 No battery compensation (target_v={target_v}V, invalid)")
 
                         # Convert voltage to current: I = V / R * 1000 (mA)
                         # Apply battery compensation for non-4V rails
@@ -1182,15 +1185,18 @@ class NIDAQService(QObject):
                                 calibration_factor = 1.0
                             
                             # Battery voltage compensation factor
-                            # ai0 is VBAT rail (4V reference): no compensation needed
-                            # Other channels (ai1~ai5): divide by 4 for 4V base scaling
-                            # This is because the measurement is based on 4V reference
+                            # Based on target rail voltage (4V reference base)
+                            # 4V → 1/1 (compensation=1.0), 2V → 1/2 (compensation=2.0), 1V → 1/4 (compensation=4.0)
+                            # Formula: compensation = 4.0 / target_v
+                            config = self.channel_configs.get(channel, {})
+                            target_v = config.get('target_v', 4.0)  # Default to 4V if not specified
+
                             battery_compensation = 1.0
-                            if channel != 'ai0':  # ai0 is VBAT, others need 1/4 scaling
-                                battery_compensation = 4.0
-                                print(f"  🔋 Battery voltage compensation for {channel}: ÷{battery_compensation} (non-VBAT)")
+                            if target_v > 0:
+                                battery_compensation = 4.0 / target_v
+                                print(f"  🔋 Battery voltage compensation for {channel}: ÷{battery_compensation:.2f} (target={target_v}V)")
                             else:
-                                print(f"  🔋 No battery compensation for {channel} (VBAT rail)")
+                                print(f"  🔋 No battery compensation for {channel} (target_v={target_v}V, invalid)")
 
                             # Convert voltage to current: I = V / R * 1000 (mA)
                             # Apply battery compensation for non-4V rails
