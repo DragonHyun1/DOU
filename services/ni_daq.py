@@ -253,8 +253,8 @@ class NIDAQService(QObject):
                             temp_task.ai_channels.add_ai_voltage_chan(
                                 channel_name,
                                 terminal_config=nidaqmx.constants.TerminalConfiguration.RSE,
-                                min_val=-1.25,  # ±1.25V range
-                                max_val=1.25,
+                                min_val=-5.0,  # ±5V range
+                                max_val=5.0,
                                 units=nidaqmx.constants.VoltageUnits.VOLTS
                             )
                         
@@ -418,8 +418,8 @@ class NIDAQService(QObject):
             self.task.ai_channels.add_ai_voltage_chan(
                 channel_name,
                 terminal_config=nidaqmx.constants.TerminalConfiguration.RSE,
-                min_val=-1.25,  # ±1.25V range for all scenarios
-                max_val=1.25,
+                min_val=-5.0,  # ±5V range for all scenarios
+                max_val=5.0,
                 units=nidaqmx.constants.VoltageUnits.VOLTS
             )
             
@@ -718,8 +718,8 @@ class NIDAQService(QObject):
                     task.ai_channels.add_ai_voltage_chan(
                         channel_name,
                         terminal_config=nidaqmx.constants.TerminalConfiguration.RSE,
-                        min_val=-1.25,
-                        max_val=1.25,
+                        min_val=-5.0,
+                        max_val=5.0,
                         units=nidaqmx.constants.VoltageUnits.VOLTS
                     )
                 
@@ -840,7 +840,7 @@ class NIDAQService(QObject):
 
         return compressed
     
-    def read_current_channels_hardware_timed(self, channels: List[str], sample_rate: float = 10000.0, compress_ratio: int = 10, duration_seconds: float = 10.0, voltage_range: float = 1.25) -> Optional[dict]:
+    def read_current_channels_hardware_timed(self, channels: List[str], sample_rate: float = 10000.0, compress_ratio: int = 10, duration_seconds: float = 10.0, voltage_range: float = 5.0) -> Optional[dict]:
         """Read current using DAQ hardware timing with compression
         
         Uses NI-DAQmx API to read voltage drop across external shunt resistor.
@@ -1251,8 +1251,8 @@ class NIDAQService(QObject):
                     task.ai_channels.add_ai_voltage_chan(
                         channel_name,
                         terminal_config=nidaqmx.constants.TerminalConfiguration.RSE,
-                        min_val=-1.25,
-                        max_val=1.25,
+                        min_val=-5.0,
+                        max_val=5.0,
                         units=nidaqmx.constants.VoltageUnits.VOLTS
                     )
                 
