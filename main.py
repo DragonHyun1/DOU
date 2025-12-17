@@ -2137,10 +2137,6 @@ class MainWindow(QtWidgets.QMainWindow):
         
         self._log(f"Test parameters: Cycles={cycles}, Duration={duration}s", "info")
     
-    def _on_scenario_changed(self):
-        """Handle test scenario selection change - DEPRECATED: Using Scenario Config Dialog"""
-        # This method is no longer used since we moved to Scenario Config Dialog
-        pass
 
     def _check_ui_elements(self):
         """Debug function to check UI elements"""
