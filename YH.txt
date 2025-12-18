@@ -1,15 +1,6 @@
-tarting hardware-timed VOLTAGE acquisition (20kHz, FINITE mode)...
-Reading 200000 raw samples per channel (200k) using Float32...
-Hardware-timed collection error: argument 5: TypeError: array must have data type float64
-Traceback (most recent call last):
-  File "d:\PCT\Tool\github\DOU_1215\services\ni_daq.py", line 997, in read_current_channels_hardware_timed
-    reader.read_many_sample(data_array, number_of_samples_per_channel=total_samples, timeout=timeout)
-  File "D:\PCT\Tool\github\DOU_1215\.venv\lib\site-packages\nidaqmx\stream_readers.py", line 327, in read_many_sample
-    _, samps_per_chan_read = self._interpreter.read_analog_f64(
-  File "D:\PCT\Tool\github\DOU_1215\.venv\lib\site-packages\nidaqmx\_library_interpreter.py", line 4187, in read_analog_f64
-    error_code = cfunc(
-ctypes.ArgumentError: argument 5: TypeError: array must have data type float64
-ERROR: DAQ collection returned no data
+=== DAQ Hardware-Timed Collection Started ===
+Waiting for screen test to start...
+ERROR: Screen test start timeout (25s)
 === DAQ Hardware-Timed Collection Ended ===
 WARNING: No data was collected during monitoring!
 WARNING: No DAQ data collected to export!
