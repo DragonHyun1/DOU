@@ -4114,6 +4114,15 @@ class TestScenarioEngine(QObject):
         try:
             self.log_callback("=== Waiting 15 minutes for WiFi test (900 seconds) ===", "info")
 
+            # Signal DAQ monitoring to start immediately (WiFi test doesn't need screen sync)
+            if hasattr(self, '_screen_test_started'):
+                self._screen_test_started.set()
+                self._screen_test_start_time = time.time()
+                self.log_callback("DAQ monitoring signaled to start", "info")
+
+            # Brief pause to ensure DAQ starts collecting
+            time.sleep(0.5)
+
             # 15분 동안 대기하면서 진행 상황 표시
             total_seconds = 900  # 15 minutes
             update_interval = 60  # 60초(1분)마다 업데이트
