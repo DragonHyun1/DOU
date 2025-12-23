@@ -499,10 +499,13 @@ class TestScenarioEngine(QObject):
             else:
                 # Subsequent iterations: Different handling based on scenario
                 is_screen_onoff = False
+                is_wifi_test = False
                 if hasattr(self, 'current_scenario') and self.current_scenario:
                     scenario_key = self.current_scenario.lower()
                     if 'screen' in scenario_key and 'onoff' in scenario_key:
                         is_screen_onoff = True
+                    elif 'wifi' in scenario_key:
+                        is_wifi_test = True
 
                 if is_screen_onoff:
                     # Screen On/Off: Skip quick reset, only 10s stabilization (screen already off from 1st test)
@@ -518,6 +521,25 @@ class TestScenarioEngine(QObject):
                             daq_test_steps.append(step)
 
                     steps_to_execute = [stabilization_step] + daq_test_steps
+
+                elif is_wifi_test:
+                    # WiFi 2G/5G Test: Skip all init, short stabilization + DAQ collection only
+                    # Device is already in proper state from 1st iteration (WiFi connected, BT on, LCD off)
+                    self.log_callback(f"📌 Iteration {self.current_repeat}: WiFi test quick setup - 10s stabilization, skip all init", "info")
+                    stabilization_step = TestStep("quick_stabilization", 10.0, "quick_stabilization_10s")
+
+                    # Find DAQ and test steps only (skip all init/default steps)
+                    daq_test_steps = []
+                    for step in scenario.steps:
+                        # Include only DAQ collection and export steps
+                        if step.action in ['start_daq_monitoring', 'wait_15_minutes',
+                                           'stop_daq_monitoring', 'export_to_excel']:
+                            self.log_callback(f"  Including step: {step.name} (action: {step.action})", "debug")
+                            daq_test_steps.append(step)
+
+                    steps_to_execute = [stabilization_step] + daq_test_steps
+                    self.log_callback(f"WiFi test iteration {self.current_repeat}: Skipping init (LCD/AOD/Flight/WiFi/BT already configured)", "info")
+
                 else:
                     # Other scenarios: Quick reset + DAQ + Test + Stop DAQ + Export
                     self.log_callback(f"📌 Iteration {self.current_repeat}: Skip default+init, quick reset only", "info")
