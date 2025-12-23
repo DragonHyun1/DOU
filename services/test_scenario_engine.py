@@ -175,7 +175,7 @@ class TestScenarioEngine(QObject):
             
             # DAQ Start + Phone App Test + DAQ Stop (separated)
             TestStep("start_daq", 2.0, "start_daq_monitoring"),
-            TestStep("phone_app_test", 10.0, "phone_app_scenario_test"),
+            TestStep("phone_app_test", 0.0, "phone_app_scenario_test"),  # Duration 0: function handles timing
             TestStep("stop_daq", 2.0, "stop_daq_monitoring"),
             
             # Export results
@@ -212,7 +212,7 @@ class TestScenarioEngine(QObject):
             
             # DAQ Start + Screen On/Off Test + DAQ Stop
             TestStep("start_daq", 2.0, "start_daq_monitoring"),
-            TestStep("screen_onoff_test", 20.0, "screen_onoff_test"),
+            TestStep("screen_onoff_test", 0.0, "screen_onoff_test"),  # Duration 0: function handles timing
             TestStep("stop_daq", 2.0, "stop_daq_monitoring"),
             
             # Export results
@@ -250,7 +250,7 @@ class TestScenarioEngine(QObject):
 
             # DAQ Start + 15분 대기 + DAQ Stop
             TestStep("start_daq", 2.0, "start_daq_monitoring"),
-            TestStep("wifi_2g_wait", 900.0, "wait_15_minutes"),
+            TestStep("wifi_2g_wait", 0.0, "wait_15_minutes"),  # Duration 0: function handles 15min timing
             TestStep("stop_daq", 2.0, "stop_daq_monitoring"),
 
             # Export results
@@ -288,7 +288,7 @@ class TestScenarioEngine(QObject):
 
             # DAQ Start + 15분 대기 + DAQ Stop
             TestStep("start_daq", 2.0, "start_daq_monitoring"),
-            TestStep("wifi_5g_wait", 900.0, "wait_15_minutes"),
+            TestStep("wifi_5g_wait", 0.0, "wait_15_minutes"),  # Duration 0: function handles 15min timing
             TestStep("stop_daq", 2.0, "stop_daq_monitoring"),
 
             # Export results
