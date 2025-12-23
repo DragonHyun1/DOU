@@ -3011,65 +3011,96 @@ class TestScenarioEngine(QObject):
             self.log_callback(f"Error creating summary sheet: {e}", "error")
     
     def _export_to_csv(self, filename: str) -> bool:
-        """Export data to CSV file (lightweight and fast)"""
+        """Export data to CSV file (optimized for large datasets)"""
         try:
             import pandas as pd
-            import csv
-            
+            import time as time_module
+
             if not self.daq_data:
                 self.log_callback("No data to export", "warn")
                 return True
-            
+
             # Get enabled channels, rail names, and measurement mode
             enabled_channels = self._get_enabled_channels_from_monitor()
             rail_names = self._get_channel_rail_names()
             measurement_mode = getattr(self, '_monitoring_mode', 'current')
-            
+
             self.log_callback(f"CSV export - Enabled channels: {enabled_channels}", "info")
             self.log_callback(f"CSV export - Rail names: {rail_names}", "info")
             self.log_callback(f"CSV export - Measurement mode: {measurement_mode}", "info")
-            
-            # Create formatted data
-            formatted_data = {}
-            
-            # First column: Time in ms as INTEGER (0, 1, 2, 3, ...)
-            formatted_data['Time (ms)'] = []
-            for data_point in self.daq_data:
-                time_ms = data_point.get('time_elapsed', 0)
-                formatted_data['Time (ms)'].append(int(time_ms))
-            
-            # Additional columns: Rail data based on measurement mode
+            self.log_callback(f"CSV export - Data points: {len(self.daq_data)}", "info")
+
+            # Start timing
+            start_time = time_module.time()
+
+            # OPTIMIZATION 1: Create DataFrame directly from list of dicts (no for loops!)
+            self.log_callback("Creating DataFrame from data (vectorized)...", "info")
+            df = pd.DataFrame(self.daq_data)
+
+            # OPTIMIZATION 2: Prepare column mapping for rename (batch operation)
+            column_mapping = {}
+            columns_to_keep = ['time_elapsed']  # Keep time column
+
+            # Build column mapping and identify columns to keep
             for channel in enabled_channels:
-                rail_name = rail_names.get(channel, f"Rail_{channel}")
-                
                 if measurement_mode == "current":
-                    column_name = f"{rail_name} (mA)"  # Current in milliAmperes
-                    data_key = f"{channel}_current"
+                    old_col = f"{channel}_current"
+                    rail_name = rail_names.get(channel, f"Rail_{channel}")
+                    new_col = f"{rail_name} (mA)"
+                    column_mapping[old_col] = new_col
+                    columns_to_keep.append(old_col)
                 else:
-                    column_name = f"{rail_name} (V)"  # Voltage in Volts
-                    data_key = f"{channel}_voltage"
-                
-                formatted_data[column_name] = []
-                
-                for data_point in self.daq_data:
-                    value = data_point.get(data_key, 0.0)
-                    formatted_data[column_name].append(value)
-            
-            # Create DataFrame
-            df = pd.DataFrame(formatted_data)
-            
-            # Export to CSV (fast and lightweight)
-            df.to_csv(filename, index=False, encoding='utf-8-sig')
-            
+                    old_col = f"{channel}_voltage"
+                    rail_name = rail_names.get(channel, f"Rail_{channel}")
+                    new_col = f"{rail_name} (V)"
+                    column_mapping[old_col] = new_col
+                    columns_to_keep.append(old_col)
+
+            # Select only needed columns
+            df = df[columns_to_keep]
+
+            # OPTIMIZATION 3: Rename columns in batch (vectorized)
+            df = df.rename(columns=column_mapping)
+
+            # OPTIMIZATION 4: Rename time column and convert to int (vectorized)
+            df = df.rename(columns={'time_elapsed': 'Time (ms)'})
+            df['Time (ms)'] = df['Time (ms)'].astype(int)
+
+            # OPTIMIZATION 5: Move Time column to first position using insert
+            time_col = df.pop('Time (ms)')
+            df.insert(0, 'Time (ms)', time_col)
+
+            creation_time = time_module.time() - start_time
+            self.log_callback(f"DataFrame created in {creation_time:.2f}s", "info")
+
+            # OPTIMIZATION 6: Export to CSV with optimal settings
+            self.log_callback("Writing CSV file (optimized)...", "info")
+            write_start = time_module.time()
+
+            # Use fast CSV writer with minimal overhead
+            df.to_csv(
+                filename,
+                index=False,
+                encoding='utf-8',  # Faster than utf-8-sig
+                float_format='%.6f',  # Limit decimal places for smaller file
+            )
+
+            write_time = time_module.time() - write_start
+            total_time = time_module.time() - start_time
+
             # Log summary info
+            import os
             file_size_mb = os.path.getsize(filename) / (1024 * 1024)
             self.log_callback(f"CSV export completed: {filename}", "info")
             self.log_callback(f"  - Data points: {len(self.daq_data)}", "info")
             self.log_callback(f"  - Channels: {len(enabled_channels)}", "info")
             self.log_callback(f"  - File size: {file_size_mb:.2f} MB", "info")
-            
+            self.log_callback(f"  - DataFrame creation: {creation_time:.2f}s", "info")
+            self.log_callback(f"  - CSV write: {write_time:.2f}s", "info")
+            self.log_callback(f"  - Total time: {total_time:.2f}s", "info")
+
             return True
-            
+
         except Exception as e:
             self.log_callback(f"Error exporting to CSV: {e}", "error")
             import traceback
