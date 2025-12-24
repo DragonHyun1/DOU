@@ -1182,3 +1182,88 @@ class ADBService:
         except Exception as e:
             self.logger.error(f"Error disabling battery slate mode: {e}")
             return False
+
+    def enable_aod(self) -> bool:
+        """Enable Always On Display (AOD)
+
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        try:
+            self.logger.info("Enabling AOD (Always On Display)...")
+
+            # Samsung devices use aod_mode and aod_show_state
+            # Try setting both for maximum compatibility
+            self._run_adb_command(['shell', 'settings', 'put', 'secure', 'aod_mode', '1'])
+            time.sleep(0.5)
+            self._run_adb_command(['shell', 'settings', 'put', 'secure', 'aod_show_state', '1'])
+            time.sleep(0.5)
+
+            # Verify AOD is enabled
+            aod_status = self.get_aod_status()
+            if aod_status == 'ON':
+                self.logger.info("✅ AOD enabled successfully")
+                return True
+            else:
+                self.logger.warning(f"⚠️ AOD status after enable attempt: {aod_status}")
+                return True  # Continue even if verification fails
+
+        except Exception as e:
+            self.logger.error(f"Error enabling AOD: {e}")
+            return False
+
+    def disable_aod(self) -> bool:
+        """Disable Always On Display (AOD)
+
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        try:
+            self.logger.info("Disabling AOD (Always On Display)...")
+
+            # Samsung devices use aod_mode and aod_show_state
+            # Try setting both for maximum compatibility
+            self._run_adb_command(['shell', 'settings', 'put', 'secure', 'aod_mode', '0'])
+            time.sleep(0.5)
+            self._run_adb_command(['shell', 'settings', 'put', 'secure', 'aod_show_state', '0'])
+            time.sleep(0.5)
+
+            # Verify AOD is disabled
+            aod_status = self.get_aod_status()
+            if aod_status == 'OFF':
+                self.logger.info("✅ AOD disabled successfully")
+                return True
+            else:
+                self.logger.warning(f"⚠️ AOD status after disable attempt: {aod_status}")
+                return True  # Continue even if verification fails
+
+        except Exception as e:
+            self.logger.error(f"Error disabling AOD: {e}")
+            return False
+
+    def get_aod_status(self) -> str:
+        """Get current AOD status (ON/OFF/UNKNOWN)
+
+        Returns:
+            str: 'ON', 'OFF', or 'UNKNOWN'
+        """
+        try:
+            # Check aod_mode setting
+            aod_mode = self._run_adb_command(['shell', 'settings', 'get', 'secure', 'aod_mode'])
+            if aod_mode and aod_mode.strip() == '1':
+                return 'ON'
+            elif aod_mode and aod_mode.strip() == '0':
+                return 'OFF'
+
+            # Check aod_show_state as backup
+            aod_show = self._run_adb_command(['shell', 'settings', 'get', 'secure', 'aod_show_state'])
+            if aod_show and aod_show.strip() == '1':
+                return 'ON'
+            elif aod_show and aod_show.strip() == '0':
+                return 'OFF'
+
+            return 'UNKNOWN'
+
+        except Exception as e:
+            self.logger.error(f"Error getting AOD status: {e}")
+            return 'UNKNOWN'

@@ -1,19 +1,140 @@
-tarting hardware-timed VOLTAGE acquisition (20kHz, FINITE mode)...
-Reading 200000 raw samples per channel (200k) using Float32...
-Hardware-timed collection error: argument 5: TypeError: array must have data type float64
-Traceback (most recent call last):
-  File "d:\PCT\Tool\github\DOU_1215\services\ni_daq.py", line 997, in read_current_channels_hardware_timed
-    reader.read_many_sample(data_array, number_of_samples_per_channel=total_samples, timeout=timeout)
-  File "D:\PCT\Tool\github\DOU_1215\.venv\lib\site-packages\nidaqmx\stream_readers.py", line 327, in read_many_sample
-    _, samps_per_chan_read = self._interpreter.read_analog_f64(
-  File "D:\PCT\Tool\github\DOU_1215\.venv\lib\site-packages\nidaqmx\_library_interpreter.py", line 4187, in read_analog_f64
-    error_code = cfunc(
-ctypes.ArgumentError: argument 5: TypeError: array must have data type float64
-ERROR: DAQ collection returned no data
-=== DAQ Hardware-Timed Collection Ended ===
-WARNING: No data was collected during monitoring!
-WARNING: No DAQ data collected to export!
-This means DAQ monitoring did not collect any data during the test
-Test failed at step: save_data
-Step failed: save_data
-❌ Test iteration 1 failed
+[18:41:00] ============================================================
+[18:41:00] 🔄 Test Iteration 1/1
+[18:41:00] ============================================================
+[18:41:00] 📌 First iteration: Running full initialization
+[18:41:00] Executing scenario: WiFi 2G 15분 대기 Test (Single Thread)
+[18:41:00] Starting 13 test steps (full initialization)
+[18:41:00] Step 1/13: init_adb
+[18:41:00] UI test mode set successfully: test_running=True
+[18:41:01] Connected to ADB device: R3CWB05WACR
+[18:41:01] Waiting 3.0s for step completion
+[18:41:05] Step 2/13: default_settings
+[18:41:05] === Applying Default Settings ===
+[18:41:07] ?? Initial device status: {'connected': True, 'device_id': 'R3CWB05WACR', 'responsive': True, 'battery_level': '97%', 'screen_state': 'OFF', 'wifi_state': 'OFF', 'bluetooth_state': 'ON'}
+[18:41:35] ?? Final device status: {'connected': True, 'device_id': 'R3CWB05WACR', 'responsive': True, 'battery_level': '97%', 'screen_state': 'OFF', 'wifi_state': 'OFF', 'bluetooth_state': 'OFF'}
+[18:41:35] ? Default settings applied successfully
+[18:41:35] Device is now in consistent initial state for testing
+[18:41:35] Waiting 5.0s for step completion
+[18:41:40] Step 3/13: lcd_on_unlock
+[18:41:40] === LCD ON + Unlock ===
+[18:41:40] Step 1: Turn LCD ON
+[18:41:42] Step 2: Unlock screen
+[18:41:46] LCD ON + Unlock completed
+[18:41:46] Waiting 3.0s for step completion
+[18:41:49] Step 4/13: enable_aod
+[18:41:49] === Enabling AOD (Always On Display) ===
+[18:41:52] AOD Status: ON
+[18:41:52] Waiting 2.0s for step completion
+[18:41:54] Step 5/13: flight_mode
+[18:41:58] Flight mode enabled
+[18:41:58] Waiting 2.0s for step completion
+[18:42:00] Step 6/13: wifi_2g_connect
+[18:42:00] === Connecting to 2.4GHz WiFi ===
+[18:42:00] ? Using WiFi network from config: 0_WIFIFW_RAX40_2nd_2G
+[18:42:19] ? WiFi Status: CONNECTED - 0_WIFIFW_RAX40_2nd_2G
+[18:42:19] Waiting 10.0s for step completion
+[18:42:30] Step 7/13: bluetooth_on
+[18:42:30] === Enabling Bluetooth ===
+[18:42:34] ? Bluetooth Status: ON
+[18:42:34] Waiting 5.0s for step completion
+[18:42:39] Step 8/13: lcd_off
+[18:42:39] === Turning LCD OFF ===
+[18:42:41] ✅ LCD turned OFF
+[18:42:41] Waiting 2.0s for step completion
+[18:42:43] Step 9/13: stabilize
+[18:42:43] Waiting for current stabilization...
+[18:42:43] Waiting 60.0s for step completion
+[18:43:48] Step 10/13: start_daq
+[18:43:48] Using scenario test duration: 900.0s
+[18:43:48] DAQ monitoring initialized with 900.0s test duration
+[18:43:48] ? Found enabled channel: ai0 -> VBAT_WIFI
+[18:43:48] ? Found enabled channel: ai1 -> 1.8V_wifi
+[18:43:48] ? Found enabled channel: ai2 -> VDD_MLDO_2P0
+[18:43:48] ? Found enabled channel: ai3 -> VDD_WIFI_1P35
+[18:43:48] ? Found enabled channel: ai4 -> VDD_WIFI_1P0
+[18:43:48] ?? Total enabled channels from monitor: ['ai0', 'ai1', 'ai2', 'ai3', 'ai4']
+[18:43:48] DAQ monitoring channels: ['ai0', 'ai1', 'ai2', 'ai3', 'ai4']
+[18:43:48] DAQ hardware-timed monitoring thread started (1kHz)
+[18:43:48] DAQ monitoring started successfully with 5 channels
+[18:43:48] Waiting 2.0s for step completion
+[18:43:50] Step 11/13: wifi_2g_wait
+[18:43:50] === Waiting 15 minutes for WiFi test (900 seconds) ===
+[18:43:50] DAQ monitoring signaled to start
+[18:43:50] WiFi test progress: 1/900 seconds (0%) - 0m 1s
+[18:44:50] WiFi test progress: 60/900 seconds (6%) - 1m 0s
+[18:45:50] WiFi test progress: 120/900 seconds (13%) - 2m 0s
+[18:46:51] WiFi test progress: 180/900 seconds (20%) - 3m 0s
+[18:47:51] WiFi test progress: 240/900 seconds (26%) - 4m 0s
+[18:48:52] WiFi test progress: 300/900 seconds (33%) - 5m 0s
+[18:49:52] WiFi test progress: 360/900 seconds (40%) - 6m 0s
+[18:50:53] WiFi test progress: 420/900 seconds (46%) - 7m 0s
+[18:51:53] WiFi test progress: 480/900 seconds (53%) - 8m 0s
+[18:52:54] WiFi test progress: 540/900 seconds (60%) - 9m 0s
+[18:53:54] WiFi test progress: 600/900 seconds (66%) - 10m 0s
+[18:54:55] WiFi test progress: 660/900 seconds (73%) - 11m 0s
+[18:55:55] WiFi test progress: 720/900 seconds (80%) - 12m 0s
+[18:56:56] WiFi test progress: 780/900 seconds (86%) - 13m 0s
+[18:57:56] WiFi test progress: 840/900 seconds (93%) - 14m 0s
+[18:58:57] WiFi test progress: 900/900 seconds (100%) - 15m 0s
+[18:58:58] ✅ 15-minute WiFi test completed
+[18:58:58] Waiting 900.0s for step completion
+[19:15:03] Step 12/13: stop_daq
+[19:15:03] Stopping DAQ monitoring...
+[19:15:03] DAQ monitoring stopped. Collected 900000 data points
+[19:15:03] Sample data point: {'timestamp': datetime.datetime(2025, 12, 23, 18, 58, 53, 175575), 'time_elapsed': 0, 'screen_test_time': 0, 'ai0_current': 1.2281768067623489, 'ai1_current': 0.019221224010834703, 'ai2_current': 3.4177224551967806, 'ai3_current': 2.0292149565648288, 'ai4_current': 0.3230772545066429}
+[19:15:03] Waiting 2.0s for step completion
+[19:15:05] Step 13/13: save_data
+[19:15:05] Exporting data for iteration 1/1
+[19:15:05] Starting Excel export...
+[19:15:05] Preparing to export 900000 data points
+[19:15:05] Data structure: ['timestamp', 'time_elapsed', 'screen_test_time', 'ai0_current', 'ai1_current', 'ai2_current', 'ai3_current', 'ai4_current']
+[19:15:05] Exporting to CSV file: test_results/wifi_2g_test_20251223_191505_iter01.csv
+[19:15:05] ? Found enabled channel: ai0 -> VBAT_WIFI
+[19:15:05] ? Found enabled channel: ai1 -> 1.8V_wifi
+[19:15:05] ? Found enabled channel: ai2 -> VDD_MLDO_2P0
+[19:15:05] ? Found enabled channel: ai3 -> VDD_WIFI_1P35
+[19:15:05] ? Found enabled channel: ai4 -> VDD_WIFI_1P0
+[19:15:05] ?? Total enabled channels from monitor: ['ai0', 'ai1', 'ai2', 'ai3', 'ai4']
+[19:15:05] ? Found enabled channel: ai0 -> VBAT_WIFI
+[19:15:05] ? Found enabled channel: ai1 -> 1.8V_wifi
+[19:15:05] ? Found enabled channel: ai2 -> VDD_MLDO_2P0
+[19:15:05] ? Found enabled channel: ai3 -> VDD_WIFI_1P35
+[19:15:05] ? Found enabled channel: ai4 -> VDD_WIFI_1P0
+[19:15:05] ?? Total enabled channels from monitor: ['ai0', 'ai1', 'ai2', 'ai3', 'ai4']
+[19:15:05] CSV export - Enabled channels: ['ai0', 'ai1', 'ai2', 'ai3', 'ai4']
+[19:15:05] CSV export - Rail names: {'ai0': 'VBAT_WIFI', 'ai1': '1.8V_wifi', 'ai2': 'VDD_MLDO_2P0', 'ai3': 'VDD_WIFI_1P35', 'ai4': 'VDD_WIFI_1P0'}
+[19:15:05] CSV export - Measurement mode: current
+[19:15:05] CSV export - Data points: 900000
+[19:15:05] Creating DataFrame from data (vectorized)...
+[19:15:06] DataFrame created in 1.03s
+[19:15:06] Writing CSV file (optimized)...
+[19:15:10] CSV export completed: test_results/wifi_2g_test_20251223_191505_iter01.csv
+[19:15:10]   - Data points: 900000
+[19:15:10]   - Channels: 5
+[19:15:10]   - File size: 46.88 MB
+[19:15:10]   - DataFrame creation: 1.03s
+[19:15:10]   - CSV write: 3.84s
+[19:15:10]   - Total time: 4.87s
+[19:15:10] SUCCESS: Test data exported to test_results/wifi_2g_test_20251223_191505_iter01.csv
+[19:15:10] Waiting 2.0s for step completion
+[19:15:12] Test iteration 1/1 completed
+[19:15:12] Final auto test state reset: running ? idle
+[19:15:12] 
+[19:15:12] 🎉 All 1 test iterations completed successfully!
+[19:15:12] 🔔 _on_auto_test_completed called: success=True, message=Completed 1 iterations
+[19:15:12] ✅ All scenarios completed!
+[19:15:12] Setting UI test mode: test_running=False
+[19:15:12] *** startAutoTest_PB enabled: True ***
+[19:15:12] *** stopAutoTest_PB enabled: False ***
+[19:15:12] Test execution completed, status reset to IDLE
+[19:15:12] UI test mode set successfully: test_running=False
+[19:15:15] 🔄 Resetting UI to initial state
+[19:15:15] 📊 Engine status during reset: idle
+[19:15:15] testStatus_LB reset to 'Ready'
+[19:15:15] testProgress_PB reset to 0
+[19:15:15] Setting UI test mode: test_running=False
+[19:15:15] *** startAutoTest_PB enabled: True ***
+[19:15:15] *** stopAutoTest_PB enabled: False ***
+[19:15:15] is_running() check: status=idle, running=False
+[19:15:15] UI test mode set successfully: test_running=False
+[19:15:15] UI reset to initial state completed

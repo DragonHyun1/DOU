@@ -18,9 +18,11 @@ class DefaultSettings:
         'screen_brightness': 128,     # Indoor_500 level
         'volume': 7,
         'bluetooth_on': 0,            # Off
-        'wifi_on': 0,                 # Off  
+        'wifi_on': 0,                 # Off
         'auto_sync': 0,               # Off
-        'location_providers_allowed': ''  # GPS off
+        'location_providers_allowed': '',  # GPS off
+        'aod_mode': 0,                # AOD off
+        'aod_show_state': 0           # AOD off
     }
     
     @classmethod
@@ -41,7 +43,9 @@ class DefaultSettings:
             'bluetooth_on': ['shell', 'settings', 'put', 'global', 'bluetooth_on', str(cls.SETTINGS['bluetooth_on'])],
             'wifi_disable': ['shell', 'svc', 'wifi', 'disable'],
             'auto_sync': ['shell', 'settings', 'put', 'global', 'auto_sync', str(cls.SETTINGS['auto_sync'])],
-            'location_providers_allowed': ['shell', 'settings', 'put', 'secure', 'location_providers_allowed', cls.SETTINGS['location_providers_allowed']]
+            'location_providers_allowed': ['shell', 'settings', 'put', 'secure', 'location_providers_allowed', cls.SETTINGS['location_providers_allowed']],
+            'aod_mode': ['shell', 'settings', 'put', 'secure', 'aod_mode', str(cls.SETTINGS['aod_mode'])],
+            'aod_show_state': ['shell', 'settings', 'put', 'secure', 'aod_show_state', str(cls.SETTINGS['aod_show_state'])]
         }
     
     @classmethod
@@ -51,7 +55,7 @@ class DefaultSettings:
 Default Settings Applied to All Test Scenarios:
 - Screen off timeout: 10 minutes
 - Multi control: Disabled
-- QuickShare: Disabled  
+- QuickShare: Disabled
 - Brightness mode: Manual
 - Brightness level: Indoor_500 (128/255)
 - Volume: Level 7
@@ -59,4 +63,5 @@ Default Settings Applied to All Test Scenarios:
 - WiFi: Disabled
 - Auto-sync: Disabled
 - GPS: Disabled
+- AOD (Always On Display): Disabled
         """.strip()

@@ -175,7 +175,7 @@ class TestScenarioEngine(QObject):
             
             # DAQ Start + Phone App Test + DAQ Stop (separated)
             TestStep("start_daq", 2.0, "start_daq_monitoring"),
-            TestStep("phone_app_test", 10.0, "phone_app_scenario_test"),
+            TestStep("phone_app_test", 0.0, "phone_app_scenario_test"),  # Duration 0: function handles timing
             TestStep("stop_daq", 2.0, "stop_daq_monitoring"),
             
             # Export results
@@ -212,7 +212,7 @@ class TestScenarioEngine(QObject):
             
             # DAQ Start + Screen On/Off Test + DAQ Stop
             TestStep("start_daq", 2.0, "start_daq_monitoring"),
-            TestStep("screen_onoff_test", 20.0, "screen_onoff_test"),
+            TestStep("screen_onoff_test", 0.0, "screen_onoff_test"),  # Duration 0: function handles timing
             TestStep("stop_daq", 2.0, "stop_daq_monitoring"),
             
             # Export results
@@ -221,6 +221,83 @@ class TestScenarioEngine(QObject):
         
         self.scenarios["screen_onoff_test"] = screen_onoff_config
         self.log_callback(f"Registered scenario: {screen_onoff_config.name} (key: screen_onoff_test)", "info")
+
+        # WiFi 2G 15분 대기 Test Scenario
+        wifi_2g_config = TestConfig(
+            name="WiFi 2G 15분 대기 Test",
+            description="WiFi 2.4GHz 연결 후 15분간 전력 소비 측정",
+            test_duration=900.0,  # 15분 테스트
+            stabilization_time=60.0  # 1분 안정화
+        )
+
+        wifi_2g_config.steps = [
+            # Init Mode Setup - ADB connection first
+            TestStep("init_adb", 3.0, "setup_adb_device"),
+
+            # Default Settings (after ADB connection)
+            TestStep("default_settings", 5.0, "apply_default_settings"),
+
+            # Init Mode Setup
+            TestStep("lcd_on_unlock", 3.0, "lcd_on_and_unlock"),
+            TestStep("enable_aod", 2.0, "enable_aod"),
+            TestStep("flight_mode", 2.0, "enable_flight_mode"),
+            TestStep("wifi_2g_connect", 10.0, "connect_wifi_2g"),
+            TestStep("bluetooth_on", 5.0, "enable_bluetooth"),
+            TestStep("lcd_off", 2.0, "lcd_off"),
+
+            # 전류 안정화 1분
+            TestStep("stabilize", 60.0, "wait_stabilization"),
+
+            # DAQ Start + 15분 대기 + DAQ Stop
+            TestStep("start_daq", 2.0, "start_daq_monitoring"),
+            TestStep("wifi_2g_wait", 0.0, "wait_15_minutes"),  # Duration 0: function handles 15min timing
+            TestStep("stop_daq", 2.0, "stop_daq_monitoring"),
+
+            # Export results
+            TestStep("save_data", 2.0, "export_to_excel")
+        ]
+
+        self.scenarios["wifi_2g_test"] = wifi_2g_config
+        self.log_callback(f"Registered scenario: {wifi_2g_config.name} (key: wifi_2g_test)", "info")
+
+        # WiFi 5G 15분 대기 Test Scenario
+        wifi_5g_config = TestConfig(
+            name="WiFi 5G 15분 대기 Test",
+            description="WiFi 5GHz 연결 후 15분간 전력 소비 측정",
+            test_duration=900.0,  # 15분 테스트
+            stabilization_time=60.0  # 1분 안정화
+        )
+
+        wifi_5g_config.steps = [
+            # Init Mode Setup - ADB connection first
+            TestStep("init_adb", 3.0, "setup_adb_device"),
+
+            # Default Settings (after ADB connection)
+            TestStep("default_settings", 5.0, "apply_default_settings"),
+
+            # Init Mode Setup
+            TestStep("lcd_on_unlock", 3.0, "lcd_on_and_unlock"),
+            TestStep("enable_aod", 2.0, "enable_aod"),
+            TestStep("flight_mode", 2.0, "enable_flight_mode"),
+            TestStep("wifi_5g_connect", 10.0, "connect_wifi_5g"),
+            TestStep("bluetooth_on", 5.0, "enable_bluetooth"),
+            TestStep("lcd_off", 2.0, "lcd_off"),
+
+            # 전류 안정화 1분
+            TestStep("stabilize", 60.0, "wait_stabilization"),
+
+            # DAQ Start + 15분 대기 + DAQ Stop
+            TestStep("start_daq", 2.0, "start_daq_monitoring"),
+            TestStep("wifi_5g_wait", 0.0, "wait_15_minutes"),  # Duration 0: function handles 15min timing
+            TestStep("stop_daq", 2.0, "stop_daq_monitoring"),
+
+            # Export results
+            TestStep("save_data", 2.0, "export_to_excel")
+        ]
+
+        self.scenarios["wifi_5g_test"] = wifi_5g_config
+        self.log_callback(f"Registered scenario: {wifi_5g_config.name} (key: wifi_5g_test)", "info")
+
         self.log_callback(f"Total scenarios registered: {len(self.scenarios)}", "info")
     
     def get_available_scenarios(self) -> Dict[str, TestConfig]:
@@ -422,10 +499,13 @@ class TestScenarioEngine(QObject):
             else:
                 # Subsequent iterations: Different handling based on scenario
                 is_screen_onoff = False
+                is_wifi_test = False
                 if hasattr(self, 'current_scenario') and self.current_scenario:
                     scenario_key = self.current_scenario.lower()
                     if 'screen' in scenario_key and 'onoff' in scenario_key:
                         is_screen_onoff = True
+                    elif 'wifi' in scenario_key:
+                        is_wifi_test = True
 
                 if is_screen_onoff:
                     # Screen On/Off: Skip quick reset, only 10s stabilization (screen already off from 1st test)
@@ -441,6 +521,25 @@ class TestScenarioEngine(QObject):
                             daq_test_steps.append(step)
 
                     steps_to_execute = [stabilization_step] + daq_test_steps
+
+                elif is_wifi_test:
+                    # WiFi 2G/5G Test: Skip all init, short stabilization + DAQ collection only
+                    # Device is already in proper state from 1st iteration (WiFi connected, BT on, LCD off)
+                    self.log_callback(f"📌 Iteration {self.current_repeat}: WiFi test quick setup - 10s stabilization, skip all init", "info")
+                    stabilization_step = TestStep("quick_stabilization", 10.0, "quick_stabilization_10s")
+
+                    # Find DAQ and test steps only (skip all init/default steps)
+                    daq_test_steps = []
+                    for step in scenario.steps:
+                        # Include only DAQ collection and export steps
+                        if step.action in ['start_daq_monitoring', 'wait_15_minutes',
+                                           'stop_daq_monitoring', 'export_to_excel']:
+                            self.log_callback(f"  Including step: {step.name} (action: {step.action})", "debug")
+                            daq_test_steps.append(step)
+
+                    steps_to_execute = [stabilization_step] + daq_test_steps
+                    self.log_callback(f"WiFi test iteration {self.current_repeat}: Skipping init (LCD/AOD/Flight/WiFi/BT already configured)", "info")
+
                 else:
                     # Other scenarios: Quick reset + DAQ + Test + Stop DAQ + Export
                     self.log_callback(f"📌 Iteration {self.current_repeat}: Skip default+init, quick reset only", "info")
@@ -814,8 +913,14 @@ class TestScenarioEngine(QObject):
                 return self._step_export_to_csv()
             elif step.action == "connect_wifi_2g":
                 return self._step_connect_wifi_2g()
+            elif step.action == "connect_wifi_5g":
+                return self._step_connect_wifi_5g()
             elif step.action == "enable_bluetooth":
                 return self._step_enable_bluetooth()
+            elif step.action == "enable_aod":
+                return self._step_enable_aod()
+            elif step.action == "wait_15_minutes":
+                return self._step_wait_15_minutes()
             elif step.action == "set_screen_timeout_10min":
                 return self._step_set_screen_timeout_10min()
             elif step.action == "lcd_on_unlock_home_clear_apps":
@@ -2906,65 +3011,96 @@ class TestScenarioEngine(QObject):
             self.log_callback(f"Error creating summary sheet: {e}", "error")
     
     def _export_to_csv(self, filename: str) -> bool:
-        """Export data to CSV file (lightweight and fast)"""
+        """Export data to CSV file (optimized for large datasets)"""
         try:
             import pandas as pd
-            import csv
-            
+            import time as time_module
+
             if not self.daq_data:
                 self.log_callback("No data to export", "warn")
                 return True
-            
+
             # Get enabled channels, rail names, and measurement mode
             enabled_channels = self._get_enabled_channels_from_monitor()
             rail_names = self._get_channel_rail_names()
             measurement_mode = getattr(self, '_monitoring_mode', 'current')
-            
+
             self.log_callback(f"CSV export - Enabled channels: {enabled_channels}", "info")
             self.log_callback(f"CSV export - Rail names: {rail_names}", "info")
             self.log_callback(f"CSV export - Measurement mode: {measurement_mode}", "info")
-            
-            # Create formatted data
-            formatted_data = {}
-            
-            # First column: Time in ms as INTEGER (0, 1, 2, 3, ...)
-            formatted_data['Time (ms)'] = []
-            for data_point in self.daq_data:
-                time_ms = data_point.get('time_elapsed', 0)
-                formatted_data['Time (ms)'].append(int(time_ms))
-            
-            # Additional columns: Rail data based on measurement mode
+            self.log_callback(f"CSV export - Data points: {len(self.daq_data)}", "info")
+
+            # Start timing
+            start_time = time_module.time()
+
+            # OPTIMIZATION 1: Create DataFrame directly from list of dicts (no for loops!)
+            self.log_callback("Creating DataFrame from data (vectorized)...", "info")
+            df = pd.DataFrame(self.daq_data)
+
+            # OPTIMIZATION 2: Prepare column mapping for rename (batch operation)
+            column_mapping = {}
+            columns_to_keep = ['time_elapsed']  # Keep time column
+
+            # Build column mapping and identify columns to keep
             for channel in enabled_channels:
-                rail_name = rail_names.get(channel, f"Rail_{channel}")
-                
                 if measurement_mode == "current":
-                    column_name = f"{rail_name} (mA)"  # Current in milliAmperes
-                    data_key = f"{channel}_current"
+                    old_col = f"{channel}_current"
+                    rail_name = rail_names.get(channel, f"Rail_{channel}")
+                    new_col = f"{rail_name} (mA)"
+                    column_mapping[old_col] = new_col
+                    columns_to_keep.append(old_col)
                 else:
-                    column_name = f"{rail_name} (V)"  # Voltage in Volts
-                    data_key = f"{channel}_voltage"
-                
-                formatted_data[column_name] = []
-                
-                for data_point in self.daq_data:
-                    value = data_point.get(data_key, 0.0)
-                    formatted_data[column_name].append(value)
-            
-            # Create DataFrame
-            df = pd.DataFrame(formatted_data)
-            
-            # Export to CSV (fast and lightweight)
-            df.to_csv(filename, index=False, encoding='utf-8-sig')
-            
+                    old_col = f"{channel}_voltage"
+                    rail_name = rail_names.get(channel, f"Rail_{channel}")
+                    new_col = f"{rail_name} (V)"
+                    column_mapping[old_col] = new_col
+                    columns_to_keep.append(old_col)
+
+            # Select only needed columns
+            df = df[columns_to_keep]
+
+            # OPTIMIZATION 3: Rename columns in batch (vectorized)
+            df = df.rename(columns=column_mapping)
+
+            # OPTIMIZATION 4: Rename time column and convert to int (vectorized)
+            df = df.rename(columns={'time_elapsed': 'Time (ms)'})
+            df['Time (ms)'] = df['Time (ms)'].astype(int)
+
+            # OPTIMIZATION 5: Move Time column to first position using insert
+            time_col = df.pop('Time (ms)')
+            df.insert(0, 'Time (ms)', time_col)
+
+            creation_time = time_module.time() - start_time
+            self.log_callback(f"DataFrame created in {creation_time:.2f}s", "info")
+
+            # OPTIMIZATION 6: Export to CSV with optimal settings
+            self.log_callback("Writing CSV file (optimized)...", "info")
+            write_start = time_module.time()
+
+            # Use fast CSV writer with minimal overhead
+            df.to_csv(
+                filename,
+                index=False,
+                encoding='utf-8',  # Faster than utf-8-sig
+                float_format='%.6f',  # Limit decimal places for smaller file
+            )
+
+            write_time = time_module.time() - write_start
+            total_time = time_module.time() - start_time
+
             # Log summary info
+            import os
             file_size_mb = os.path.getsize(filename) / (1024 * 1024)
             self.log_callback(f"CSV export completed: {filename}", "info")
             self.log_callback(f"  - Data points: {len(self.daq_data)}", "info")
             self.log_callback(f"  - Channels: {len(enabled_channels)}", "info")
             self.log_callback(f"  - File size: {file_size_mb:.2f} MB", "info")
-            
+            self.log_callback(f"  - DataFrame creation: {creation_time:.2f}s", "info")
+            self.log_callback(f"  - CSV write: {write_time:.2f}s", "info")
+            self.log_callback(f"  - Total time: {total_time:.2f}s", "info")
+
             return True
-            
+
         except Exception as e:
             self.log_callback(f"Error exporting to CSV: {e}", "error")
             import traceback
@@ -3949,7 +4085,124 @@ class TestScenarioEngine(QObject):
         except Exception as e:
             self.log_callback(f"? Error enabling Bluetooth: {e}", "error")
             return False
-    
+
+    def _step_connect_wifi_5g(self) -> bool:
+        """Connect to 5GHz WiFi using improved ADB service method"""
+        try:
+            self.log_callback("=== Connecting to 5GHz WiFi ===", "info")
+
+            if not self.adb_service:
+                self.log_callback("ADB service not available", "error")
+                return False
+
+            # Use WiFi config from test_scenarios/configs/wifi_config.py
+            try:
+                import sys
+                import os
+                # Add project root to path if not already there
+                project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                if project_root not in sys.path:
+                    sys.path.insert(0, project_root)
+
+                from test_scenarios.configs.wifi_config import WiFiConfig
+                wifi_5g = WiFiConfig.get_5g_primary()
+                ssid = wifi_5g['ssid']
+                password = wifi_5g['password']
+                self.log_callback(f"Using WiFi network from config: {ssid}", "info")
+            except Exception as e:
+                # Fallback to hardcoded values
+                self.log_callback(f"WiFi config not available ({str(e)}), using default", "warn")
+                ssid = "0_WIFIFW_RAX40_2nd_5G"
+                password = "cppower12"
+                self.log_callback(f"Using default WiFi: {ssid}", "info")
+
+            # Use improved connect_wifi_5g method from ADB service
+            # This method includes proper verification and retry logic
+            success = self.adb_service.connect_wifi_5g(ssid, password)
+
+            if success:
+                # Get final WiFi status
+                wifi_status = self.adb_service.get_wifi_status()
+                self.log_callback(f"WiFi Status: {wifi_status}", "info")
+                return True
+            else:
+                # Get status even on failure for debugging
+                wifi_status = self.adb_service.get_wifi_status()
+                self.log_callback(f"Failed to connect to 5GHz WiFi. Status: {wifi_status}", "error")
+                return False
+
+        except Exception as e:
+            self.log_callback(f"Error connecting to 5GHz WiFi: {e}", "error")
+            return False
+
+    def _step_enable_aod(self) -> bool:
+        """Enable Always On Display (AOD)"""
+        try:
+            self.log_callback("=== Enabling AOD (Always On Display) ===", "info")
+
+            if not self.adb_service:
+                self.log_callback("ADB service not available", "error")
+                return False
+
+            # Use improved enable_aod method from ADB service
+            success = self.adb_service.enable_aod()
+
+            if success:
+                # Get final AOD status
+                aod_status = self.adb_service.get_aod_status()
+                self.log_callback(f"AOD Status: {aod_status}", "info")
+                return True
+            else:
+                # Get status even on failure for debugging
+                aod_status = self.adb_service.get_aod_status()
+                self.log_callback(f"Failed to enable AOD. Status: {aod_status}", "error")
+                return False
+
+        except Exception as e:
+            self.log_callback(f"Error enabling AOD: {e}", "error")
+            return False
+
+    def _step_wait_15_minutes(self) -> bool:
+        """Wait for 15 minutes (900 seconds) while collecting data"""
+        try:
+            self.log_callback("=== Waiting 15 minutes for WiFi test (900 seconds) ===", "info")
+
+            # Signal DAQ monitoring to start immediately (WiFi test doesn't need screen sync)
+            if hasattr(self, '_screen_test_started'):
+                self._screen_test_started.set()
+                self._screen_test_start_time = time.time()
+                self.log_callback("DAQ monitoring signaled to start", "info")
+
+            # Brief pause to ensure DAQ starts collecting
+            time.sleep(0.5)
+
+            # 15분 동안 대기하면서 진행 상황 표시
+            total_seconds = 900  # 15 minutes
+            update_interval = 60  # 60초(1분)마다 업데이트
+
+            for i in range(total_seconds):
+                # Check for stop request
+                if self.stop_requested:
+                    self.log_callback("Stop requested during 15-minute wait", "warn")
+                    return False
+
+                if (i + 1) % update_interval == 0 or i == 0:
+                    progress = int((i + 1) / total_seconds * 100)
+                    minutes = (i + 1) // 60
+                    seconds = (i + 1) % 60
+                    self.log_callback(
+                        f"WiFi test progress: {i+1}/{total_seconds} seconds ({progress}%) - {minutes}m {seconds}s",
+                        "info"
+                    )
+                time.sleep(1)
+
+            self.log_callback("✅ 15-minute WiFi test completed", "info")
+            return True
+
+        except Exception as e:
+            self.log_callback(f"Error during 15-minute wait: {e}", "error")
+            return False
+
     def _step_set_screen_timeout_10min(self) -> bool:
         """Set screen timeout to 10 minutes"""
         try:
