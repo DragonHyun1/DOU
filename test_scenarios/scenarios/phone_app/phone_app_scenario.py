@@ -51,10 +51,14 @@ class PhoneAppScenario(BaseScenario):
             TestStep("bluetooth_on", 2.0, "enable_bluetooth"),
             TestStep("home_clear_apps", 8.0, "home_and_clear_apps"),
             TestStep("current_stabilization", 10.0, "wait_current_stabilization"),
+            # Enable battery slate mode (disconnect USB power)
+            TestStep("enable_slate_mode", 3.0, "enable_battery_slate_mode"),
             # Test execution steps
             TestStep("start_daq_monitoring", 2.0, "start_daq_monitoring"),
             TestStep("phone_app_test", 10.0, "execute_phone_app_scenario"),
             TestStep("stop_daq_monitoring", 2.0, "stop_daq_monitoring"),
+            # Disable battery slate mode (restore USB power)
+            TestStep("disable_slate_mode", 3.0, "disable_battery_slate_mode"),
             TestStep("save_excel", 3.0, "export_to_excel")
         ]
         
@@ -79,18 +83,22 @@ class PhoneAppScenario(BaseScenario):
                 return self._step_home_and_clear_apps()
             elif step.action == "wait_current_stabilization":
                 return self._step_wait_current_stabilization()
+            elif step.action == "enable_battery_slate_mode":
+                return self._step_enable_battery_slate_mode()
             elif step.action == "start_daq_monitoring":
                 return self._step_start_daq_monitoring()
             elif step.action == "execute_phone_app_scenario":
                 return self._step_execute_phone_app_scenario()
             elif step.action == "stop_daq_monitoring":
                 return self._step_stop_daq_monitoring()
+            elif step.action == "disable_battery_slate_mode":
+                return self._step_disable_battery_slate_mode()
             elif step.action == "export_to_excel":
                 return self._step_export_to_excel()
             else:
                 self.log_callback(f"Unknown step action: {step.action}", "error")
                 return False
-                
+
         except Exception as e:
             self.log_callback(f"Error executing step {step.name}: {e}", "error")
             return False
@@ -424,7 +432,51 @@ class PhoneAppScenario(BaseScenario):
                 self.log_callback("⚠️ No data to export", "warn")
             
             return True
-            
+
         except Exception as e:
             self.log_callback(f"❌ Error exporting to Excel: {e}", "error")
             return False
+
+    def _step_enable_battery_slate_mode(self) -> bool:
+        """Enable battery slate mode (disconnect USB power)"""
+        try:
+            self.log_callback("=== Enabling Battery Slate Mode ===", "info")
+
+            if not self.adb_service:
+                self.log_callback("ADB service not available", "error")
+                return False
+
+            success = self.adb_service.enable_battery_slate_mode()
+
+            if success:
+                self.log_callback("✅ Battery slate mode enabled (USB power disconnected)", "info")
+                return True
+            else:
+                self.log_callback("⚠️ Failed to enable battery slate mode", "warn")
+                return True  # Continue test even if slate mode fails
+
+        except Exception as e:
+            self.log_callback(f"❌ Error enabling battery slate mode: {e}", "error")
+            return True  # Don't fail the entire test for slate mode
+
+    def _step_disable_battery_slate_mode(self) -> bool:
+        """Disable battery slate mode (restore USB power)"""
+        try:
+            self.log_callback("=== Disabling Battery Slate Mode ===", "info")
+
+            if not self.adb_service:
+                self.log_callback("ADB service not available", "error")
+                return False
+
+            success = self.adb_service.disable_battery_slate_mode()
+
+            if success:
+                self.log_callback("✅ Battery slate mode disabled (USB power restored)", "info")
+                return True
+            else:
+                self.log_callback("⚠️ Failed to disable battery slate mode", "warn")
+                return True  # Continue even if slate mode restore fails
+
+        except Exception as e:
+            self.log_callback(f"❌ Error disabling battery slate mode: {e}", "error")
+            return True  # Don't fail for slate mode issues
