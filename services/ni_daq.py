@@ -812,6 +812,78 @@ class NIDAQService(QObject):
             self.error_occurred.emit(error_msg)
             return None
     
+    def _filter_peaks(self, data: List[float], method: str = 'iqr', window_size: int = 5) -> List[float]:
+        """Filter out abnormal peaks from data
+
+        Args:
+            data: Raw data values
+            method: Filter method ('iqr' for outlier removal, 'median' for median filter)
+            window_size: Window size for median filter (default: 5)
+
+        Returns:
+            Filtered data with peaks removed/smoothed
+        """
+        if len(data) == 0:
+            return data
+
+        if method == 'iqr':
+            # IQR (Interquartile Range) method for outlier removal
+            # Calculate Q1, Q3, and IQR
+            sorted_data = sorted(data)
+            n = len(sorted_data)
+            q1_idx = n // 4
+            q3_idx = 3 * n // 4
+            q1 = sorted_data[q1_idx]
+            q3 = sorted_data[q3_idx]
+            iqr = q3 - q1
+
+            # Define outlier bounds (typically Q1 - 1.5*IQR, Q3 + 1.5*IQR)
+            lower_bound = q1 - 1.5 * iqr
+            upper_bound = q3 + 1.5 * iqr
+
+            # Replace outliers with median
+            median = sorted_data[n // 2]
+            filtered = []
+            outlier_count = 0
+
+            for value in data:
+                if lower_bound <= value <= upper_bound:
+                    filtered.append(value)
+                else:
+                    filtered.append(median)  # Replace outlier with median
+                    outlier_count += 1
+
+            if outlier_count > 0:
+                print(f"  🔧 Peak filter (IQR): Removed {outlier_count} outliers (bounds: {lower_bound:.6f} ~ {upper_bound:.6f})")
+
+            return filtered
+
+        elif method == 'median':
+            # Moving median filter to smooth spikes
+            if len(data) < window_size:
+                return data
+
+            filtered = []
+            half_window = window_size // 2
+
+            for i in range(len(data)):
+                # Get window around current point
+                start = max(0, i - half_window)
+                end = min(len(data), i + half_window + 1)
+                window = data[start:end]
+
+                # Use median of window
+                sorted_window = sorted(window)
+                median = sorted_window[len(sorted_window) // 2]
+                filtered.append(median)
+
+            print(f"  🔧 Peak filter (Median): Applied moving median filter (window={window_size})")
+            return filtered
+
+        else:
+            # No filter
+            return data
+
     def _compress_data(self, data: List[float], compress_ratio: int) -> List[float]:
         """Compress data by averaging groups (noise reduction)
 
@@ -1014,6 +1086,13 @@ class NIDAQService(QObject):
                 reader = stream_readers.AnalogMultiChannelReader(task.in_stream)
                 data_array = np.zeros((len(channels), total_samples), dtype=np.float64)
                 reader.read_many_sample(data_array, number_of_samples_per_channel=total_samples, timeout=timeout)
+
+                # Apply peak filtering to raw voltage data (IQR method to remove outliers)
+                print(f"Applying peak filter to raw voltage data...")
+                for i in range(len(channels)):
+                    raw_data = data_array[i].tolist()
+                    filtered_data = self._filter_peaks(raw_data, method='iqr')
+                    data_array[i] = np.array(filtered_data, dtype=np.float64)
 
                 # Convert to Float32 for memory efficiency (Float64 8 bytes → Float32 4 bytes)
                 # Float32 provides sufficient precision for USB-6289 (18-bit, ±1.25V = 0.0095mV resolution)
