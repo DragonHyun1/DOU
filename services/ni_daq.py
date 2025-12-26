@@ -812,54 +812,54 @@ class NIDAQService(QObject):
             self.error_occurred.emit(error_msg)
             return None
     
-    def _filter_peaks(self, data: List[float], method: str = 'iqr', window_size: int = 5) -> List[float]:
+    def _filter_peaks(self, data: List[float], method: str = 'percentile', percentile: float = 99.0) -> List[float]:
         """Filter out abnormal peaks from data
 
         Args:
             data: Raw data values
-            method: Filter method ('iqr' for outlier removal, 'median' for median filter)
-            window_size: Window size for median filter (default: 5)
+            method: Filter method ('percentile' for top percentile capping, 'median' for median filter)
+            percentile: Percentile threshold (default: 99.0, meaning cap values above 99th percentile)
 
         Returns:
-            Filtered data with peaks removed/smoothed
+            Filtered data with extreme peaks capped
         """
         if len(data) == 0:
             return data
 
-        if method == 'iqr':
-            # IQR (Interquartile Range) method for outlier removal
-            # Calculate Q1, Q3, and IQR
+        if method == 'percentile':
+            # Percentile-based peak capping (gentle filtering)
+            # Only cap extreme outliers (e.g., top 1% or 0.5%)
             sorted_data = sorted(data)
             n = len(sorted_data)
-            q1_idx = n // 4
-            q3_idx = 3 * n // 4
-            q1 = sorted_data[q1_idx]
-            q3 = sorted_data[q3_idx]
-            iqr = q3 - q1
 
-            # Define outlier bounds (typically Q1 - 1.5*IQR, Q3 + 1.5*IQR)
-            lower_bound = q1 - 1.5 * iqr
-            upper_bound = q3 + 1.5 * iqr
+            # Calculate percentile index (e.g., 99th percentile)
+            percentile_idx = int(n * percentile / 100.0)
+            if percentile_idx >= n:
+                percentile_idx = n - 1
 
-            # Replace outliers with median
-            median = sorted_data[n // 2]
+            # Get the threshold value at percentile
+            threshold = sorted_data[percentile_idx]
+
+            # Cap values above threshold
             filtered = []
-            outlier_count = 0
+            capped_count = 0
 
             for value in data:
-                if lower_bound <= value <= upper_bound:
+                if value <= threshold:
                     filtered.append(value)
                 else:
-                    filtered.append(median)  # Replace outlier with median
-                    outlier_count += 1
+                    filtered.append(threshold)  # Cap to threshold
+                    capped_count += 1
 
-            if outlier_count > 0:
-                print(f"  🔧 Peak filter (IQR): Removed {outlier_count} outliers (bounds: {lower_bound:.6f} ~ {upper_bound:.6f})")
+            if capped_count > 0:
+                cap_percentage = (capped_count / n) * 100
+                print(f"  🔧 Peak filter (Percentile): Capped {capped_count} peaks ({cap_percentage:.1f}%) above {percentile}th percentile (threshold: {threshold:.6f})")
 
             return filtered
 
         elif method == 'median':
             # Moving median filter to smooth spikes
+            window_size = 5  # Fixed window size for median filter
             if len(data) < window_size:
                 return data
 
@@ -1087,11 +1087,11 @@ class NIDAQService(QObject):
                 data_array = np.zeros((len(channels), total_samples), dtype=np.float64)
                 reader.read_many_sample(data_array, number_of_samples_per_channel=total_samples, timeout=timeout)
 
-                # Apply peak filtering to raw voltage data (IQR method to remove outliers)
+                # Apply peak filtering to raw voltage data (Percentile method - cap top 1% extreme peaks)
                 print(f"Applying peak filter to raw voltage data...")
                 for i in range(len(channels)):
                     raw_data = data_array[i].tolist()
-                    filtered_data = self._filter_peaks(raw_data, method='iqr')
+                    filtered_data = self._filter_peaks(raw_data, method='percentile', percentile=99.0)
                     data_array[i] = np.array(filtered_data, dtype=np.float64)
 
                 # Convert to Float32 for memory efficiency (Float64 8 bytes → Float32 4 bytes)
