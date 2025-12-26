@@ -1144,8 +1144,8 @@ class ADBService:
             self._run_adb_command(['remount'])
             time.sleep(0.5)
 
-            # Set battery slate mode to 1
-            result = self._run_adb_command(['shell', 'echo 1 > /sys/class/power_supply/battery/batt_slate_mode'])
+            # Set battery slate mode to 1 (using su -c for proper shell redirection)
+            result = self._run_adb_command(['shell', 'su', '-c', 'echo 1 > /sys/class/power_supply/battery/batt_slate_mode'])
 
             self.logger.info("✅ Battery slate mode enabled (USB power disconnected)")
             return True
@@ -1173,8 +1173,8 @@ class ADBService:
             self._run_adb_command(['remount'])
             time.sleep(0.5)
 
-            # Set battery slate mode to 0
-            result = self._run_adb_command(['shell', 'echo 0 > /sys/class/power_supply/battery/batt_slate_mode'])
+            # Set battery slate mode to 0 (using su -c for proper shell redirection)
+            result = self._run_adb_command(['shell', 'su', '-c', 'echo 0 > /sys/class/power_supply/battery/batt_slate_mode'])
 
             self.logger.info("✅ Battery slate mode disabled (USB power restored)")
             return True
